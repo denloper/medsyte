@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<!-- PWA: подключение манифеста -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563EB">
+
+<!-- Иконка приложения (SVG в data URI, чтобы не плодить файлы) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+
+<!-- Для iOS: запуск в полноэкранном режиме -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="СемДок">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<title>Динамика анализов — Семейный доктор</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --c-primary: #2563EB; --c-primary-dark: #1E40AF; --c-primary-light: #DBEAFE;
+    --c-ok: #059669; --c-ok-bg: #ECFDF5;
+    --c-warn: #D97706; --c-warn-bg: #FFFBEB;
+    --c-danger: #B91C1C; --c-danger-bg: #FEF2F2;
+    --c-bg: #F9FAFB; --c-card: #FFFFFF; --c-border: #E5E7EB;
+    --c-text: #111827; --c-text-muted: #6B7280;
+    --fs-base: 18px; --fs-lg: 20px; --fs-xl: 24px; --fs-2xl: 28px;
+    --sp-1: 8px; --sp-2: 16px; --sp-3: 24px; --sp-4: 32px;
+    --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --focus-ring: 0 0 0 4px rgba(37, 99, 235, 0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: var(--fs-base); }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--c-bg); color: var(--c-text); line-height: 1.6; min-height: 100vh; }
+  .container { max-width: 900px; margin: 0 auto; padding: var(--sp-3); }
+  header { background: var(--c-card); border-bottom: 1px solid var(--c-border); padding: var(--sp-3); margin-bottom: var(--sp-3); box-shadow: var(--shadow-sm); }
+  .header-inner { max-width: 900px; margin: 0 auto; display: flex; align-items: center; gap: var(--sp-2); }
+  .back-link { text-decoration: none; color: var(--c-primary); font-size: var(--fs-base); padding: 8px 12px; border-radius: var(--r-sm); display: inline-flex; align-items: center; gap: 8px; }
+  .back-link:hover { background: var(--c-primary-light); }
+  .back-link:focus { outline: none; box-shadow: var(--focus-ring); }
+  h1 { font-size: var(--fs-2xl); color: var(--c-primary-dark); }
+  .subtitle { color: var(--c-text-muted); margin-bottom: var(--sp-3); }
+  .patient-form { background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-3); }
+  .patient-form h2 { font-size: var(--fs-xl); margin-bottom: var(--sp-2); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+  @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+  .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: var(--c-text-muted); }
+  .form-group input { width: 100%; padding: 12px 16px; font-size: var(--fs-base); border: 1px solid var(--c-border); border-radius: var(--r-sm); background: var(--c-card); color: var(--c-text); min-height: 48px; }
+  .form-group input:focus { outline: none; box-shadow: var(--focus-ring); border-color: var(--c-primary); }
+  .sex-buttons { display: flex; gap: var(--sp-1); }
+  .sex-btn { flex: 1; padding: 12px; font-size: var(--fs-base); border: 2px solid var(--c-border); background: var(--c-card); color: var(--c-text); border-radius: var(--r-sm); cursor: pointer; min-height: 48px; font-family: inherit; }
+  .sex-btn.active { border-color: var(--c-primary); background: var(--c-primary-light); color: var(--c-primary-dark); font-weight: 600; }
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+  @media (max-width: 640px) { .compare-grid { grid-template-columns: 1fr; } }
+  .drop-zone { background: var(--c-card); border: 2px dashed var(--c-border); border-radius: var(--r-md); padding: var(--sp-3); text-align: center; cursor: pointer; min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+  .drop-zone:hover, .drop-zone.dragover { border-color: var(--c-primary); background: var(--c-primary-light); }
+  .drop-zone:focus { outline: none; box-shadow: var(--focus-ring); }
+  .drop-icon { font-size: 48px; margin-bottom: var(--sp-1); }
+  .drop-zone h3 { font-size: var(--fs-lg); margin-bottom: 8px; }
+  .drop-zone p { color: var(--c-text-muted); font-size: 16px; }
+  .file-info { margin-top: var(--sp-2); padding: var(--sp-1) var(--sp-2); background: var(--c-ok-bg); color: var(--c-ok); border-radius: var(--r-sm); font-size: 16px; font-weight: 600; word-break: break-word; }
+  .compare-btn { width: 100%; padding: 18px; font-size: var(--fs-lg); font-weight: 700; background: var(--c-primary); color: white; border: none; border-radius: var(--r-md); cursor: pointer; min-height: 60px; margin-bottom: var(--sp-3); font-family: inherit; }
+  .compare-btn:hover:not(:disabled) { background: var(--c-primary-dark); }
+  .compare-btn:focus { outline: none; box-shadow: var(--focus-ring); }
+  .compare-btn:disabled { background: var(--c-border); color: var(--c-text-muted); cursor: not-allowed; }
+  .progress { background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-3); display: none; }
+  .progress.active { display: block; }
+  .progress-bar { height: 12px; background: var(--c-bg); border-radius: 6px; overflow: hidden; margin: var(--sp-2) 0; }
+  .progress-fill { height: 100%; background: var(--c-primary); width: 0; transition: width 0.3s; }
+  .progress-text { text-align: center; color: var(--c-text-muted); }
+  .results { display: none; }
+  .results.active { display: block; }
+  .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-3); }
+  .summary-card { background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3); text-align: center; }
+  .summary-card h3 { font-size: 16px; color: var(--c-text-muted); margin-bottom: 8px; }
+  .summary-card .number { font-size: var(--fs-2xl); font-weight: 700; }
+  .summary-card.better { color: var(--c-ok); }
+  .summary-card.worse { color: var(--c-danger); }
+  .summary-card.stable { color: var(--c-text); }
+  .comparison-list { background: var(--c-card); border: 1px solid var(--c-border); border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-3); }
+  .comparison-list h2 { font-size: var(--fs-xl); margin-bottom: var(--sp-2); }
+  .comp-item { padding: var(--sp-2); background: var(--c-bg); border-radius: var(--r-sm); margin-bottom: var(--sp-1); border-left: 4px solid transparent; }
+  .comp-item.better { border-left-color: var(--c-ok); }
+  .comp-item.worse { border-left-color: var(--c-danger); }
+  .comp-item.stable { border-left-color: var(--c-border); }
+  .comp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+  .comp-name { font-weight: 700; font-size: var(--fs-lg); }
+  .comp-arrow { font-size: var(--fs-xl); font-weight: 700; }
+  .comp-arrow.better { color: var(--c-ok); }
+  .comp-arrow.worse { color: var(--c-danger); }
+  .comp-arrow.stable { color: var(--c-text-muted); }
+  .comp-values { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+  .comp-old, .comp-new { padding: 6px 12px; border-radius: var(--r-sm); background: var(--c-card); font-weight: 600; }
+  .comp-change { font-size: 16px; color: var(--c-text-muted); }
+  .comp-change strong { font-size: var(--fs-base); }
+  .disclaimer { background: #FEF3C7; border: 1px solid #FDE68A; border-radius: var(--r-md); padding: var(--sp-3); text-align: center; color: #92400E; font-size: 16px; }
+  .back-btn { display: block; margin: var(--sp-3) auto; padding: 14px 24px; background: var(--c-card); color: var(--c-primary); border: 2px solid var(--c-primary); border-radius: var(--r-md); font-size: var(--fs-base); font-weight: 600; text-decoration: none; text-align: center; min-height: 56px; }
+  @media (prefers-color-scheme: dark) {
+    :root { --c-bg: #111827; --c-card: #1F2937; --c-border: #374151; --c-text: #F9FAFB; --c-text-muted: #9CA3AF; --c-primary-light: #1E3A8A; --c-ok-bg: #064E3B; --c-ok: #6EE7B7; --c-warn-bg: #78350F; --c-warn: #FCD34D; --c-danger-bg: #7F1D1D; --c-danger: #FCA5A5; }
+    .disclaimer { background: #78350F; border-color: #92400E; color: #FCD34D; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="index.html" class="back-link">← Назад</a>
+    <h1>📈 Динамика анализов</h1>
+  </div>
+</header>
+
+<main class="container">
+  <p class="subtitle">Загрузите два PDF-файла (старый и новый) — увидим изменения и тренды.</p>
+
+  <section class="patient-form">
+    <h2>👤 Данные пациента</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Пол</label>
+        <div class="sex-buttons">
+          <button type="button" class="sex-btn active" data-sex="female">👩 Жен</button>
+          <button type="button" class="sex-btn" data-sex="male">👨 Муж</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="ageInput">Возраст</label>
+        <input type="number" id="ageInput" min="0" max="120" value="35" inputmode="numeric">
+      </div>
+    </div>
+  </section>
+
+  <div class="compare-grid">
+    <div class="drop-zone" id="dropZoneOld" role="button" tabindex="0">
+      <div class="drop-icon">📄</div>
+      <h3>Старый анализ</h3>
+      <p>Нажмите или перетащите PDF</p>
+      <div class="file-info" id="fileInfoOld" style="display:none;"></div>
+      <input type="file" id="fileInputOld" accept="application/pdf" style="display:none">
+    </div>
+    <div class="drop-zone" id="dropZoneNew" role="button" tabindex="0">
+      <div class="drop-icon">📄</div>
+      <h3>Новый анализ</h3>
+      <p>Нажмите или перетащите PDF</p>
+      <div class="file-info" id="fileInfoNew" style="display:none;"></div>
+      <input type="file" id="fileInputNew" accept="application/pdf" style="display:none">
+    </div>
+  </div>
+
+  <button class="compare-btn" id="compareBtn" disabled>🔍 Сравнить анализы</button>
+
+  <div class="progress" id="progress">
+    <div class="progress-text" id="progressText">Обработка...</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <div class="results" id="results"></div>
+</main>
+
+<script src="database.js"></script>
+<script>
+(function() {
+  'use strict';
+  if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  let fileOld = null, fileNew = null, selectedSex = 'female';
+
+  document.querySelectorAll('.sex-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sex-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedSex = btn.dataset.sex;
+    });
+  });
+
+  function setupDropZone(zoneId, inputId, infoId, setFile) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+    const info = document.getElementById(infoId);
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+    ['dragenter','dragover'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('dragover'); }));
+    zone.addEventListener('drop', e => { if (e.dataTransfer.files.length > 0 && e.dataTransfer.files[0].type === 'application/pdf') setFile(e.dataTransfer.files[0], info); });
+    input.addEventListener('change', e => { if (e.target.files.length > 0) setFile(e.target.files[0], info); });
+  }
+
+  function makeSetFile(which) {
+    return (file, info) => {
+      if (which === 'old') fileOld = file; else fileNew = file;
+      info.style.display = 'block';
+      info.innerHTML = `✓ ${file.name}`;
+      document.getElementById('compareBtn').disabled = !(fileOld && fileNew);
+    };
+  }
+  setupDropZone('dropZoneOld', 'fileInputOld', 'fileInfoOld', makeSetFile('old'));
+  setupDropZone('dropZoneNew', 'fileInputNew', 'fileInfoNew', makeSetFile('new'));
+
+  async function parsePDF(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    const Y_TOLERANCE = 3;
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const tc = await page.getTextContent();
+      const lineMap = new Map();
+      tc.items.forEach(item => {
+        const y = Math.round(item.transform[5] / Y_TOLERANCE) * Y_TOLERANCE;
+        if (!lineMap.has(y)) lineMap.set(y, []);
+        lineMap.get(y).push({ text: item.str, x: item.transform[4] });
+      });
+      const sortedLines = Array.from(lineMap.entries())
+        .sort((a, b) => b[0] - a[0])
+        .map(([y, items]) => items.sort((a, b) => a.x - b.x).map(i => i.text).join(' '));
+      fullText += sortedLines.join('\n') + '\n';
+    }
+    return fullText;
+  }
+
+  document.getElementById('compareBtn').addEventListener('click', async () => {
+    if (!fileOld || !fileNew) return;
+    const btn = document.getElementById('compareBtn');
+    btn.disabled = true;
+    const progress = document.getElementById('progress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    progress.classList.add('active');
+    try {
+      progressFill.style.width = '20%';
+      progressText.textContent = '📄 Читаем старый анализ...';
+      const textOld = await parsePDF(fileOld);
+      progressFill.style.width = '60%';
+      progressText.textContent = '📄 Читаем новый анализ...';
+      const textNew = await parsePDF(fileNew);
+      const age = parseInt(document.getElementById('ageInput').value) || 35;
+      progressFill.style.width = '80%';
+      progressText.textContent = '🧠 Сравниваем показатели...';
+      const resultsOld = MedDB.parseAnalysisText(textOld, selectedSex, age);
+      const resultsNew = MedDB.parseAnalysisText(textNew, selectedSex, age);
+      const comparison = MedDB.compareResults(resultsOld, resultsNew);
+      progressFill.style.width = '100%';
+      progressText.textContent = '✓ Готово!';
+      setTimeout(() => { progress.classList.remove('active'); renderResults(comparison); }, 500);
+    } catch (err) {
+      console.error(err);
+      alert('Не удалось обработать файлы.');
+      btn.disabled = false;
+      progress.classList.remove('active');
+    }
+  });
+
+  function renderResults(comparison) {
+    const results = document.getElementById('results');
+    let better = 0, worse = 0, stable = 0;
+    Object.values(comparison).forEach(c => {
+      if (c.old === null || c.new === null) return;
+      const oldBad = c.oldStatus !== 'normal', newBad = c.newStatus !== 'normal';
+      if (oldBad && !newBad) better++;
+      else if (!oldBad && newBad) worse++;
+      else if (oldBad && newBad) {
+        if (c.direction === 'decreased' && c.oldStatus === 'high') better++;
+        else if (c.direction === 'increased' && c.oldStatus === 'low') better++;
+        else if (c.direction === 'increased' && c.oldStatus === 'high') worse++;
+        else if (c.direction === 'decreased' && c.oldStatus === 'low') worse++;
+        else stable++;
+      } else stable++;
+    });
+
+    let html = `<div class="summary-cards">
+      <div class="summary-card better"><h3>✓ Стало лучше</h3><div class="number">${better}</div></div>
+      <div class="summary-card worse"><h3>⚠ Ухудшилось</h3><div class="number">${worse}</div></div>
+      <div class="summary-card stable"><h3>– Без изменений</h3><div class="number">${stable}</div></div>
+    </div>`;
+
+    html += `<section class="comparison-list"><h2>📋 Детальное сравнение</h2>`;
+    const entries = Object.entries(comparison).filter(([_, c]) => c.old !== null && c.new !== null);
+
+    for (const [name, c] of entries) {
+      const wasNormal = c.oldStatus === 'normal', isNormal = c.newStatus === 'normal';
+      let trend, arrow, cls;
+      if (wasNormal && !isNormal) { trend='ухудшилось'; arrow='↘'; cls='worse'; }
+      else if (!wasNormal && isNormal) { trend='улучшилось'; arrow='↗'; cls='better'; }
+      else if (wasNormal && isNormal) { trend='стабильно'; arrow='→'; cls='stable'; }
+      else {
+        if (c.oldStatus === 'high' && c.direction === 'decreased') { trend='улучшение'; arrow='↗'; cls='better'; }
+        else if (c.oldStatus === 'low' && c.direction === 'increased') { trend='улучшение'; arrow='↗'; cls='better'; }
+        else if (c.oldStatus === 'high' && c.direction === 'increased') { trend='ухудшение'; arrow='↘'; cls='worse'; }
+        else if (c.oldStatus === 'low' && c.direction === 'decreased') { trend='ухудшение'; arrow='↘'; cls='worse'; }
+        else { trend='стабильно вне нормы'; arrow='→'; cls='stable'; }
+      }
+      const changeStr = c.change !== null ? `${c.change > 0 ? '+' : ''}${c.change.toFixed(2)} (${c.changePercent > 0 ? '+' : ''}${c.changePercent}%)` : '';
+      html += `<div class="comp-item ${cls}">
+        <div class="comp-header"><span class="comp-name">${name}</span><span class="comp-arrow ${cls}">${arrow}</span></div>
+        <div class="comp-values">
+          <div><small style="color:var(--c-text-muted);">Было:</small><div class="comp-old">${c.old}</div></div>
+          <div style="color:var(--c-text-muted);">→</div>
+          <div><small style="color:var(--c-text-muted);">Стало:</small><div class="comp-new">${c.new}</div></div>
+        </div>
+        ${changeStr ? `<div class="comp-change"><strong>${changeStr}</strong> — ${trend}</div>` : ''}
+      </div>`;
+    }
+    html += `</section><a href="index.html" class="back-btn">← На главную</a>
+      <div class="disclaimer">⚕ Динамика — важный показатель, но требует врачебной интерпретации.</div>`;
+    results.innerHTML = html;
+    results.classList.add('active');
+    results.scrollIntoView({ behavior: 'smooth' });
+  }
+})();
+</script>
+<!-- Скрытая кнопка установки PWA (появится только если доступна) -->
+<button 
+  id="pwaInstallBtn" 
+  style="
+    display: none; 
+    position: fixed; 
+    bottom: 20px; 
+    right: 20px; 
+    background: #2563EB; 
+    color: white; 
+    border: none; 
+    padding: 16px 24px; 
+    border-radius: 12px; 
+    font-size: 18px; 
+    font-weight: 600; 
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    cursor: pointer;
+    z-index: 1000;
+  "
+>
+  📱 Установить приложение
+</button>
+
+<script>
+(function() {
+  'use strict';
+
+  // ═══════════════════════════════════════
+  //  1. РЕГИСТРАЦИЯ SERVICE WORKER
+  // ═══════════════════════════════════════
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js')
+        .then(function(reg) {
+          console.log('✅ SW зарегистрирован:', reg.scope);
+        })
+        .catch(function(err) {
+          console.warn('⚠ Ошибка регистрации SW:', err);
+        });
+    });
+  }
+
+  // ═══════════════════════════════════════
+  //  2. КНОПКА УСТАНОВКИ PWA
+  // ═══════════════════════════════════════
+  let deferredPrompt = null;
+  const installBtn = document.getElementById('pwaInstallBtn');
+
+  // Событие срабатывает, когда браузер готов установить PWA
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Показываем кнопку установки
+    if (installBtn) {
+      installBtn.style.display = 'block';
+    }
+  });
+
+  // Обработчик клика по кнопке
+  if (installBtn) {
+    installBtn.addEventListener('click', async function() {
+      if (!deferredPrompt) return;
+      
+      // Вызываем нативный диалог установки браузера
+      deferredPrompt.prompt();
+      
+      // Ждём выбора пользователя
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('Выбор пользователя:', outcome);
+      
+      // Скрываем кнопку после использования
+      deferredPrompt = null;
+      installBtn.style.display = 'none';
+    });
+  }
+
+  // ═══════════════════════════════════════
+  //  3. ИНСТРУКЦИЯ ДЛЯ iOS (Safari)
+  // ═══════════════════════════════════════
+  // iOS Safari НЕ поддерживает beforeinstallprompt,
+  // поэтому показываем инструкцию вручную
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  
+  if (isIOS && !isStandalone && installBtn) {
+    installBtn.textContent = '📱 Как установить';
+    installBtn.style.display = 'block';
+    installBtn.addEventListener('click', function() {
+      alert(
+        'Как установить приложение на iPhone:\n\n' +
+        '1. Нажмите кнопку "Поделиться" (квадрат со стрелкой вверх) ⬆\n' +
+        '2. Прокрутите вниз и выберите "На экран «Домой»" ➕\n' +
+        '3. Нажмите "Добавить" ✅\n\n' +
+        'Теперь иконка 🩺 будет на вашем рабочем столе!'
+      );
+    });
+  }
+
+  // Скрываем кнопку, если приложение уже установлено
+  if (isStandalone && installBtn) {
+    installBtn.style.display = 'none';
+  }
+
+})();
+</script>
+</body>
+</html>

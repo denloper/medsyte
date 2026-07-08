@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<!-- PWA: подключение манифеста -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563EB">
+
+<!-- Иконка приложения (SVG в data URI, чтобы не плодить файлы) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+
+<!-- Для iOS: запуск в полноэкранном режиме -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="СемДок">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<meta name="theme-color" content="#2563EB">
+<title>Семейный доктор ИИ — главная</title>
+<style>
+  :root {
+    --c-primary: #2563EB; --c-primary-dark: #1E40AF; --c-primary-light: #DBEAFE;
+    --c-ok: #059669; --c-ok-bg: #ECFDF5;
+    --c-warn: #D97706; --c-warn-bg: #FFFBEB;
+    --c-danger: #B91C1C; --c-danger-bg: #FEF2F2;
+    --c-emergency: #DC2626;
+    --c-bg: #F9FAFB; --c-card: #FFFFFF; --c-border: #E5E7EB;
+    --c-text: #111827; --c-text-muted: #6B7280;
+    --fs-base: 18px; --fs-lg: 20px; --fs-xl: 24px; --fs-2xl: 28px; --fs-3xl: 32px;
+    --sp-1: 8px; --sp-2: 16px; --sp-3: 24px; --sp-4: 32px; --sp-5: 48px;
+    --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --focus-ring: 0 0 0 4px rgba(37, 99, 235, 0.3);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: var(--fs-base); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--c-bg); color: var(--c-text); line-height: 1.6; min-height: 100vh;
+  }
+  .container { max-width: 760px; margin: 0 auto; padding: var(--sp-3); }
+  header {
+    background: var(--c-card); border-bottom: 1px solid var(--c-border);
+    padding: var(--sp-3); position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm);
+  }
+  .header-inner {
+    max-width: 760px; margin: 0 auto; display: flex;
+    justify-content: space-between; align-items: center; gap: var(--sp-2);
+  }
+  .logo { display: flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-xl); font-weight: 700; color: var(--c-primary); }
+  .logo-icon { font-size: 32px; }
+  .btn-emergency {
+    background: var(--c-emergency); color: white; border: none;
+    padding: 12px 20px; border-radius: var(--r-md); font-size: var(--fs-base);
+    font-weight: 700; cursor: pointer; display: flex; align-items: center;
+    gap: 8px; min-height: 48px;
+  }
+  .btn-emergency:hover { background: #991B1B; }
+  .btn-emergency:focus { outline: none; box-shadow: var(--focus-ring); }
+  .hero {
+    background: linear-gradient(135deg, var(--c-primary-light) 0%, #EFF6FF 100%);
+    padding: var(--sp-4) var(--sp-3); border-radius: var(--r-lg);
+    margin: var(--sp-3) 0; text-align: center;
+  }
+  .hero h1 { font-size: var(--fs-3xl); color: var(--c-primary-dark); margin-bottom: var(--sp-2); line-height: 1.3; }
+  .hero p { font-size: var(--fs-lg); color: var(--c-text-muted); }
+  .profile-bar {
+    background: var(--c-card); border: 1px solid var(--c-border);
+    border-radius: var(--r-md); padding: var(--sp-2); margin-bottom: var(--sp-3);
+    display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;
+  }
+  .profile-bar label { font-weight: 600; color: var(--c-text-muted); }
+  .profile-select {
+    flex: 1; min-width: 200px; padding: 12px 16px; font-size: var(--fs-base);
+    border: 1px solid var(--c-border); border-radius: var(--r-sm); background: var(--c-card);
+    color: var(--c-text); min-height: 48px;
+  }
+  .profile-select:focus { outline: none; box-shadow: var(--focus-ring); border-color: var(--c-primary); }
+  .add-profile-btn {
+    padding: 12px 20px; background: var(--c-primary); color: white;
+    border: none; border-radius: var(--r-sm); font-size: var(--fs-base);
+    cursor: pointer; min-height: 48px;
+  }
+  .add-profile-btn:focus { outline: none; box-shadow: var(--focus-ring); }
+  .red-flags {
+    background: var(--c-danger-bg); border-left: 4px solid var(--c-danger);
+    border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-3);
+  }
+  .red-flags h2 {
+    color: var(--c-danger); font-size: var(--fs-xl); margin-bottom: var(--sp-2);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .red-flags ul { list-style: none; margin-bottom: var(--sp-2); }
+  .red-flags li { padding: 6px 0; padding-left: 24px; position: relative; font-size: var(--fs-base); color: var(--c-text); }
+  .red-flags li::before { content: "⚠"; position: absolute; left: 0; }
+  .red-flags p { font-weight: 600; color: var(--c-danger); font-size: var(--fs-lg); }
+  .actions { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+  .action-card {
+    background: var(--c-card); border: 1px solid var(--c-border);
+    border-radius: var(--r-md); padding: var(--sp-3); text-decoration: none;
+    color: var(--c-text); display: flex; align-items: center; gap: var(--sp-2);
+    transition: all 0.2s; min-height: 100px; cursor: pointer; font-family: inherit;
+  }
+  .action-card:hover { border-color: var(--c-primary); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .action-card:focus { outline: none; box-shadow: var(--focus-ring); }
+  .action-icon {
+    font-size: 40px; flex-shrink: 0; width: 64px; height: 64px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--c-primary-light); border-radius: var(--r-md);
+  }
+  .action-content h3 { font-size: var(--fs-xl); margin-bottom: 4px; color: var(--c-primary-dark); }
+  .action-content p { color: var(--c-text-muted); font-size: var(--fs-base); }
+  .history {
+    background: var(--c-card); border: 1px solid var(--c-border);
+    border-radius: var(--r-md); padding: var(--sp-3); margin-bottom: var(--sp-3);
+  }
+  .history h2 { font-size: var(--fs-xl); margin-bottom: var(--sp-2); color: var(--c-text); }
+  .history-empty { text-align: center; padding: var(--sp-3); color: var(--c-text-muted); }
+  .history-list { display: flex; flex-direction: column; gap: var(--sp-1); }
+  .history-item {
+    padding: var(--sp-2); background: var(--c-bg); border-radius: var(--r-sm);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .history-item-date { color: var(--c-text-muted); font-size: 16px; }
+  .history-item-count { font-weight: 600; color: var(--c-primary); }
+  .disclaimer {
+    background: #FEF3C7; border: 1px solid #FDE68A; border-radius: var(--r-md);
+    padding: var(--sp-3); text-align: center; color: #92400E; font-size: 16px;
+  }
+  .disclaimer strong { display: block; margin-bottom: 8px; font-size: var(--fs-base); }
+  footer { text-align: center; padding: var(--sp-4) var(--sp-3); color: var(--c-text-muted); font-size: 16px; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; padding: var(--sp-3);
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: var(--c-card); color: var(--c-text); border-radius: var(--r-lg);
+    max-width: 560px; width: 100%; padding: var(--sp-4); box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal h2 { color: var(--c-primary-dark); font-size: var(--fs-2xl); margin-bottom: var(--sp-2); }
+  .modal p { color: var(--c-text-muted); margin-bottom: var(--sp-2); }
+  .modal textarea {
+    width: 100%; padding: 14px; font-size: var(--fs-base); font-family: inherit;
+    border: 1px solid var(--c-border); border-radius: var(--r-sm); resize: vertical;
+    min-height: 100px; background: var(--c-bg); color: var(--c-text);
+  }
+  .modal textarea:focus { outline: none; box-shadow: var(--focus-ring); border-color: var(--c-primary); }
+  .urgent-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--sp-2); }
+  .urgent-item {
+    display: flex; align-items: center; gap: 10px; padding: 12px;
+    background: var(--c-bg); border-radius: var(--r-sm); cursor: pointer;
+    font-size: var(--fs-base);
+  }
+  .urgent-item input { width: 22px; height: 22px; cursor: pointer; flex-shrink: 0; }
+  .modal-result {
+    display: none; padding: var(--sp-2); border-radius: var(--r-sm);
+    margin-bottom: var(--sp-2); border-left: 4px solid;
+  }
+  .modal-result.danger { background: var(--c-danger-bg); border-color: var(--c-danger); color: var(--c-danger); }
+  .modal-result.info { background: var(--c-primary-light); border-color: var(--c-primary); color: var(--c-text); }
+  .modal-result strong { display: block; margin-bottom: 6px; }
+  .modal-buttons { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+  .modal-buttons button, .modal-buttons a {
+    flex: 1; min-width: 140px; min-height: 56px; padding: 16px; border-radius: var(--r-md);
+    border: none; font-size: var(--fs-lg); font-weight: 700; cursor: pointer;
+    text-decoration: none; text-align: center; display: flex;
+    align-items: center; justify-content: center; gap: 8px; font-family: inherit;
+  }
+  .btn-call { background: var(--c-emergency); color: white; }
+  .btn-primary { background: var(--c-primary); color: white; }
+  .btn-cancel { background: var(--c-bg); color: var(--c-text); border: 1px solid var(--c-border) !important; }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --c-bg: #111827; --c-card: #1F2937; --c-border: #374151;
+      --c-text: #F9FAFB; --c-text-muted: #9CA3AF; --c-primary-light: #1E3A8A;
+      --c-ok-bg: #064E3B; --c-ok: #6EE7B7;
+      --c-warn-bg: #78350F; --c-warn: #FCD34D;
+      --c-danger-bg: #7F1D1D; --c-danger: #FCA5A5;
+    }
+    .hero { background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%); }
+    .hero h1 { color: #DBEAFE; }
+    .hero p { color: #93C5FD; }
+    .action-card:hover { border-color: #60A5FA; }
+    .disclaimer { background: #78350F; border-color: #92400E; color: #FCD34D; }
+    .red-flags h2 { color: #FCA5A5; }
+    .red-flags p { color: #FCA5A5; }
+    .red-flags li { color: #FECACA; }
+  }
+  @media (max-width: 480px) {
+    .hero h1 { font-size: var(--fs-2xl); }
+    .action-icon { font-size: 32px; width: 56px; height: 56px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo"><span class="logo-icon">🩺</span><span>Семейный доктор</span></div>
+    <button class="btn-emergency" id="emergencyBtn" aria-label="Экстренный вызов скорой">
+      <span>🚨</span><span>Скорая 112</span>
+    </button>
+  </div>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <h1>Здоровье семьи —<br>в одном месте</h1>
+    <p>Анализы, симптомы, врачи — понятным языком</p>
+  </section>
+
+  <div class="profile-bar">
+    <label for="profileSelect">👤 Профиль:</label>
+    <select id="profileSelect" class="profile-select"></select>
+    <button id="addProfileBtn" class="add-profile-btn">+ Добавить</button>
+  </div>
+
+  <section class="red-flags" aria-labelledby="rf-title">
+    <h2 id="rf-title"><span>⚠</span> Когда нужно срочно к врачу</h2>
+    <ul>
+      <li>Сильная боль в груди, одышка</li>
+      <li>Потеря сознания, судороги</li>
+      <li>Кровь в рвоте, стуле, моче</li>
+      <li>Температура выше 39.5 у ребёнка</li>
+      <li>Внезапная слабость в руке/ноге, нарушение речи</li>
+    </ul>
+    <p>В этих случаях — звоните 112, не ждите</p>
+  </section>
+
+  <div class="actions">
+    <a href="upload.html" class="action-card">
+      <div class="action-icon">📄</div>
+      <div class="action-content">
+        <h3>Загрузить анализы</h3>
+        <p>PDF или фото бланка — расшифруем и объясним</p>
+      </div>
+    </a>
+    <a href="compare.html" class="action-card">
+      <div class="action-icon">📈</div>
+      <div class="action-content">
+        <h3>Сравнить анализы</h3>
+        <p>Посмотреть динамику: стало лучше или хуже</p>
+      </div>
+    </a>
+    <button type="button" class="action-card" id="symptomsBtn">
+      <div class="action-icon">🩺</div>
+      <div class="action-content">
+        <h3>Что меня беспокоит?</h3>
+        <p>Расскажите о симптомах — подскажем, что делать</p>
+      </div>
+    </button>
+  </div>
+
+  <section class="history" id="historySection">
+    <h2>📋 История анализов</h2>
+    <div id="historyContent"><div class="history-empty">Пока нет загруженных анализов.</div></div>
+  </section>
+
+  <div class="disclaimer">
+    <strong>⚕ Это не медицинская консультация</strong>
+    Приложение помогает разобраться в анализах и подготовиться к врачу.
+    Окончательный диагноз и лечение назначает только врач.
+  </div>
+</main>
+
+<div class="modal-overlay" id="emergencyModal">
+  <div class="modal" style="max-width: 480px;">
+    <h2 style="color: var(--c-emergency); text-align: center;">🚨 Вызвать скорую?</h2>
+    <p style="text-align: center;">Если состояние угрожает жизни — не ждите.</p>
+    <div class="modal-buttons">
+      <a href="tel:112" class="btn-call">📞 112</a>
+      <button class="btn-cancel" id="emergencyCancel">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="symptomsModal">
+  <div class="modal">
+    <h2>🩺 Что вас беспокоит?</h2>
+    <p>Опишите симптомы — подскажем маршрут.</p>
+    <textarea id="symptomsText" placeholder="Например: третий день болит горло, температура 37.8, кашель сухой..."></textarea>
+    <label style="display: block; margin: var(--sp-2) 0 8px; font-weight: 600;">Срочные симптомы:</label>
+    <div class="urgent-list" id="urgentList">
+      <label class="urgent-item"><input type="checkbox" data-flag="chest"> Боль/давление в груди</label>
+      <label class="urgent-item"><input type="checkbox" data-flag="breath"> Сильная одышка в покое</label>
+      <label class="urgent-item"><input type="checkbox" data-flag="neuro"> Слабость в руке/ноге, нарушение речи</label>
+      <label class="urgent-item"><input type="checkbox" data-flag="blood"> Кровь в рвоте/стуле/моче</label>
+      <label class="urgent-item"><input type="checkbox" data-flag="temp"> Температура выше 39.5°</label>
+    </div>
+    <div class="modal-result" id="symptomsResult"></div>
+    <div class="modal-buttons">
+      <button class="btn-primary" id="analyzeSymptoms">🔍 Проанализировать</button>
+      <button class="btn-cancel" id="symptomsCancel">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Семейный доктор ИИ · Версия 4.0</p>
+  <p>Ваши данные не передаются третьим лицам</p>
+</footer>
+
+<script src="database.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  const PROFILES_KEY = 'family_profiles_v4';
+  const HISTORY_KEY = 'analysis_history_v4';
+  const ACTIVE_KEY = 'active_profile_v4';
+
+  function getDefault() { return [{ id: 'self', name: 'Я (основной профиль)' }]; }
+  function loadProfiles() {
+    try { const s = localStorage.getItem(PROFILES_KEY); return s ? JSON.parse(s) : getDefault(); }
+    catch { return getDefault(); }
+  }
+  function saveProfiles(p) { localStorage.setItem(PROFILES_KEY, JSON.stringify(p)); }
+  function loadHistory() {
+    try { const s = localStorage.getItem(HISTORY_KEY); return s ? JSON.parse(s) : {}; }
+    catch { return {}; }
+  }
+  function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
+
+  const select = document.getElementById('profileSelect');
+  function populate() {
+    const profiles = loadProfiles();
+    const active = localStorage.getItem(ACTIVE_KEY) || 'self';
+    select.innerHTML = '';
+    profiles.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.id; o.textContent = p.name;
+      if (p.id === active) o.selected = true;
+      select.appendChild(o);
+    });
+  }
+  function renderHistory() {
+    const active = localStorage.getItem(ACTIVE_KEY) || 'self';
+    const history = loadHistory();
+    const items = history[active] || [];
+    const c = document.getElementById('historyContent');
+    if (items.length === 0) {
+      c.innerHTML = '<div class="history-empty">Пока нет загруженных анализов.</div>';
+      return;
+    }
+    items.sort((a, b) => b.date - a.date);
+    c.innerHTML = '<div class="history-list">' + items.slice(0, 5).map(h => `
+      <div class="history-item">
+        <div>
+          <div>${h.label || 'Анализы'}</div>
+          <div class="history-item-date">${new Date(h.date).toLocaleDateString('ru-RU')}</div>
+        </div>
+        <div class="history-item-count">${h.count} показат.</div>
+      </div>
+    `).join('') + '</div>';
+  }
+
+  select.addEventListener('change', e => {
+    localStorage.setItem(ACTIVE_KEY, e.target.value);
+    renderHistory();
+  });
+  document.getElementById('addProfileBtn').addEventListener('click', () => {
+    const name = prompt('Как назвать профиль?\nНапример: "Мама", "Ребёнок"');
+    if (!name || !name.trim()) return;
+    const profiles = loadProfiles();
+    profiles.push({ id: 'p_' + Date.now(), name: name.trim() });
+    saveProfiles(profiles);
+    populate();
+    alert(`Профиль "${name.trim()}" добавлен`);
+  });
+
+  // Emergency modal
+  const eModal = document.getElementById('emergencyModal');
+  document.getElementById('emergencyBtn').addEventListener('click', () => eModal.classList.add('active'));
+  document.getElementById('emergencyCancel').addEventListener('click', () => eModal.classList.remove('active'));
+  eModal.addEventListener('click', e => { if (e.target === eModal) eModal.classList.remove('active'); });
+
+  // Symptoms modal
+  const sModal = document.getElementById('symptomsModal');
+  const sResult = document.getElementById('symptomsResult');
+  document.getElementById('symptomsBtn').addEventListener('click', () => {
+    sModal.classList.add('active');
+    document.getElementById('symptomsText').focus();
+  });
+  document.getElementById('symptomsCancel').addEventListener('click', () => {
+    sModal.classList.remove('active');
+    sResult.style.display = 'none';
+  });
+  sModal.addEventListener('click', e => { if (e.target === sModal) sModal.classList.remove('active'); });
+
+  document.getElementById('analyzeSymptoms').addEventListener('click', () => {
+    const text = document.getElementById('symptomsText').value.trim().toLowerCase();
+    const flags = Array.from(document.querySelectorAll('#urgentList input:checked')).map(i => i.dataset.flag);
+
+    if (flags.length > 0) {
+      sResult.className = 'modal-result danger';
+      sResult.style.display = 'block';
+      sResult.innerHTML = `<strong>🚨 Признаки экстренного состояния</strong>
+        Немедленно вызывайте скорую: <a href="tel:112" style="color:inherit;font-weight:700;">112</a><br>
+        <small>Не ждите, не занимайтесь самолечением.</small>`;
+      return;
+    }
+
+    let doctor, urgency, advice;
+    if (/боль.*груд|одышк|сердц/.test(text)) { doctor='Кардиолог / Терапевт'; urgency='в ближайшие 1-2 дня'; advice='Сделайте ЭКГ, измерьте давление.'; }
+    else if (/голов.*бол|мигрень|головокруж/.test(text)) { doctor='Невролог / Терапевт'; urgency='планово'; advice='Измерьте давление.'; }
+    else if (/температур|кашл|горл|насморк/.test(text)) { doctor='Терапевт / ЛОР'; urgency='в ближайшие дни'; advice='Обильное питьё, покой.'; }
+    else if (/живот|желудок|тошнот|рвот|понос/.test(text)) { doctor='Гастроэнтеролог / Терапевт'; urgency='в ближайшие дни'; advice='Щадящая диета.'; }
+    else if (/сустав|спин|поясниц/.test(text)) { doctor='Ревматолог / Невролог'; urgency='планово'; advice='Избегайте нагрузок.'; }
+    else if (/сыпь|кож|зуд/.test(text)) { doctor='Дерматолог / Аллерголог'; urgency='планово'; advice='Сфотографируйте сыпь для динамики.'; }
+    else if (/давлен|гипертон/.test(text)) { doctor='Кардиолог / Терапевт'; urgency='в ближайшие дни'; advice='Ведите дневник давления.'; }
+    else { doctor='Терапевт'; urgency='планово'; advice='Запишитесь на приём для уточнения.'; }
+
+    sResult.className = 'modal-result info';
+    sResult.style.display = 'block';
+    sResult.innerHTML = `<strong>💡 Рекомендуемый маршрут:</strong>
+      <div style="margin-top:8px;"><b>К кому:</b> ${doctor}</div>
+      <div><b>Срочность:</b> ${urgency}</div>
+      <div><b>До приёма:</b> ${advice}</div>
+      <small style="display:block;margin-top:8px;opacity:0.8;">⚕ Это предварительная оценка. Точный диагноз ставит врач.</small>`;
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      eModal.classList.remove('active');
+      sModal.classList.remove('active');
+    }
+  });
+
+  window.FamilyApp = {
+    loadHistory, saveHistory,
+    addAnalysisToHistory(label, count) {
+      const h = loadHistory();
+      const id = localStorage.getItem(ACTIVE_KEY) || 'self';
+      if (!h[id]) h[id] = [];
+      h[id].push({ date: Date.now(), label, count });
+      saveHistory(h);
+    }
+  };
+
+  populate();
+  renderHistory();
+})();
+</script>
+<!-- Скрытая кнопка установки PWA (появится только если доступна) -->
+<button 
+  id="pwaInstallBtn" 
+  style="
+    display: none; 
+    position: fixed; 
+    bottom: 20px; 
+    right: 20px; 
+    background: #2563EB; 
+    color: white; 
+    border: none; 
+    padding: 16px 24px; 
+    border-radius: 12px; 
+    font-size: 18px; 
+    font-weight: 600; 
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    cursor: pointer;
+    z-index: 1000;
+  "
+>
+  📱 Установить приложение
+</button>
+
+<script>
+(function() {
+  'use strict';
+
+  // ═══════════════════════════════════════
+  //  1. РЕГИСТРАЦИЯ SERVICE WORKER
+  // ═══════════════════════════════════════
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js')
+        .then(function(reg) {
+          console.log('✅ SW зарегистрирован:', reg.scope);
+        })
+        .catch(function(err) {
+          console.warn('⚠ Ошибка регистрации SW:', err);
+        });
+    });
+  }
+
+  // ═══════════════════════════════════════
+  //  2. КНОПКА УСТАНОВКИ PWA
+  // ═══════════════════════════════════════
+  let deferredPrompt = null;
+  const installBtn = document.getElementById('pwaInstallBtn');
+
+  // Событие срабатывает, когда браузер готов установить PWA
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Показываем кнопку установки
+    if (installBtn) {
+      installBtn.style.display = 'block';
+    }
+  });
+
+  // Обработчик клика по кнопке
+  if (installBtn) {
+    installBtn.addEventListener('click', async function() {
+      if (!deferredPrompt) return;
+      
+      // Вызываем нативный диалог установки браузера
+      deferredPrompt.prompt();
+      
+      // Ждём выбора пользователя
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('Выбор пользователя:', outcome);
+      
+      // Скрываем кнопку после использования
+      deferredPrompt = null;
+      installBtn.style.display = 'none';
+    });
+  }
+
+  // ═══════════════════════════════════════
+  //  3. ИНСТРУКЦИЯ ДЛЯ iOS (Safari)
+  // ═══════════════════════════════════════
+  // iOS Safari НЕ поддерживает beforeinstallprompt,
+  // поэтому показываем инструкцию вручную
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  
+  if (isIOS && !isStandalone && installBtn) {
+    installBtn.textContent = '📱 Как установить';
+    installBtn.style.display = 'block';
+    installBtn.addEventListener('click', function() {
+      alert(
+        'Как установить приложение на iPhone:\n\n' +
+        '1. Нажмите кнопку "Поделиться" (квадрат со стрелкой вверх) ⬆\n' +
+        '2. Прокрутите вниз и выберите "На экран «Домой»" ➕\n' +
+        '3. Нажмите "Добавить" ✅\n\n' +
+        'Теперь иконка 🩺 будет на вашем рабочем столе!'
+      );
+    });
+  }
+
+  // Скрываем кнопку, если приложение уже установлено
+  if (isStandalone && installBtn) {
+    installBtn.style.display = 'none';
+  }
+
+})();
+</script>
+</body>
+</html>

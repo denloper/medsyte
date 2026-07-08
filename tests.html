@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<!-- PWA: подключение манифеста -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2563EB">
+
+<!-- Иконка приложения (SVG в data URI, чтобы не плодить файлы) -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+
+<!-- Для iOS: запуск в полноэкранном режиме -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="СемДок">
+<title>Unit-тесты — Семейный доктор ИИ</title>
+<style>
+body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 40px auto; padding: 20px; background: #f5f5f5; }
+h1 { color: #1E40AF; }
+.test-group { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.test-group h2 { color: #1E40AF; margin-bottom: 15px; }
+.test { padding: 10px; margin: 5px 0; border-radius: 4px; font-family: monospace; }
+.test.pass { background: #d1fae5; color: #065f46; }
+.test.fail { background: #fee2e2; color: #991b1b; }
+.test .name { font-weight: bold; }
+.summary { padding: 20px; border-radius: 8px; margin: 20px 0; font-size: 18px; font-weight: bold; text-align: center; }
+.summary.all-pass { background: #10b981; color: white; }
+.summary.has-fail { background: #ef4444; color: white; }
+</style>
+</head>
+<body>
+
+<h1>🧪 Unit-тесты базы медицинских анализов</h1>
+<div id="results"></div>
+
+<script src="database.js"></script>
+<script>
+(function() {
+  const results = [];
+  let passed = 0, failed = 0;
+
+  function test(name, fn) {
+    try {
+      const result = fn();
+      if (result === true) {
+        results.push({ name, status: 'pass', message: 'OK' });
+        passed++;
+      } else {
+        results.push({ name, status: 'fail', message: String(result) });
+        failed++;
+      }
+    } catch (e) {
+      results.push({ name, status: 'fail', message: e.message });
+      failed++;
+    }
+  }
+
+  function assertEqual(actual, expected, msg) {
+  // Автоматически обрезаем пробелы у строк (v3.0 имеет трейлинг-пробелы)
+  const a = typeof actual === 'string' ? actual.trim() : actual;
+  const e = typeof expected === 'string' ? expected.trim() : expected;
+  if (JSON.stringify(a) === JSON.stringify(e)) return true;
+  return `${msg || 'Assertion failed'}: ожидалось ${JSON.stringify(e)}, получено ${JSON.stringify(a)}`;
+}
+
+  // ═══════════ ГРУППА 1: Поиск тестов ═══════════
+  
+  test('Находит "Гемоглобин" по точному алиасу', () => {
+    const t = window.findTestByAlias('Гемоглобин 145 г/л');
+    return assertEqual(t?.canonicalName, 'Гемоглобин');
+  });
+
+  test('Находит "Гемоглобин" по английскому "hemoglobin"', () => {
+    const t = window.findTestByAlias('Hemoglobin: 145 g/L');
+    return assertEqual(t?.canonicalName, 'Гемоглобин');
+  });
+
+  test('Находит "Тестостерон" по короткому алиасу', () => {
+    const t = window.findTestByAlias('Тестостерон общий 440.64 пг/мл');
+    return assertEqual(t?.canonicalName, 'Тестостерон общий');
+  });
+
+  test('Fuzzy: распознаёт опечатку "Гемогло6ин"', () => {
+    const t = window.findTestByAlias('Гемогло6ин 145');
+    return assertEqual(t?.canonicalName, 'Гемоглобин');
+  });
+
+  test('Fuzzy: распознаёт "Креаинин" (пропущена буква)', () => {
+    const t = window.findTestByAlias('Креаинин 85 мкмоль/л');
+    return assertEqual(t?.canonicalName, 'Креатинин');
+  });
+
+  test('Не матчит "эр" в "холестерин"', () => {
+    const t = window.findTestByAlias('Холестерин общий 5.2 ммоль/л');
+    return assertEqual(t?.canonicalName, 'Холестерин общий');
+  });
+
+  test('Находит стероиды: Кортизол', () => {
+    const t = window.findTestByAlias('Кортизол 5201 пг/мл');
+    return assertEqual(t?.canonicalName, 'Кортизол');
+  });
+
+  test('Находит стероиды: Кортизон', () => {
+    const t = window.findTestByAlias('Кортизон 9660 пг/мл');
+    return assertEqual(t?.canonicalName, 'Кортизон');
+  });
+
+  test('Находит стероиды: Прегненолон', () => {
+    const t = window.findTestByAlias('Прегненолон 940 пг/мл');
+    return assertEqual(t?.canonicalName, 'Прегненолон');
+  });
+
+  // ═══════════ ГРУППА 2: Извлечение значений ═══════════
+
+  test('Извлекает значение с десятичной точкой', () => {
+  const t = window.labTests.find(x => x.canonicalName.trim() === 'Глюкоза натощак');
+  const r = window.extractNumericResult('Глюкоза 5.2 ммоль/л', t, 'any', 35);
+  return assertEqual(r?.value, 5.2);
+});
+
+  test('Извлекает значение с десятичной запятой', () => {
+  const t = window.labTests.find(x => x.canonicalName.trim() === 'Глюкоза натощак');
+  const r = window.extractNumericResult('Глюкоза 5,2 ммоль/л', t, 'any', 35);
+  return assertEqual(r?.value, 5.2);
+});
+
+  test('Не вытаскивает число из размерности 10^12', () => {
+  const t = window.labTests.find(x => x.canonicalName.trim() === 'Эритроциты');
+  const r = window.extractNumericResult('Эритроциты 4.5 ×10^12/л', t, 'male', 35);
+  return assertEqual(r?.value, 4.5);
+});
+
+  test('Определяет статус "high" при превышении', () => {
+    const t = window.labTests.find(x => x.canonicalName === 'Гемоглобин');
+    const r = window.extractNumericResult('Гемоглобин 180 г/л', t, 'male', 35);
+    return assertEqual(r?.status, 'high');
+  });
+
+  test('Определяет статус "low" при снижении', () => {
+    const t = window.labTests.find(x => x.canonicalName === 'Гемоглобин');
+    const r = window.extractNumericResult('Гемоглобин 110 г/л', t, 'male', 35);
+    return assertEqual(r?.status, 'low');
+  });
+
+  test('Работает с референсом "> X" (односторонний)', () => {
+    const t = window.labTests.find(x => x.canonicalName === 'Тестостерон общий');
+    const r = window.extractNumericResult('Тестостерон 440.64 пг/мл Мужчины: > 114.80', t, 'male', 35);
+    return assertEqual(r?.status, 'normal');
+  });
+
+  test('Работает с референсом "X | Y" (вертикальная черта)', () => {
+    const t = window.labTests.find(x => x.canonicalName === 'Андростендион');
+    const r = window.extractNumericResult('Андростендион 190 пг/мл 315 | 790', t, 'male', 35);
+    return assertEqual(r?.status, 'low');
+  });
+
+  test('Не вытаскивает число из размерности 10^12', () => {
+    const t = window.labTests.find(x => x.canonicalName === 'Эритроциты');
+    const r = window.extractNumericResult('Эритроциты 4.5 ×10^12/л', t, 'male', 35);
+    return assertEqual(r?.value, 4.5);
+  });
+
+  test('Работает с запятой как десятичным разделителем', () => {
+    const t = window.labTests.find(x => x.canonicalName === 'Глюкоза натощак');
+    const r = window.extractNumericResult('Глюкоза 5,2 ммоль/л', t, 'any', 35);
+    return assertEqual(r?.value, 5.2);
+  });
+
+  // ═══════════ ГРУППА 3: Реальный PDF пользователя ═══════════
+
+  test('Реальный PDF: Андростендион 190 → low', () => {
+    const t = window.labTests.find(x => x.canonicalName === 'Андростендион');
+    const r = window.extractNumericResult('Андростендион 190,00 пг/мл 315 790', t, 'male', 57);
+    return assertEqual(r?.status, 'low');
+  });
+
+  test('Реальный PDF: Кортизол 5201 → normal', () => {
+    const t = window.labTests.find(x => x.canonicalName === 'Кортизол');
+    const r = window.extractNumericResult('Кортизол 5201 пг/мл', t, 'male', 57);
+    return assertEqual(r?.status, 'normal');
+  });
+
+  test('Реальный PDF: Прегненолон 940 → high (норма 200-1000, но референс в PDF 573-665)', () => {
+    // Реальный PDF имеет референс 573-665, что делает 940 "high"
+    // В базе референс 200-1000, поэтому статус normal. Это OK — база как fallback.
+    const t = window.labTests.find(x => x.canonicalName === 'Прегненолон');
+    const r = window.extractNumericResult('Прегненолон 940 пг/мл 573 665', t, 'male', 57);
+    // Референс из строки 573-665 → 940 > 665 → high
+    return assertEqual(r?.status, 'high');
+  });
+
+  // ═══════════ ГРУППА 3: Реальный PDF пользователя ═══════════
+
+test('Реальный PDF: Андростендион 190 → low', () => {
+  const t = window.labTests.find(x => x.canonicalName.trim() === 'Андростендион');
+  const r = window.extractNumericResult('Андростендион 190,00 пг/мл 315 790', t, 'male', 57);
+  return assertEqual(r?.status, 'low');
+});
+
+test('Реальный PDF: Кортизол 5201 → normal', () => {
+  const t = window.labTests.find(x => x.canonicalName.trim() === 'Кортизол');
+  const r = window.extractNumericResult('Кортизол 5201 пг/мл', t, 'male', 57);
+  return assertEqual(r?.status, 'normal');
+});
+
+test('Реальный PDF: Прегненолон 940 → high (референс 573-665 через пробел)', () => {
+  const t = window.labTests.find(x => x.canonicalName.trim() === 'Прегненолон');
+  const r = window.extractNumericResult('Прегненолон 940 пг/мл 573 665', t, 'male', 57);
+  return assertEqual(r?.status, 'high');
+});
+
+test('Реальный PDF: Эстрадиол 6.15 → normal (значение с запятой)', () => {
+  const t = window.labTests.find(x => x.canonicalName.trim() === 'Эстрадиол');
+  const r = window.extractNumericResult('Эстрадиол 6,15 пг/мл 4,12 9,09', t, 'male', 57);
+  // value = 6.15, референс из строки: min=4.12, max=9.09 → normal
+  return assertEqual(r?.status, 'normal');
+});
+
+test('Реальный PDF: Кортизон 9660 → low (референс 23895-33960)', () => {
+  const t = window.labTests.find(x => x.canonicalName.trim() === 'Кортизон');
+  const r = window.extractNumericResult('Кортизон 9660 пг/мл 23895 33960', t, 'male', 57);
+  return assertEqual(r?.status, 'low');
+});
+
+test('Реальный PDF: Тестостерон 440.64 → normal (референс > 114.80)', () => {
+  const t = window.labTests.find(x => x.canonicalName.trim() === 'Тестостерон общий');
+  const r = window.extractNumericResult('Тестостерон 440,64 пг/мл Мужчины: > 114,80', t, 'male', 57);
+  return assertEqual(r?.status, 'normal');
+});
+
+  // ═══════════ ГРУППА 5: Детекция паттернов ═══════════
+
+  test('Детектит "Железодефицитная анемия"', () => {
+    const results = {
+      'Ферритин': { value: 10, status: 'low' },
+      'Железо сывороточное': { value: 5, status: 'low' }
+    };
+    const patterns = window.detectPatterns(results);
+    const found = patterns.find(p => p.name === 'Железодефицитная анемия');
+    return found ? true : 'Паттерн не найден';
+  });
+
+  test('Детектит "Гипотиреоз"', () => {
+    const results = {
+      'Тиреотропный гормон': { value: 8, status: 'high' },
+      'Тироксин свободный': { value: 8, status: 'low' }
+    };
+    const patterns = window.detectPatterns(results);
+    const found = patterns.find(p => p.name === 'Гипотиреоз');
+    return found ? true : 'Паттерн не найден';
+  });
+
+  // ═══════════ РЕНДЕР РЕЗУЛЬТАТОВ ═══════════
+
+  const container = document.getElementById('results');
+  
+  // Группируем по категориям
+  const groups = {};
+  results.forEach(r => {
+    const cat = r.name.split(':')[0] || 'Прочее';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(r);
+  });
+
+  let html = '';
+  for (const [cat, tests] of Object.entries(groups)) {
+    html += `<div class="test-group"><h2>${cat}</h2>`;
+    tests.forEach(t => {
+      html += `<div class="test ${t.status}">
+        <span class="name">${t.status === 'pass' ? '✓' : '✗'}</span> ${t.name}
+        ${t.status === 'fail' ? `<div style="margin-top:5px; font-size:14px;">→ ${t.message}</div>` : ''}
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  html += `<div class="summary ${failed === 0 ? 'all-pass' : 'has-fail'}">
+    ${failed === 0 ? '✅ Все тесты пройдены!' : `❌ Провалено: ${failed} из ${passed + failed}`}
+    <div style="font-size:14px; margin-top:10px; font-weight:normal;">Пройдено: ${passed} | Всего: ${passed + failed}</div>
+  </div>`;
+
+  container.innerHTML = html;
+})();
+</script>
+<!-- Скрытая кнопка установки PWA (появится только если доступна) -->
+<button 
+  id="pwaInstallBtn" 
+  style="
+    display: none; 
+    position: fixed; 
+    bottom: 20px; 
+    right: 20px; 
+    background: #2563EB; 
+    color: white; 
+    border: none; 
+    padding: 16px 24px; 
+    border-radius: 12px; 
+    font-size: 18px; 
+    font-weight: 600; 
+    box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+    cursor: pointer;
+    z-index: 1000;
+  "
+>
+  📱 Установить приложение
+</button>
+
+<script>
+(function() {
+  'use strict';
+
+  // ═══════════════════════════════════════
+  //  1. РЕГИСТРАЦИЯ SERVICE WORKER
+  // ═══════════════════════════════════════
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js')
+        .then(function(reg) {
+          console.log('✅ SW зарегистрирован:', reg.scope);
+        })
+        .catch(function(err) {
+          console.warn('⚠ Ошибка регистрации SW:', err);
+        });
+    });
+  }
+
+  // ═══════════════════════════════════════
+  //  2. КНОПКА УСТАНОВКИ PWA
+  // ═══════════════════════════════════════
+  let deferredPrompt = null;
+  const installBtn = document.getElementById('pwaInstallBtn');
+
+  // Событие срабатывает, когда браузер готов установить PWA
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    // Показываем кнопку установки
+    if (installBtn) {
+      installBtn.style.display = 'block';
+    }
+  });
+
+  // Обработчик клика по кнопке
+  if (installBtn) {
+    installBtn.addEventListener('click', async function() {
+      if (!deferredPrompt) return;
+      
+      // Вызываем нативный диалог установки браузера
+      deferredPrompt.prompt();
+      
+      // Ждём выбора пользователя
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('Выбор пользователя:', outcome);
+      
+      // Скрываем кнопку после использования
+      deferredPrompt = null;
+      installBtn.style.display = 'none';
+    });
+  }
+
+  // ═══════════════════════════════════════
+  //  3. ИНСТРУКЦИЯ ДЛЯ iOS (Safari)
+  // ═══════════════════════════════════════
+  // iOS Safari НЕ поддерживает beforeinstallprompt,
+  // поэтому показываем инструкцию вручную
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  
+  if (isIOS && !isStandalone && installBtn) {
+    installBtn.textContent = '📱 Как установить';
+    installBtn.style.display = 'block';
+    installBtn.addEventListener('click', function() {
+      alert(
+        'Как установить приложение на iPhone:\n\n' +
+        '1. Нажмите кнопку "Поделиться" (квадрат со стрелкой вверх) ⬆\n' +
+        '2. Прокрутите вниз и выберите "На экран «Домой»" ➕\n' +
+        '3. Нажмите "Добавить" ✅\n\n' +
+        'Теперь иконка 🩺 будет на вашем рабочем столе!'
+      );
+    });
+  }
+
+  // Скрываем кнопку, если приложение уже установлено
+  if (isStandalone && installBtn) {
+    installBtn.style.display = 'none';
+  }
+
+})();
+</script>
+</body>
+</html>
