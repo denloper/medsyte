@@ -570,6 +570,8 @@ header {
 /* ═══════════════════════════════════════
    RED FLAGS (срочные симптомы)
    ═══════════════════════════════════════ */
+/* Добавьте это в конец styles.css или замените существующие правила .red-flags */
+
 .red-flags {
   background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
   border: 2px solid #fecaca;
@@ -603,7 +605,7 @@ header {
   padding-left: 40px;
   position: relative;
   font-size: 15px;
-  color: var(--text);
+  color: #991b1b;
   background: rgba(255,255,255,0.6);
   border-radius: var(--radius);
   font-weight: 500;
@@ -623,6 +625,27 @@ header {
   color: var(--danger);
   font-size: 16px;
   margin-top: 8px;
+}
+
+/* Dark mode для red-flags */
+@media (prefers-color-scheme: dark) {
+  .red-flags {
+    background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+    border-color: #991b1b;
+  }
+  
+  .red-flags h2 {
+    color: #fca5a5;
+  }
+  
+  .red-flags li {
+    background: rgba(0,0,0,0.3);
+    color: #fecaca;
+  }
+  
+  .red-flags p {
+    color: #fca5a5;
+  }
 }
 
 /* ═══════════════════════════════════════
