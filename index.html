@@ -3,199 +3,430 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Персональный медицинский помощник — анализы, симптомы, врачи">
-  <meta name="theme-color" content="#2563EB">
+  <meta name="description" content="Семейный доктор ИИ — персональный медицинский помощник: анализы, симптомы, календарь здоровья">
+  <meta name="theme-color" content="#1e5fb8">
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231e5fb8'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
   <link rel="stylesheet" href="styles.css">
-  <title>Симптом-чекер — персональный план анализов</title>
+  <title>Семейный доктор ИИ — Персональный медицинский помощник</title>
 </head>
 <body>
+  <!-- ═══════ TOP BAR ═══════ -->
+  <div class="top-bar">
+    <div class="container">
+      <div class="top-bar-inner">
+        <div class="top-bar-left">
+          <a href="tel:112" class="top-bar-item">
+            <span>📞</span>
+            <span>Экстренная помощь: <strong>112</strong></span>
+          </a>
+          <span class="top-bar-item">
+            <span>🕐</span>
+            <span>Работаем 24/7 онлайн</span>
+          </span>
+          <span class="top-bar-item">
+            <span>📍</span>
+            <span>Вся Россия и СНГ</span>
+          </span>
+        </div>
+        <div class="top-bar-right">
+          <div class="top-bar-social">
+            <a href="#" title="Telegram">✈️</a>
+            <a href="#" title="VK">🌐</a>
+            <a href="#" title="WhatsApp">💬</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ HEADER ═══════ -->
   <header>
     <div class="container">
       <div class="header-inner">
         <a href="index.html" class="logo">
-          <span class="logo-icon">🩺</span>
-          <span>Семейный доктор</span>
+          <div class="logo-icon">🩺</div>
+          <div class="logo-text">
+            <div class="logo-title">Семейный доктор</div>
+            <div class="logo-subtitle">ИИ-помощник</div>
+          </div>
         </a>
-        <button class="btn-emergency" id="emergencyBtn">
-          <span>🚨</span>
-          <span>Экстренная помощь</span>
-        </button>
+
+        <nav class="main-nav">
+          <a href="#services" class="nav-link">Возможности</a>
+          <a href="calendar.html" class="nav-link">Календарь</a>
+          <a href="diary.html" class="nav-link">Дневник</a>
+          <a href="compare.html" class="nav-link">Динамика</a>
+          <a href="about.html" class="nav-link">О нас</a>
+        </nav>
+
+        <div class="header-actions">
+          <div style="position: relative;">
+            <button class="btn-account" id="accountBtn">
+              <span class="avatar" id="userAvatar">👤</span>
+              <span id="accountLabel">Войти</span>
+            </button>
+            <div class="account-dropdown" id="accountDropdown">
+              <!-- Контент зависит от авторизации -->
+            </div>
+          </div>
+          <button class="btn-emergency-header" id="emergencyBtn">
+            <span>🚨</span>
+            <span>Скорая 112</span>
+          </button>
+        </div>
       </div>
     </div>
   </header>
 
-  <main class="container">
-    <!-- HERO -->
+  <main>
+    <!-- ═══════ HERO ═══════ -->
     <section class="hero">
-      <div class="hero-icon">🩺</div>
-      <h1>Персональный план анализов</h1>
-      <p>Укажите пол, возраст и беспокоящие симптомы — получите структурированный список обследований</p>
-    </section>
+      <div class="container">
+        <div class="hero-inner">
+          <div class="hero-content">
+            <div class="hero-badges">
+              <span class="hero-badge">✓ Основано на клинических рекомендациях</span>
+              <span class="hero-badge">🔒 Данные защищены</span>
+            </div>
+            <h1>
+              Здоровье семьи —<br>
+              <span class="accent">в одном месте</span>
+            </h1>
+            <p>
+              Персональный ИИ-помощник: расшифруем анализы, подскажем по симптомам, 
+              составим план обследований и будем напоминать о важном.
+            </p>
+            <div class="hero-buttons">
+              <a href="upload.html" class="btn-hero-primary">
+                📄 Расшифровать анализы
+              </a>
+              <a href="#services" class="btn-hero-secondary">
+                🩺 Проверить симптомы
+              </a>
+            </div>
+          </div>
 
-    <!-- RED FLAGS -->
-    <section class="red-flags">
-      <h2><span>⚠️</span> Когда нужно срочно к врачу</h2>
-      <ul>
-        <li>Сильная боль в груди, одышка</li>
-        <li>Потеря сознания, судороги</li>
-        <li>Кровь в рвоте, стуле, моче</li>
-        <li>Температура выше 39.5 у ребёнка</li>
-        <li>Внезапная слабость в руке/ноге, нарушение речи</li>
-      </ul>
-      <p>В этих случаях — звоните 112, не ждите</p>
-    </section>
-
-    <!-- SYMPTOM CHECKER FORM -->
-    <section class="checker-form">
-      <h2>📋 Персональный план анализов</h2>
-      <p>Отметьте ваши симптомы и получите рекомендации</p>
-
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Пол</label>
-          <div class="sex-buttons">
-            <button type="button" class="sex-btn active" data-sex="female">👩 Женский</button>
-            <button type="button" class="sex-btn" data-sex="male">👨 Мужской</button>
+          <div class="hero-card">
+            <h3>📊 Статистика проекта</h3>
+            <div class="hero-stats">
+              <div class="hero-stat">
+                <div class="hero-stat-number">150+</div>
+                <div class="hero-stat-label">Показателей</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-number">25+</div>
+                <div class="hero-stat-label">Паттернов</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-number">10</div>
+                <div class="hero-stat-label">Протоколов</div>
+              </div>
+              <div class="hero-stat">
+                <div class="hero-stat-number">24/7</div>
+                <div class="hero-stat-label">Доступность</div>
+              </div>
+            </div>
+            <button class="hero-card-cta" onclick="document.getElementById('services').scrollIntoView({behavior:'smooth'})">
+              Узнать больше →
+            </button>
           </div>
         </div>
-        <div class="form-group">
-          <label for="ageInput">Возраст</label>
-          <input type="number" id="ageInput" min="0" max="120" value="35" inputmode="numeric">
-        </div>
-      </div>
-
-      <div class="symptoms-section">
-        <h3>📋 Отметьте симптомы</h3>
-        <div class="symptoms-grid" id="symptomsGrid">
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="weakness">
-            <span>Слабость, утомляемость</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="headache">
-            <span>Головные боли</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="dizziness">
-            <span>Головокружение</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="fever">
-            <span>Повышенная температура</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="cough">
-            <span>Кашель</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="throat">
-            <span>Боль в горле</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="chest">
-            <span>Боль в груди</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="stomach">
-            <span>Боль в животе</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="nausea">
-            <span>Тошнота</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="joints">
-            <span>Боли в суставах</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="back">
-            <span>Боль в спине</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="skin">
-            <span>Высыпания на коже</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="sleep">
-            <span>Нарушения сна</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="weight">
-            <span>Изменение веса</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="hair">
-            <span>Выпадение волос</span>
-          </label>
-          <label class="symptom-checkbox">
-            <input type="checkbox" data-symptom="pressure">
-            <span>Скачки давления</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="form-actions">
-        <button class="btn-primary" id="analyzeBtn">📋 Показать мой план анализов</button>
-        <button class="btn-secondary" id="showResultsBtn">📊 Посмотреть результаты</button>
       </div>
     </section>
 
-    <!-- ALTERNATIVE ACTIONS -->
-    <div class="alt-actions">
-      <a href="upload.html" class="alt-card">
-        <div class="alt-icon">📄</div>
-        <div class="alt-content">
-          <h3>Загрузить PDF с готовыми анализами</h3>
-          <p>Расшифруем бланк из лаборатории</p>
-        </div>
-      </a>
-
-      <a href="compare.html" class="alt-card">
-        <div class="alt-icon">📈</div>
-        <div class="alt-content">
-          <h3>Сравнить анализы (динамика)</h3>
-          <p>Посмотреть изменения за время</p>
-        </div>
-      </a>
-
-      <a href="calendar.html" class="alt-card">
-        <div class="alt-icon">📅</div>
-        <div class="alt-content">
-          <h3>Календарь здоровья</h3>
-          <p>План обследований и напоминания</p>
-        </div>
-      </a>
-
-      <a href="diary.html" class="alt-card">
-        <div class="alt-icon">📓</div>
-        <div class="alt-content">
-          <h3>Дневник здоровья</h3>
-          <p>Давление, сахар, вес, сон</p>
-        </div>
-      </a>
+    <!-- ═══════ RED FLAGS ═══════ -->
+    <div class="container">
+      <section class="red-flags">
+        <h2>
+          <span>⚠️</span>
+          Когда нужно срочно к врачу
+        </h2>
+        <ul class="red-flags-grid">
+          <li>Сильная боль в груди, одышка</li>
+          <li>Потеря сознания, судороги</li>
+          <li>Кровь в рвоте, стуле, моче</li>
+          <li>Температура выше 39.5 у ребёнка</li>
+          <li>Внезапная слабость в руке/ноге</li>
+          <li>Нарушение речи, асимметрия лица</li>
+        </ul>
+        <p>В этих случаях — звоните 112, не ждите</p>
+      </section>
     </div>
 
-    <!-- DISCLAIMER -->
-    <div class="disclaimer">
-      <strong>⚕️ Справочная информация</strong>
-      При тревожных симптомах немедленно обратитесь к врачу.
+    <!-- ═══════ SERVICES (Наши возможности) ═══════ -->
+    <section class="section" id="services">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-label">Наши возможности</span>
+          <h2 class="section-title">Всё для вашего здоровья</h2>
+          <p class="section-subtitle">
+            Современные ИИ-технологии помогают разобраться в анализах, 
+            симптомах и спланировать обследования
+          </p>
+        </div>
+
+        <div class="services-grid">
+          <a href="upload.html" class="service-card">
+            <div class="service-icon">📄</div>
+            <div class="service-title">Расшифровка анализов</div>
+            <div class="service-desc">
+              Загрузите PDF или фото бланка из лаборатории — ИИ распознает показатели, 
+              сравнит с нормами и объяснит результаты простым языком.
+            </div>
+            <span class="service-link">Загрузить →</span>
+          </a>
+
+          <a href="compare.html" class="service-card">
+            <div class="service-icon">📈</div>
+            <div class="service-title">Динамика анализов</div>
+            <div class="service-desc">
+              Сравните два анализа во времени: увидите графики трендов, 
+              процент изменений и медицинскую интерпретацию.
+            </div>
+            <span class="service-link">Сравнить →</span>
+          </a>
+
+          <a href="calendar.html" class="service-card">
+            <div class="service-icon">📅</div>
+            <div class="service-title">Календарь здоровья</div>
+            <div class="service-desc">
+              Персональный план обследований по возрасту и полу. 
+              Push-уведомления о прививках, скринингах и чек-апах.
+            </div>
+            <span class="service-link">Открыть →</span>
+          </a>
+
+          <a href="diary.html" class="service-card">
+            <div class="service-icon">📓</div>
+            <div class="service-title">Дневник здоровья</div>
+            <div class="service-desc">
+              Давление, сахар, вес, сон, температура — графики трендов, 
+              статистика и автоматический расчёт ИМТ.
+            </div>
+            <span class="service-link">Вести дневник →</span>
+          </a>
+
+          <button class="service-card" id="symptomsBtn">
+            <div class="service-icon">🩺</div>
+            <div class="service-title">Проверка симптомов</div>
+            <div class="service-desc">
+              Опишите симптомы текстом или голосом — получите персональные рекомендации 
+              на основе официальных клинических протоколов Минздрава.
+            </div>
+            <span class="service-link">Проверить →</span>
+          </button>
+
+          <a href="about.html" class="service-card">
+            <div class="service-icon">ℹ️</div>
+            <div class="service-title">О проекте</div>
+            <div class="service-desc">
+              Узнайте о миссии, команде и технологиях, которые стоят за «Семейным доктором ИИ».
+            </div>
+            <span class="service-link">Подробнее →</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ WHY US ═══════ -->
+    <section class="section section-gray">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-label">Почему выбирают нас</span>
+          <h2 class="section-title">Доверие, основанное на науке</h2>
+          <p class="section-subtitle">
+            Мы используем только официальные клинические рекомендации и современные технологии ИИ
+          </p>
+        </div>
+
+        <div class="features-grid">
+          <div class="feature-item">
+            <div class="feature-icon">🎓</div>
+            <div class="feature-title">Клинические протоколы</div>
+            <div class="feature-desc">
+              Основываемся на рекомендациях Минздрава РФ и международных стандартах
+            </div>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon">🤖</div>
+            <div class="feature-title">Современный ИИ</div>
+            <div class="feature-desc">
+              RAG-система с Gemini Vision для точной расшифровки и персонализации
+            </div>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon">🔒</div>
+            <div class="feature-title">Приватность данных</div>
+            <div class="feature-desc">
+              Все данные хранятся локально на вашем устройстве, не передаются третьим лицам
+            </div>
+          </div>
+
+          <div class="feature-item">
+            <div class="feature-icon">📱</div>
+            <div class="feature-title">Работает офлайн</div>
+            <div class="feature-desc">
+              PWA-приложение — устанавливается как обычное и работает без интернета
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ PROGRAMS (Программы) ═══════ -->
+    <section class="section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-label">Программы здоровья</span>
+          <h2 class="section-title">Комплексные обследования</h2>
+          <p class="section-subtitle">
+            Готовые программы для разных ситуаций и возрастов
+          </p>
+        </div>
+
+        <div class="programs-grid">
+          <div class="program-card">
+            <div class="program-image">
+              🩺
+              <div class="program-badge">Популярное</div>
+            </div>
+            <div class="program-content">
+              <div class="program-title">Ежегодный чек-ап</div>
+              <div class="program-desc">
+                Базовое обследование: ОАК, биохимия, липидограмма, витамин D, ферритин, ТТГ
+              </div>
+              <div class="program-footer">
+                <div class="program-meta">📋 15+ показателей</div>
+                <a href="calendar.html" class="program-btn">Запланировать →</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="program-card">
+            <div class="program-image" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%);">
+              🎀
+              <div class="program-badge">Для женщин</div>
+            </div>
+            <div class="program-content">
+              <div class="program-title">Женское здоровье</div>
+              <div class="program-desc">
+                Гормональный профиль, ферритин, витамин D, щитовидная железа, PAP-тест
+              </div>
+              <div class="program-footer">
+                <div class="program-meta">📋 20+ показателей</div>
+                <a href="calendar.html" class="program-btn">Запланировать →</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="program-card">
+            <div class="program-image" style="background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);">
+              💪
+              <div class="program-badge">Для мужчин</div>
+            </div>
+            <div class="program-content">
+              <div class="program-title">Мужское здоровье</div>
+              <div class="program-desc">
+                Тестостерон, ПСА, липидограмма, ЭКГ, витамин D, гормоны щитовидной железы
+              </div>
+              <div class="program-footer">
+                <div class="program-meta">📋 18+ показателей</div>
+                <a href="calendar.html" class="program-btn">Запланировать →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ CTA ═══════ -->
+    <section class="cta-section">
+      <div class="container">
+        <div class="cta-content">
+          <h2>Готовы позаботиться о здоровье?</h2>
+          <p>
+            Начните с расшифровки ваших анализов или создайте персональный план обследований
+          </p>
+          <div class="hero-buttons" style="justify-content: center;">
+            <a href="upload.html" class="btn-hero-primary">
+              📄 Загрузить анализы
+            </a>
+            <a href="calendar.html" class="btn-hero-secondary">
+              📅 План обследований
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ DISCLAIMER ═══════ -->
+    <div class="container">
+      <div class="disclaimer">
+        <strong>⚕️ Это не медицинская консультация</strong>
+        Приложение помогает разобраться в анализах и подготовиться к визиту к врачу. 
+        Окончательный диагноз и лечение назначает только квалифицированный специалист.
+      </div>
     </div>
   </main>
 
+  <!-- ═══════ FOOTER ═══════ -->
   <footer>
     <div class="container">
-      <p>Семейный доктор ИИ · Версия 4.4</p>
-      <p>Ваши данные не передаются третьим лицам</p>
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="logo-title">🩺 Семейный доктор ИИ</div>
+          <p>
+            Персональный медицинский помощник на основе современных технологий ИИ 
+            и официальных клинических рекомендаций.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Возможности</h4>
+          <ul>
+            <li><a href="upload.html">Расшифровка анализов</a></li>
+            <li><a href="compare.html">Сравнение в динамике</a></li>
+            <li><a href="calendar.html">Календарь здоровья</a></li>
+            <li><a href="diary.html">Дневник показателей</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>О проекте</h4>
+          <ul>
+            <li><a href="about.html">О нас</a></li>
+            <li><a href="about.html#team">Команда</a></li>
+            <li><a href="about.html#mission">Миссия</a></li>
+            <li><a href="about.html#contacts">Контакты</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Помощь</h4>
+          <ul>
+            <li><a href="tel:112">Экстренная: 112</a></li>
+            <li><a href="#">FAQ</a></li>
+            <li><a href="#">Поддержка</a></li>
+            <li><a href="#">Конфиденциальность</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        © 2025 Семейный доктор ИИ · Все права защищены · Версия 5.0
+      </div>
     </div>
   </footer>
 
-  <!-- Модальное окно экстренной помощи -->
+  <!-- ═══════ МОДАЛКА ЭКСТРЕННОГО ВЫЗОВА ═══════ -->
   <div class="modal-overlay" id="emergencyModal">
     <div class="modal">
+      <button class="modal-close" id="emergencyClose">✕</button>
       <h2 style="color: var(--danger);">🚨 Вызвать скорую?</h2>
-      <p>Если состояние угрожает жизни — не ждите.</p>
+      <p class="modal-subtitle">Если состояние угрожает жизни — не ждите, звоните прямо сейчас</p>
       <div class="modal-buttons">
         <a href="tel:112" class="btn-call">📞 112</a>
         <button class="btn-cancel" id="emergencyCancel">Отмена</button>
@@ -203,78 +434,416 @@
     </div>
   </div>
 
+  <!-- ═══════ МОДАЛКА СИМПТОМОВ ═══════ -->
+  <div class="modal-overlay" id="symptomsModal">
+    <div class="modal">
+      <button class="modal-close" id="symptomsClose">✕</button>
+      <h2>🩺 Что вас беспокоит?</h2>
+      <p class="modal-subtitle">Опишите симптомы — подберём обследования на основе клинических рекомендаций</p>
+      <div class="form-field">
+        <label for="symptomsText">Опишите симптомы</label>
+        <textarea id="symptomsText" rows="5" placeholder="Например: третий день болит горло, температура 37.8, кашель сухой..." style="width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: var(--radius); font-size: 15px; font-family: inherit; resize: vertical;"></textarea>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn-primary" id="analyzeSymptoms">🔍 Проанализировать</button>
+        <button class="btn-cancel" id="symptomsCancelBtn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ МОДАЛКА ВХОДА ═══════ -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal">
+      <button class="modal-close" id="loginClose">✕</button>
+      <h2>👋 Вход в аккаунт</h2>
+      <p class="modal-subtitle">Войдите, чтобы синхронизировать данные между устройствами</p>
+      <form id="loginForm">
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" id="loginEmail" required placeholder="your@email.com">
+        </div>
+        <div class="form-field">
+          <label>Пароль</label>
+          <input type="password" id="loginPassword" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn-primary">Войти</button>
+      </form>
+      <div class="modal-switch">
+        Нет аккаунта? <a id="switchToRegister">Зарегистрироваться</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ МОДАЛКА РЕГИСТРАЦИИ ═══════ -->
+  <div class="modal-overlay" id="registerModal">
+    <div class="modal">
+      <button class="modal-close" id="registerClose">✕</button>
+      <h2>🎉 Регистрация</h2>
+      <p class="modal-subtitle">Создайте аккаунт для персонализации сервиса</p>
+      <form id="registerForm">
+        <div class="form-field">
+          <label>Имя</label>
+          <input type="text" id="regName" required placeholder="Иван Иванов">
+        </div>
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" id="regEmail" required placeholder="your@email.com">
+        </div>
+        <div class="form-field">
+          <label>Пароль</label>
+          <input type="password" id="regPassword" required placeholder="Минимум 6 символов" minlength="6">
+        </div>
+        <div class="form-field">
+          <label>Пол</label>
+          <select id="regSex">
+            <option value="female">Женский</option>
+            <option value="male">Мужской</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Возраст</label>
+          <input type="number" id="regAge" min="0" max="120" value="30">
+        </div>
+        <button type="submit" class="btn-primary">Создать аккаунт</button>
+      </form>
+      <div class="modal-switch">
+        Уже есть аккаунт? <a id="switchToLogin">Войти</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ МОДАЛКА ПРОФИЛЯ ═══════ -->
+  <div class="modal-overlay" id="profileModal">
+    <div class="modal">
+      <button class="modal-close" id="profileClose">✕</button>
+      <h2>👤 Мой профиль</h2>
+      <p class="modal-subtitle">Управляйте вашими данными</p>
+      <form id="profileForm">
+        <div class="form-field">
+          <label>Имя</label>
+          <input type="text" id="profileName" required>
+        </div>
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" id="profileEmail" readonly style="background: var(--bg-light);">
+        </div>
+        <div class="form-field">
+          <label>Пол</label>
+          <select id="profileSex">
+            <option value="female">Женский</option>
+            <option value="male">Мужской</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Возраст</label>
+          <input type="number" id="profileAge" min="0" max="120">
+        </div>
+        <button type="submit" class="btn-primary">💾 Сохранить изменения</button>
+      </form>
+      <button class="btn-primary btn-danger" id="logoutBtn" style="margin-top: 12px;">
+        🚪 Выйти из аккаунта
+      </button>
+    </div>
+  </div>
+
   <script src="database.js"></script>
+  <script src="symptom-rag.js"></script>
   <script>
-    // Выбор пола
-    let selectedSex = 'female';
-    document.querySelectorAll('.sex-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.sex-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        selectedSex = btn.dataset.sex;
+    (function(){
+      'use strict';
+
+      // ═══════════════════════════════════════
+      //  УПРАВЛЕНИЕ АККАУНТОМ
+      // ═══════════════════════════════════════
+      const USER_KEY = 'user_account_v1';
+
+      function getUser() {
+        try {
+          const data = localStorage.getItem(USER_KEY);
+          return data ? JSON.parse(data) : null;
+        } catch(e) { return null; }
+      }
+
+      function saveUser(user) {
+        localStorage.setItem(USER_KEY, JSON.stringify(user));
+      }
+
+      function logout() {
+        localStorage.removeItem(USER_KEY);
+        updateAccountUI();
+      }
+
+      function updateAccountUI() {
+        const user = getUser();
+        const label = document.getElementById('accountLabel');
+        const avatar = document.getElementById('userAvatar');
+        const dropdown = document.getElementById('accountDropdown');
+
+        if (user) {
+          label.textContent = user.name.split(' ')[0];
+          avatar.textContent = user.name.charAt(0).toUpperCase();
+          avatar.style.background = 'var(--primary)';
+          avatar.style.color = 'white';
+          avatar.style.fontWeight = '700';
+
+          dropdown.innerHTML = `
+            <div class="account-header">
+              <div class="account-name">${user.name}</div>
+              <div class="account-email">${user.email}</div>
+            </div>
+            <ul class="account-menu">
+              <li><button class="account-menu-item" onclick="openModal('profileModal')">👤 Мой профиль</button></li>
+              <li><button class="account-menu-item" onclick="window.location.href='calendar.html'">📅 Календарь</button></li>
+              <li><button class="account-menu-item" onclick="window.location.href='diary.html'">📓 Дневник</button></li>
+              <li><button class="account-menu-item" onclick="window.location.href='upload.html'">📄 Анализы</button></li>
+              <li class="account-divider"></li>
+              <li><button class="account-menu-item" onclick="window.location.href='about.html'">ℹ️ О нас</button></li>
+              <li><button class="account-menu-item danger" onclick="handleLogout()">🚪 Выйти</button></li>
+            </ul>
+          `;
+        } else {
+          label.textContent = 'Войти';
+          avatar.textContent = '👤';
+          avatar.style.background = 'var(--primary-light)';
+          avatar.style.color = 'var(--primary)';
+
+          dropdown.innerHTML = `
+            <div class="account-header">
+              <div class="account-name">Добро пожаловать!</div>
+              <div class="account-email">Войдите или создайте аккаунт</div>
+            </div>
+            <ul class="account-menu">
+              <li><button class="account-menu-item" onclick="openModal('loginModal')">🔑 Войти</button></li>
+              <li><button class="account-menu-item" onclick="openModal('registerModal')">✨ Регистрация</button></li>
+              <li class="account-divider"></li>
+              <li><button class="account-menu-item" onclick="window.location.href='about.html'">ℹ️ О нас</button></li>
+            </ul>
+          `;
+        }
+      }
+
+      window.handleLogout = function() {
+        if (confirm('Выйти из аккаунта?')) {
+          logout();
+          closeAllModals();
+          alert('Вы вышли из аккаунта');
+        }
+      };
+
+      // Dropdown toggle
+      const accountBtn = document.getElementById('accountBtn');
+      const accountDropdown = document.getElementById('accountDropdown');
+      
+      accountBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        accountDropdown.classList.toggle('active');
       });
-    });
 
-    // Модальное окно экстренной помощи
-    document.getElementById('emergencyBtn').addEventListener('click', () => {
-      document.getElementById('emergencyModal').classList.add('active');
-    });
+      document.addEventListener('click', (e) => {
+        if (!accountDropdown.contains(e.target) && e.target !== accountBtn) {
+          accountDropdown.classList.remove('active');
+        }
+      });
 
-    document.getElementById('emergencyCancel').addEventListener('click', () => {
-      document.getElementById('emergencyModal').classList.remove('active');
-    });
+      // ═══════════════════════════════════════
+      //  МОДАЛЬНЫЕ ОКНА
+      // ═══════════════════════════════════════
+      window.openModal = function(id) {
+        closeAllModals();
+        document.getElementById(id).classList.add('active');
+        accountDropdown.classList.remove('active');
+      };
 
-    document.getElementById('emergencyModal').addEventListener('click', (e) => {
-      if (e.target.id === 'emergencyModal') {
-        document.getElementById('emergencyModal').classList.remove('active');
-      }
-    });
-
-    // Анализ симптомов
-    document.getElementById('analyzeBtn').addEventListener('click', () => {
-      const age = parseInt(document.getElementById('ageInput').value) || 35;
-      const symptoms = Array.from(document.querySelectorAll('.symptom-checkbox input:checked'))
-        .map(cb => cb.dataset.symptom);
-
-      if (symptoms.length === 0) {
-        alert('Пожалуйста, отметьте хотя бы один симптом');
-        return;
+      function closeAllModals() {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
       }
 
-      // Сохраняем данные
-      localStorage.setItem('currentAnalysis', JSON.stringify({
-        sex: selectedSex,
-        age: age,
-        symptoms: symptoms,
-        date: new Date().toISOString()
-      }));
+      // Закрытие по клику на overlay
+      document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) overlay.classList.remove('active');
+        });
+      });
 
-      window.location.href = 'results.html';
-    });
+      // Закрытие по крестику
+      document.querySelectorAll('.modal-close').forEach(btn => {
+        btn.addEventListener('click', () => {
+          btn.closest('.modal-overlay').classList.remove('active');
+        });
+      });
 
-    // Посмотреть результаты
-    document.getElementById('showResultsBtn').addEventListener('click', () => {
-      const saved = localStorage.getItem('currentAnalysis');
-      if (!saved) {
-        alert('Сначала пройдите анализ симптомов');
-        return;
+      // Закрытие по Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAllModals();
+      });
+
+      // ═══════════════════════════════════════
+      //  АВТОРИЗАЦИЯ
+      // ═══════════════════════════════════════
+      document.getElementById('loginForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        // Простая локальная авторизация (в проде — API)
+        const users = JSON.parse(localStorage.getItem('users_db') || '[]');
+        const user = users.find(u => u.email === email && u.password === password);
+        
+        if (user) {
+          saveUser(user);
+          updateAccountUI();
+          closeAllModals();
+          alert('Добро пожаловать, ' + user.name + '!');
+        } else {
+          alert('Неверный email или пароль');
+        }
+      });
+
+      document.getElementById('registerForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const user = {
+          id: 'u_' + Date.now(),
+          name: document.getElementById('regName').value,
+          email: document.getElementById('regEmail').value,
+          password: document.getElementById('regPassword').value,
+          sex: document.getElementById('regSex').value,
+          age: parseInt(document.getElementById('regAge').value) || 30,
+          createdAt: new Date().toISOString()
+        };
+
+        // Сохраняем в "базу"
+        const users = JSON.parse(localStorage.getItem('users_db') || '[]');
+        if (users.find(u => u.email === user.email)) {
+          alert('Пользователь с таким email уже существует');
+          return;
+        }
+        users.push(user);
+        localStorage.setItem('users_db', JSON.stringify(users));
+        
+        // Логиним
+        saveUser(user);
+        updateAccountUI();
+        closeAllModals();
+        alert('Аккаунт создан! Добро пожаловать, ' + user.name + '!');
+      });
+
+      // Переключение между входом/регистрацией
+      document.getElementById('switchToRegister').addEventListener('click', () => {
+        closeAllModals();
+        openModal('registerModal');
+      });
+
+      document.getElementById('switchToLogin').addEventListener('click', () => {
+        closeAllModals();
+        openModal('loginModal');
+      });
+
+      // ═══════════════════════════════════════
+      //  ПРОФИЛЬ
+      // ═══════════════════════════════════════
+      document.getElementById('profileModal').addEventListener('transitionend', () => {
+        const user = getUser();
+        if (user && document.getElementById('profileModal').classList.contains('active')) {
+          document.getElementById('profileName').value = user.name || '';
+          document.getElementById('profileEmail').value = user.email || '';
+          document.getElementById('profileSex').value = user.sex || 'female';
+          document.getElementById('profileAge').value = user.age || 30;
+        }
+      });
+
+      // Хак — заполнить форму при открытии
+      const origOpenModal = window.openModal;
+      window.openModal = function(id) {
+        origOpenModal(id);
+        if (id === 'profileModal') {
+          const user = getUser();
+          if (user) {
+            setTimeout(() => {
+              document.getElementById('profileName').value = user.name || '';
+              document.getElementById('profileEmail').value = user.email || '';
+              document.getElementById('profileSex').value = user.sex || 'female';
+              document.getElementById('profileAge').value = user.age || 30;
+            }, 50);
+          }
+        }
+      };
+
+      document.getElementById('profileForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const user = getUser();
+        if (!user) return;
+
+        user.name = document.getElementById('profileName').value;
+        user.sex = document.getElementById('profileSex').value;
+        user.age = parseInt(document.getElementById('profileAge').value) || 30;
+
+        saveUser(user);
+        
+        // Обновляем в базе
+        const users = JSON.parse(localStorage.getItem('users_db') || '[]');
+        const idx = users.findIndex(u => u.id === user.id);
+        if (idx !== -1) {
+          users[idx] = user;
+          localStorage.setItem('users_db', JSON.stringify(users));
+        }
+
+        updateAccountUI();
+        closeAllModals();
+        alert('Профиль обновлён!');
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        handleLogout();
+      });
+
+      // ═══════════════════════════════════════
+      //  ЭКСТРЕННАЯ ПОМОЩЬ
+      // ═══════════════════════════════════════
+      document.getElementById('emergencyBtn').addEventListener('click', () => openModal('emergencyModal'));
+      document.getElementById('emergencyCancel').addEventListener('click', () => closeAllModals());
+      document.getElementById('emergencyClose').addEventListener('click', () => closeAllModals());
+
+      // ═══════════════════════════════════════
+      //  СИМПТОМЫ
+      // ═══════════════════════════════════════
+      document.getElementById('symptomsBtn').addEventListener('click', () => openModal('symptomsModal'));
+      document.getElementById('symptomsClose').addEventListener('click', () => closeAllModals());
+      document.getElementById('symptomsCancelBtn').addEventListener('click', () => closeAllModals());
+
+      document.getElementById('analyzeSymptoms').addEventListener('click', () => {
+        const text = document.getElementById('symptomsText').value.trim();
+        if (!text) {
+          alert('Пожалуйста, опишите симптомы');
+          return;
+        }
+        localStorage.setItem('currentSymptoms', text);
+        
+        const user = getUser();
+        if (user) {
+          localStorage.setItem('currentAnalysis', JSON.stringify({
+            sex: user.sex,
+            age: user.age,
+            symptoms: text,
+            date: new Date().toISOString()
+          }));
+        }
+        
+        window.location.href = 'results.html';
+      });
+
+      // ═══════════════════════════════════════
+      //  SERVICE WORKER
+      // ═══════════════════════════════════════
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+          .then(reg => console.log('SW зарегистрирован:', reg.scope))
+          .catch(err => console.error('SW ошибка:', err));
       }
-      window.location.href = 'results.html';
-    });
 
-    // Закрытие модалок по Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        document.getElementById('emergencyModal').classList.remove('active');
-      }
-    });
+      // Инициализация UI
+      updateAccountUI();
 
-    // Регистрация Service Worker
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log('SW зарегистрирован:', reg.scope))
-        .catch(err => console.error('SW ошибка:', err));
-    }
+    })();
   </script>
 </body>
 </html>

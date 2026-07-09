@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="О проекте Семейный доктор ИИ — миссия, команда, технологии">
+  <meta name="theme-color" content="#1e5fb8">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231e5fb8'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <title>О нас — Семейный доктор ИИ</title>
+</head>
+<body>
+  <!-- ═══════ TOP BAR ═══════ -->
+  <div class="top-bar">
+    <div class="container">
+      <div class="top-bar-inner">
+        <div class="top-bar-left">
+          <a href="tel:112" class="top-bar-item">
+            <span>📞</span>
+            <span>Экстренная помощь: <strong>112</strong></span>
+          </a>
+          <span class="top-bar-item">
+            <span>🕐</span>
+            <span>Работаем 24/7 онлайн</span>
+          </span>
+        </div>
+        <div class="top-bar-right">
+          <div class="top-bar-social">
+            <a href="#" title="Telegram">✈️</a>
+            <a href="#" title="VK">🌐</a>
+            <a href="#" title="WhatsApp">💬</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ HEADER ═══════ -->
+  <header>
+    <div class="container">
+      <div class="header-inner">
+        <a href="index.html" class="logo">
+          <div class="logo-icon">🩺</div>
+          <div class="logo-text">
+            <div class="logo-title">Семейный доктор</div>
+            <div class="logo-subtitle">ИИ-помощник</div>
+          </div>
+        </a>
+
+        <nav class="main-nav">
+          <a href="index.html#services" class="nav-link">Возможности</a>
+          <a href="calendar.html" class="nav-link">Календарь</a>
+          <a href="diary.html" class="nav-link">Дневник</a>
+          <a href="compare.html" class="nav-link">Динамика</a>
+          <a href="about.html" class="nav-link" style="color: var(--primary); font-weight: 700;">О нас</a>
+        </nav>
+
+        <div class="header-actions">
+          <button class="btn-account" onclick="window.location.href='index.html'">
+            <span class="avatar">👤</span>
+            <span>Войти</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ═══════ ABOUT HERO ═══════ -->
+    <section class="about-hero">
+      <div class="container">
+        <h1>О проекте «Семейный доктор ИИ»</h1>
+        <p>Современные технологии искусственного интеллекта на страже вашего здоровья</p>
+      </div>
+    </section>
+
+    <div class="about-content">
+      <div class="container">
+        
+        <!-- МИССИЯ -->
+        <section class="about-block" id="mission">
+          <h2>🎯 Наша миссия</h2>
+          <p>
+            Мы создаём доступный и понятный инструмент, который помогает людям 
+            заботиться о своём здоровье и здоровье близких. Наша цель — сделать 
+            медицинскую информацию понятной для каждого, не заменяя врача, 
+            а помогая подготовиться к визиту и лучше понимать свой организм.
+          </p>
+          <p>
+            В эпоху информационной перегрузки и «киберхондрии» мы предлагаем 
+            <strong>научно-обоснованный подход</strong>, основанный на официальных 
+            клинических рекомендациях, а не на домыслах из интернета.
+          </p>
+        </section>
+
+        <!-- ЧТО МЫ ДЕЛАЕМ -->
+        <section class="about-block">
+          <h2>💡 Что мы делаем</h2>
+          <p>Наш сервис объединяет несколько ключевых возможностей:</p>
+          <ul>
+            <li><strong>📄 Расшифровка анализов</strong> — загрузите PDF или фото бланка, ИИ распознает показатели и объяснит, что они значат</li>
+            <li><strong>📈 Анализ динамики</strong> — сравнение результатов анализов во времени с визуализацией трендов</li>
+            <li><strong>🩺 Симптом-чекер</strong> — персональные рекомендации на основе клинических протоколов Минздрава РФ</li>
+            <li><strong>📅 Календарь здоровья</strong> — план обследований по возрасту и полу с push-уведомлениями</li>
+            <li><strong>📓 Дневник показателей</strong> — отслеживание давления, сахара, веса, сна с графиками</li>
+          </ul>
+        </section>
+
+        <!-- ТЕХНОЛОГИИ -->
+        <section class="about-block">
+          <h2>🔬 Технологии</h2>
+          <p>
+            В основе проекта лежат современные ИИ-технологии и проверенные медицинские данные:
+          </p>
+          <ul>
+            <li><strong>RAG (Retrieval-Augmented Generation)</strong> — система поиска и генерации ответов строго по клиническим рекомендациям</li>
+            <li><strong>Gemini Vision</strong> — мультимодальный ИИ для распознавания медицинских бланков</li>
+            <li><strong>Fuzzy Matching</strong> — нечёткое сопоставление с учётом опечаток и разных названий</li>
+            <li><strong>Web Speech API</strong> — голосовой ввод для удобства пожилых пользователей</li>
+            <li><strong>Progressive Web App</strong> — работа офлайн, установка как обычное приложение</li>
+          </ul>
+        </section>
+
+        <!-- БЕЗОПАСНОСТЬ -->
+        <section class="about-block">
+          <h2>🔒 Безопасность и приватность</h2>
+          <p>
+            Мы серьёзно относимся к защите медицинских данных наших пользователей:
+          </p>
+          <ul>
+            <li>✅ Все данные хранятся <strong>локально на вашем устройстве</strong></li>
+            <li>✅ Мы не передаём информацию третьим лицам</li>
+            <li>✅ При использовании ИИ-сервисов данные отправляются напрямую провайдеру без наших серверов</li>
+            <li>✅ Приложение работает полностью офлайн после первой загрузки</li>
+            <li>✅ Исходный код открыт и может быть проверен любым специалистом</li>
+          </ul>
+        </section>
+
+        <!-- КОМАНДА -->
+        <section class="about-block" id="team">
+          <h2>👥 Наша команда</h2>
+          <p>
+            За проектом стоят профессионалы в области медицины и технологий, 
+            объединённые общей целью — сделать заботу о здоровье проще и доступнее.
+          </p>
+          <div class="team-grid">
+            <div class="team-card">
+              <div class="team-avatar">👨‍⚕️</div>
+              <div class="team-name">Медицинские консультанты</div>
+              <div class="team-role">Клинические эксперты</div>
+              <div class="team-desc">
+                Врачи различных специальностей проверяют медицинские алгоритмы 
+                и актуальность клинических рекомендаций
+              </div>
+            </div>
+
+            <div class="team-card">
+              <div class="team-avatar">👨‍💻</div>
+              <div class="team-name">Команда разработки</div>
+              <div class="team-role">Fullstack инженеры</div>
+              <div class="team-desc">
+                Специалисты по ИИ, веб-технологиям и мобильной разработке 
+                создают надёжный и быстрый продукт
+              </div>
+            </div>
+
+            <div class="team-card">
+              <div class="team-avatar">🎨</div>
+              <div class="team-name">UX/UI дизайнеры</div>
+              <div class="team-role">Дизайн и удобство</div>
+              <div class="team-desc">
+                Создают понятный интерфейс, удобный для пользователей любого возраста, 
+                включая пожилых людей
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- КОНТАКТЫ -->
+        <section class="about-block" id="contacts">
+          <h2>📞 Свяжитесь с нами</h2>
+          <p>Мы всегда рады обратной связи и предложениям по улучшению сервиса:</p>
+          <ul>
+            <li>📧 <strong>Email:</strong> support@familydoctor.ai</li>
+            <li>✈️ <strong>Telegram:</strong> @familydoctor_support</li>
+            <li>🌐 <strong>Сайт:</strong> denloper.github.io/medsyte</li>
+            <li>💻 <strong>GitHub:</strong> исходный код проекта открыт для сообщества</li>
+          </ul>
+          <p style="margin-top: 24px;">
+            Если у вас есть идеи, предложения или вы нашли ошибку — напишите нам. 
+            Мы читаем каждое обращение и стараемся отвечать в течение 24 часов.
+          </p>
+        </section>
+
+        <!-- CTA -->
+        <div style="text-align: center; margin-top: 60px;">
+          <a href="index.html" class="btn-hero-primary" style="display: inline-flex;">
+            🏠 Вернуться на главную
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════ FOOTER ═══════ -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="logo-title">🩺 Семейный доктор ИИ</div>
+          <p>
+            Персональный медицинский помощник на основе современных технологий ИИ 
+            и официальных клинических рекомендаций.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Возможности</h4>
+          <ul>
+            <li><a href="upload.html">Расшифровка анализов</a></li>
+            <li><a href="compare.html">Сравнение в динамике</a></li>
+            <li><a href="calendar.html">Календарь здоровья</a></li>
+            <li><a href="diary.html">Дневник показателей</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>О проекте</h4>
+          <ul>
+            <li><a href="about.html">О нас</a></li>
+            <li><a href="about.html#team">Команда</a></li>
+            <li><a href="about.html#mission">Миссия</a></li>
+            <li><a href="about.html#contacts">Контакты</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Помощь</h4>
+          <ul>
+            <li><a href="tel:112">Экстренная: 112</a></li>
+            <li><a href="#">FAQ</a></li>
+            <li><a href="#">Поддержка</a></li>
+            <li><a href="#">Конфиденциальность</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        © 2025 Семейный доктор ИИ · Все права защищены · Версия 5.0
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('SW зарегистрирован:', reg.scope))
+        .catch(err => console.error('SW ошибка:', err));
+    }
+  </script>
+</body>
+</html>
