@@ -1,678 +1,566 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<!-- Запрет кеширования HTML (F5 всегда берёт с сервера) -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
-<!-- Версия приложения (меняйте при каждом деплое) -->
-<meta name="app-version" content="5.1.0">
-<base href="./">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
-<meta name="theme-color" content="#2563EB">
-<meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
-<title>Дневник здоровья — Семейный доктор</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<style>
-:root{--c-primary:#2563EB;--c-primary-dark:#1E40AF;--c-primary-light:#DBEAFE;--c-ok:#059669;--c-ok-bg:#ECFDF5;--c-warn:#D97706;--c-warn-bg:#FFFBEB;--c-danger:#B91C1C;--c-danger-bg:#FEF2F2;--c-bg:#F9FAFB;--c-card:#FFFFFF;--c-border:#E5E7EB;--c-text:#111827;--c-text-muted:#6B7280;--fs-base:18px;--fs-lg:20px;--fs-xl:24px;--fs-2xl:28px;--fs-3xl:32px;--sp-1:8px;--sp-2:16px;--sp-3:24px;--sp-4:32px;--r-sm:8px;--r-md:12px;--r-lg:16px;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--shadow-md:0 4px 12px rgba(0,0,0,0.08);--focus-ring:0 0 0 4px rgba(37,99,235,0.3)}
-*{box-sizing:border-box;margin:0;padding:0}html{font-size:var(--fs-base)}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--c-bg);color:var(--c-text);line-height:1.6;min-height:100vh}
-.container{max-width:1000px;margin:0 auto;padding:var(--sp-3)}
-header{background:var(--c-card);border-bottom:1px solid var(--c-border);padding:var(--sp-3);margin-bottom:var(--sp-3);box-shadow:var(--shadow-sm)}
-.header-inner{max-width:1000px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);flex-wrap:wrap}
-.back-link{text-decoration:none;color:var(--c-primary);font-size:var(--fs-base);padding:8px 12px;border-radius:var(--r-sm);display:inline-flex;align-items:center;gap:8px;font-weight:600}
-.back-link:hover{background:var(--c-primary-light)}
-h1{font-size:var(--fs-2xl);color:var(--c-primary-dark)}
-.subtitle{color:var(--c-text-muted);margin:var(--sp-1) 0 var(--sp-3)}
-
-/* Общая статистика */
-.overall-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--sp-2);margin-bottom:var(--sp-3)}
-.overall-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);text-align:center}
-.overall-card h3{font-size:13px;color:var(--c-text-muted);margin-bottom:6px;font-weight:600;text-transform:uppercase}
-.overall-card .number{font-size:var(--fs-2xl);font-weight:700;display:block;color:var(--c-primary-dark)}
-
-/* Вкладки метрик */
-.metric-tabs{display:flex;gap:var(--sp-1);margin-bottom:var(--sp-3);flex-wrap:wrap;background:var(--c-card);padding:var(--sp-1);border-radius:var(--r-md);border:1px solid var(--c-border)}
-.metric-tab{flex:1;min-width:110px;padding:12px;background:transparent;border:none;color:var(--c-text-muted);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;border-radius:var(--r-sm);transition:all 0.2s;display:flex;flex-direction:column;align-items:center;gap:4px}
-.metric-tab:hover{background:var(--c-bg);color:var(--c-text)}
-.metric-tab.active{background:var(--c-primary);color:white}
-.metric-tab .icon{font-size:22px}
-.metric-tab .label{font-size:13px}
-
-/* Контент метрики */
-.metric-content{display:none}.metric-content.active{display:block}
-
-/* Форма добавления */
-.entry-form{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
-.entry-form h2{font-size:var(--fs-xl);margin-bottom:var(--sp-2);display:flex;align-items:center;gap:8px}
-.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--sp-2);margin-bottom:var(--sp-2)}
-.form-group label{display:block;margin-bottom:6px;font-weight:600;font-size:14px;color:var(--c-text-muted)}
-.form-group input,.form-group select{width:100%;padding:12px;font-size:var(--fs-base);border:1px solid var(--c-border);border-radius:var(--r-sm);background:var(--c-card);color:var(--c-text);min-height:48px;font-family:inherit}
-.form-group input:focus,.form-group select:focus{outline:none;box-shadow:var(--focus-ring);border-color:var(--c-primary)}
-.rating-input{display:flex;gap:4px}
-.rating-star{font-size:28px;cursor:pointer;background:none;border:none;color:var(--c-border);transition:all 0.15s;padding:0}
-.rating-star.active{color:#F59E0B}
-.rating-star:hover{transform:scale(1.15)}
-.submit-btn{width:100%;padding:16px;background:var(--c-primary);color:white;border:none;border-radius:var(--r-md);font-size:var(--fs-lg);font-weight:700;cursor:pointer;min-height:56px;font-family:inherit}
-.submit-btn:hover{background:var(--c-primary-dark)}
-.submit-btn:active{transform:translateY(1px)}
-
-/* Статистика */
-.stats-section{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
-.stats-section h2{font-size:var(--fs-xl);margin-bottom:var(--sp-2);color:var(--c-primary-dark)}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:var(--sp-2)}
-.stat-box{padding:var(--sp-2);background:var(--c-bg);border-radius:var(--r-sm);text-align:center}
-.stat-box .label{font-size:13px;color:var(--c-text-muted);margin-bottom:4px;font-weight:600}
-.stat-box .value{font-size:var(--fs-xl);font-weight:700}
-.stat-box.normal .value{color:var(--c-ok)}
-.stat-box.warn .value{color:var(--c-warn)}
-.stat-box.danger .value{color:var(--c-danger)}
-.latest-interp{margin-top:var(--sp-2);padding:var(--sp-2);border-radius:var(--r-sm);border-left:4px solid;font-size:15px}
-.latest-interp.normal{background:var(--c-ok-bg);border-color:var(--c-ok);color:var(--c-ok)}
-.latest-interp.warn{background:var(--c-warn-bg);border-color:var(--c-warn);color:var(--c-warn)}
-.latest-interp.danger{background:var(--c-danger-bg);border-color:var(--c-danger);color:var(--c-danger)}
-.latest-interp strong{display:block;margin-bottom:4px}
-
-/* График */
-.chart-section{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
-.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-2);flex-wrap:wrap;gap:var(--sp-2)}
-.chart-header h2{font-size:var(--fs-xl);color:var(--c-primary-dark);margin:0}
-.period-tabs{display:flex;gap:4px;background:var(--c-bg);padding:4px;border-radius:var(--r-sm)}
-.period-tab{padding:6px 12px;font-size:13px;font-weight:600;border:none;background:transparent;color:var(--c-text-muted);border-radius:6px;cursor:pointer;font-family:inherit}
-.period-tab:hover{color:var(--c-text)}
-.period-tab.active{background:var(--c-primary);color:white}
-.chart-container{position:relative;height:300px}
-.chart-empty{text-align:center;padding:var(--sp-4);color:var(--c-text-muted)}
-
-/* История */
-.history-section{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
-.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-2);flex-wrap:wrap;gap:var(--sp-2)}
-.history-header h2{font-size:var(--fs-xl);color:var(--c-primary-dark);margin:0}
-.export-btn{padding:8px 14px;background:var(--c-card);color:var(--c-primary);border:2px solid var(--c-primary);border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
-.export-btn:hover{background:var(--c-primary-light)}
-.entry-list{display:flex;flex-direction:column;gap:var(--sp-1)}
-.entry-card{padding:var(--sp-2);background:var(--c-bg);border-radius:var(--r-sm);border-left:4px solid;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--sp-2)}
-.entry-card.normal{border-left-color:var(--c-ok)}
-.entry-card.warn{border-left-color:var(--c-warn)}
-.entry-card.danger{border-left-color:var(--c-danger)}
-.entry-info{flex:1;min-width:200px}
-.entry-date{font-size:13px;color:var(--c-text-muted);margin-bottom:4px}
-.entry-values{display:flex;gap:var(--sp-2);flex-wrap:wrap;font-size:15px;font-weight:600}
-.entry-values .value{color:var(--c-text)}
-.entry-values .unit{color:var(--c-text-muted);font-weight:400}
-.entry-interp{font-size:13px;font-weight:600;padding:2px 8px;border-radius:10px;display:inline-block}
-.entry-interp.normal{background:var(--c-ok-bg);color:var(--c-ok)}
-.entry-interp.warn{background:var(--c-warn-bg);color:var(--c-warn)}
-.entry-interp.danger{background:var(--c-danger-bg);color:var(--c-danger)}
-.delete-btn{background:transparent;border:none;color:var(--c-text-muted);cursor:pointer;font-size:18px;padding:6px;border-radius:4px}
-.delete-btn:hover{background:var(--c-danger-bg);color:var(--c-danger)}
-.empty-history{text-align:center;padding:var(--sp-3);color:var(--c-text-muted)}
-
-.disclaimer{background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--r-md);padding:var(--sp-3);text-align:center;color:#92400E;font-size:14px;margin-top:var(--sp-3)}
-
-@media(prefers-color-scheme:dark){
-  :root{--c-bg:#111827;--c-card:#1F2937;--c-border:#374151;--c-text:#F9FAFB;--c-text-muted:#9CA3AF;--c-primary-light:#1E3A8A;--c-ok-bg:#064E3B;--c-ok:#6EE7B7;--c-warn-bg:#78350F;--c-warn:#FCD34D;--c-danger-bg:#7F1D1D;--c-danger:#FCA5A5}
-  .disclaimer{background:#78350F;border-color:#92400E;color:#FCD34D}
-  .metric-tab:hover{background:#374151}
-}
-</style>
+  <meta charset="UTF-8">
+  <base href="./">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8BAF8B">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="animations.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <title>Дневник здоровья</title>
 </head>
 <body>
-<header>
-  <div class="header-inner">
-    <a href="index.html" class="back-link">← Назад</a>
-    <h1>📓 Дневник здоровья</h1>
-    <button class="export-btn" id="exportAllBtn">📋 Экспорт для врача</button>
+
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastText">Готово</span>
+</div>
+
+<div class="app">
+  
+  <div class="status-bar animate-on-scroll animate-fade-in">
+    <span id="currentTime">9:41</span>
+    <div class="status-icons">
+      <span>📶</span>
+      <span>📡</span>
+      <span class="pulse-dot">🔋</span>
+    </div>
   </div>
-</header>
 
-<main class="container">
-  <p class="subtitle">Отслеживайте ключевые показатели здоровья и смотрите динамику.</p>
-
-  <!-- Общая статистика -->
-  <div class="overall-stats" id="overallStats"></div>
-
-  <!-- Вкладки метрик -->
-  <div class="metric-tabs" id="metricTabs"></div>
-
-  <!-- Контент метрик -->
-  <div id="metricContents"></div>
-
-  <div class="disclaimer">
-    ⚕ Дневник — это инструмент самоконтроля. При тревожных показателях обратитесь к врачу.
+  <!-- Header -->
+  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
+    <div class="pc-top" style="margin-bottom: 0;">
+      <div class="pc-identity">
+        <a href="index.html" class="circle-btn ripple-element">←</a>
+        <div>
+          <div class="pc-name">Дневник здоровья</div>
+          <div class="pc-id" id="totalEntries">0 записей</div>
+        </div>
+      </div>
+      <button class="circle-btn dark-btn ripple-element" onclick="exportAll()">⬇</button>
+    </div>
   </div>
-</main>
+
+  <!-- Overall stats -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Общая статистика</h2>
+  </div>
+
+  <div class="vitals-grid stagger" id="overallStats">
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon green">📝</div>
+      <div class="v-label">Записей</div>
+      <div class="v-value"><span id="statEntries" data-counter="0">0</span></div>
+    </div>
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon blue">📊</div>
+      <div class="v-label">Метрик</div>
+      <div class="v-value"><span id="statMetrics" data-counter="0">0</span></div>
+    </div>
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon amber">🔥</div>
+      <div class="v-label">Серия дней</div>
+      <div class="v-value"><span id="statStreak" data-counter="0">0</span></div>
+    </div>
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon red">⏱</div>
+      <div class="v-label">Последняя</div>
+      <div class="v-value" style="font-size: 20px;"><span id="statLast">—</span></div>
+    </div>
+  </div>
+
+  <!-- Metrics tabs -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Показатели</h2>
+  </div>
+
+  <div class="filter-row animate-on-scroll animate-fade-in" id="metricTabs">
+    <button class="filter-chip active ripple-element click-scale" data-metric="blood_pressure">🩸 Давление</button>
+    <button class="filter-chip ripple-element click-scale" data-metric="glucose">🍬 Сахар</button>
+    <button class="filter-chip ripple-element click-scale" data-metric="weight">⚖️ Вес</button>
+    <button class="filter-chip ripple-element click-scale" data-metric="sleep">😴 Сон</button>
+    <button class="filter-chip ripple-element click-scale" data-metric="temperature">🌡 Температура</button>
+  </div>
+
+  <!-- Add entry button -->
+  <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" onclick="openAddModal()">
+    + Добавить запись
+  </button>
+
+  <!-- Current metric content -->
+  <div id="metricContent"></div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a href="index.html" class="nav-item">
+      <div class="nav-icon">🏠</div>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a href="upload.html" class="nav-item">
+      <div class="nav-icon">📄</div>
+      <span class="nav-label">Анализы</span>
+    </a>
+    <a href="index.html" class="nav-fab">🩺</a>
+    <a href="calendar.html" class="nav-item">
+      <div class="nav-icon">📅</div>
+      <span class="nav-label">Календарь</span>
+    </a>
+    <a href="diary.html" class="nav-item active">
+      <div class="nav-icon">📓</div>
+      <span class="nav-label">Дневник</span>
+    </a>
+  </div>
+</div>
+
+<!-- Add Entry Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Новая запись</div>
+      <button class="modal-close ripple-element" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
 
 <script src="diary-engine.js"></script>
+<script src="animations.js"></script>
 <script>
 (function(){
-'use strict';
+  'use strict';
 
-var currentMetric = 'blood_pressure';
-var currentPeriod = 30;
-var chartInstances = {};
-var ratings = {};
+  let currentMetric = 'blood_pressure';
+  let currentPeriod = 30;
+  let chartInstance = null;
+  let ratings = {};
 
-// ═══════════════════════════════════════
-// ИНИЦИАЛИЗАЦИЯ
-// ═══════════════════════════════════════
-function init() {
-  renderOverallStats();
-  renderTabs();
-  renderMetricContents();
-  switchMetric(currentMetric);
+  function updateTime() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    document.getElementById('currentTime').textContent = `${h}:${m}`;
+  }
+  updateTime();
+  setInterval(updateTime, 60000);
 
-  document.getElementById('exportAllBtn').addEventListener('click', exportForDoctor);
-}
+  window.showToast = function(text, icon = '✓') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = text;
+    toast.querySelector('.toast-icon').textContent = icon;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  };
 
-function renderOverallStats() {
-  var stats = window.DiaryEngine.getOverallStats();
-  var html = '';
-  html += '<div class="overall-card"><h3>📝 Записей</h3><div class="number">' + stats.totalEntries + '</div></div>';
-  html += '<div class="overall-card"><h3>📊 Метрик</h3><div class="number">' + stats.activeMetrics + '</div></div>';
-  html += '<div class="overall-card"><h3>🔥 Серия дней</h3><div class="number">' + stats.streak + '</div></div>';
-  var daysSince = stats.lastEntryDate > 0 ? Math.floor((Date.now() - stats.lastEntryDate) / (24 * 60 * 60 * 1000)) : '—';
-  html += '<div class="overall-card"><h3>⏱ Последний</h3><div class="number">' + daysSince + '</div><div style="font-size:12px;color:var(--c-text-muted)">дней назад</div></div>';
-  document.getElementById('overallStats').innerHTML = html;
-}
-
-function renderTabs() {
-  var container = document.getElementById('metricTabs');
-  var html = '';
-  Object.keys(window.DiaryEngine.metrics).forEach(function(id) {
-    var m = window.DiaryEngine.metrics[id];
-    html += '<button class="metric-tab" data-metric="' + id + '">' +
-      '<span class="icon">' + m.icon + '</span>' +
-      '<span class="label">' + m.title + '</span>' +
-    '</button>';
-  });
-  container.innerHTML = html;
-
-  container.querySelectorAll('.metric-tab').forEach(function(btn) {
+  // Tabs
+  document.querySelectorAll('#metricTabs .filter-chip').forEach(btn => {
     btn.addEventListener('click', function() {
-      switchMetric(this.dataset.metric);
+      document.querySelectorAll('#metricTabs .filter-chip').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      currentMetric = this.dataset.metric;
+      renderMetricContent();
     });
   });
-}
 
-function renderMetricContents() {
-  var container = document.getElementById('metricContents');
-  var html = '';
-  Object.keys(window.DiaryEngine.metrics).forEach(function(id) {
-    html += '<div class="metric-content" id="content-' + id + '">';
-    html += renderEntryForm(id);
-    html += renderStatsSection(id);
-    html += renderChartSection(id);
-    html += renderHistorySection(id);
-    html += '</div>';
-  });
-  container.innerHTML = html;
-}
+  function renderOverallStats() {
+    const stats = window.DiaryEngine ? window.DiaryEngine.getOverallStats() : { totalEntries: 0, activeMetrics: 0, streak: 0, lastEntryDate: 0 };
+    
+    document.getElementById('totalEntries').textContent = `${stats.totalEntries} записей`;
+    document.getElementById('statEntries').dataset.counter = stats.totalEntries;
+    document.getElementById('statMetrics').dataset.counter = stats.activeMetrics;
+    document.getElementById('statStreak').dataset.counter = stats.streak;
+    
+    const daysSince = stats.lastEntryDate > 0 ? Math.floor((Date.now() - stats.lastEntryDate) / (24 * 60 * 60 * 1000)) : '—';
+    document.getElementById('statLast').textContent = daysSince;
 
-function switchMetric(metricId) {
-  currentMetric = metricId;
-
-  // Обновляем активную вкладку
-  document.querySelectorAll('.metric-tab').forEach(function(btn) {
-    btn.classList.toggle('active', btn.dataset.metric === metricId);
-  });
-
-  // Показываем нужный контент
-  document.querySelectorAll('.metric-content').forEach(function(c) {
-    c.classList.toggle('active', c.id === 'content-' + metricId);
-  });
-
-  // Обновляем всё
-  updateMetricContent(metricId);
-}
-
-function updateMetricContent(metricId) {
-  updateStatsSection(metricId);
-  updateChart(metricId);
-  updateHistory(metricId);
-}
-
-// ═══════════════════════════════════════
-// ФОРМА ДОБАВЛЕНИЯ
-// ═══════════════════════════════════════
-function renderEntryForm(metricId) {
-  var m = window.DiaryEngine.metrics[metricId];
-  var html = '<section class="entry-form"><h2>' + m.icon + ' Новая запись: ' + m.title + '</h2>';
-  html += '<div class="form-grid">';
-
-  m.fields.forEach(function(f) {
-    html += '<div class="form-group"><label>' + f.label;
-    if (f.unit) html += ' <small style="color:var(--c-text-muted);font-weight:400">(' + f.unit + ')</small>';
-    html += '</label>';
-
-    if (f.type === 'number') {
-      html += '<input type="number" data-field="' + f.id + '" data-metric="' + metricId + '"';
-      if (f.min !== undefined) html += ' min="' + f.min + '"';
-      if (f.max !== undefined) html += ' max="' + f.max + '"';
-      if (f.step) html += ' step="' + f.step + '"';
-      else html += ' step="1"';
-      if (f.required) html += ' required';
-      if (f.placeholder) html += ' placeholder="' + f.placeholder + '"';
-      html += '>';
-    } else if (f.type === 'select') {
-      html += '<select data-field="' + f.id + '" data-metric="' + metricId + '"';
-      if (f.required) html += ' required';
-      html += '><option value="">— выберите —</option>';
-      f.options.forEach(function(opt) {
-        html += '<option value="' + opt + '">' + opt + '</option>';
-      });
-      html += '</select>';
-    } else if (f.type === 'rating') {
-      ratings[metricId + '-' + f.id] = 0;
-      html += '<div class="rating-input" data-field="' + f.id + '" data-metric="' + metricId + '">';
-      for (var i = 1; i <= (f.max || 5); i++) {
-        html += '<button type="button" class="rating-star" data-value="' + i + '">★</button>';
+    setTimeout(() => {
+      if (window.AnimationsEngine) {
+        ['statEntries', 'statMetrics', 'statStreak'].forEach(id => {
+          const el = document.getElementById(id);
+          window.AnimationsEngine.animateCounter(el, parseInt(el.dataset.counter), 1000);
+        });
       }
+    }, 300);
+  }
+
+  function renderMetricContent() {
+    if (!window.DiaryEngine) return;
+    
+    const metric = window.DiaryEngine.metrics[currentMetric];
+    if (!metric) return;
+
+    const stats = window.DiaryEngine.getStats(currentMetric, currentPeriod);
+    const chartData = window.DiaryEngine.getChartData(currentMetric, currentPeriod);
+    const entries = window.DiaryEngine.getEntries(currentMetric).slice().reverse().slice(0, 20);
+
+    let html = '';
+
+    // Stats
+    html += `
+      <div class="sec-hd animate-on-scroll animate-slide-left">
+        <h2>Статистика за ${currentPeriod} дней</h2>
+      </div>
+      <div class="vitals-grid stagger">
+        <div class="v-card tilt-card ripple-element">
+          <div class="v-icon blue">📊</div>
+          <div class="v-label">Записей</div>
+          <div class="v-value"><span data-counter="${stats.count}">${stats.count}</span></div>
+        </div>
+        <div class="v-card tilt-card ripple-element">
+          <div class="v-icon green">⌀</div>
+          <div class="v-label">Среднее</div>
+          <div class="v-value" style="font-size: 22px;">${stats.avg !== null ? stats.avg.toFixed(1) : '—'}</div>
+        </div>
+        <div class="v-card tilt-card ripple-element">
+          <div class="v-icon amber">↓</div>
+          <div class="v-label">Мин</div>
+          <div class="v-value" style="font-size: 22px;">${stats.min ?? '—'}</div>
+        </div>
+        <div class="v-card tilt-card ripple-element">
+          <div class="v-icon red">↑</div>
+          <div class="v-label">Макс</div>
+          <div class="v-value" style="font-size: 22px;">${stats.max ?? '—'}</div>
+        </div>
+      </div>
+    `;
+
+    // Latest interpretation
+    if (stats.latest) {
+      const interp = metric.interpret(stats.latest, window.DiaryEngine.getProfile());
+      const cls = interp.status === 'normal' ? 'ok' : interp.status === 'warn' ? 'warn' : 'danger';
+      html += `
+        <div class="other-card animate-on-scroll animate-fade-up" style="border-left: 4px solid var(--${cls === 'ok' ? 'green' : cls === 'warn' ? 'orange' : 'red'});">
+          <div style="font-weight: 700; color: var(--dark); margin-bottom: 6px;">Последняя запись: ${interp.label}</div>
+          ${interp.advice ? `<div style="font-size: 14px; color: var(--text-2); line-height: 1.5;">${interp.advice}</div>` : ''}
+        </div>
+      `;
+    }
+
+    // Chart
+    html += `
+      <div class="sleep-card animate-on-scroll animate-fade-up">
+        <div class="sc-head">
+          <div class="sc-left">
+            <div class="sc-icon float-slow">${metric.icon}</div>
+            <div class="sc-title">Динамика</div>
+          </div>
+          <div class="pc-pills" style="gap: 4px;">
+            <button class="pill ${currentPeriod === 7 ? 'pill-green' : 'pill-outline'} ripple-element click-scale" onclick="setPeriod(7)">7д</button>
+            <button class="pill ${currentPeriod === 30 ? 'pill-green' : 'pill-outline'} ripple-element click-scale" onclick="setPeriod(30)">30д</button>
+            <button class="pill ${currentPeriod === 90 ? 'pill-green' : 'pill-outline'} ripple-element click-scale" onclick="setPeriod(90)">3м</button>
+          </div>
+        </div>
+        <div style="height: 200px; position: relative;">
+          <canvas id="metricChart"></canvas>
+        </div>
+      </div>
+    `;
+
+    // History
+    html += `
+      <div class="sec-hd animate-on-scroll animate-slide-left">
+        <h2>История</h2>
+        <button class="see-all ripple-element click-scale" onclick="exportMetric()">📥 CSV</button>
+      </div>
+    `;
+
+    if (entries.length === 0) {
+      html += `
+        <div class="empty-state animate-on-scroll animate-fade-up">
+          <div class="empty-icon">📭</div>
+          <div class="empty-title">Записей пока нет</div>
+          <div class="empty-sub">Добавьте первую запись</div>
+        </div>
+      `;
+    } else {
+      html += '<div class="other-card animate-on-scroll animate-fade-up">';
+      entries.forEach((e, idx) => {
+        const interp = metric.interpret(e, window.DiaryEngine.getProfile());
+        const cls = interp.status === 'normal' ? 'ok' : interp.status === 'warn' ? 'warn' : 'danger';
+        const bgColor = cls === 'ok' ? 'green-bg' : cls === 'warn' ? 'amber-bg' : 'red-bg';
+        const d = new Date(e.date);
+        const dateStr = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+        
+        let valuesHtml = '';
+        metric.fields.forEach(f => {
+          if (e[f.id] === undefined || e[f.id] === '' || e[f.id] === 0) return;
+          if (f.type === 'rating') {
+            valuesHtml += `<span>${'★'.repeat(e[f.id])}${'☆'.repeat((f.max || 5) - e[f.id])}</span>`;
+          } else {
+            valuesHtml += `<span><strong>${e[f.id]}</strong>${f.unit ? ' ' + f.unit : ''}</span>`;
+          }
+        });
+        
+        html += `
+          <div class="metric-row ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.04}s backwards;">
+            <div class="mr-circle ${bgColor}">${metric.icon}</div>
+            <div class="mr-info">
+              <div class="mr-label">${dateStr}</div>
+              <div class="mr-value" style="font-size: 15px; display: flex; gap: 6px; flex-wrap: wrap;">${valuesHtml}</div>
+              <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">${interp.label}</div>
+            </div>
+            <button class="circle-btn ripple-element" onclick="deleteEntry('${e.id}')" style="width: 32px; height: 32px; font-size: 14px;">🗑</button>
+          </div>
+        `;
+      });
       html += '</div>';
     }
-    html += '</div>';
-  });
 
-  html += '</div>';
-  html += '<button class="submit-btn" data-metric="' + metricId + '">✓ Сохранить запись</button>';
-  html += '</section>';
-  return html;
-}
+    document.getElementById('metricContent').innerHTML = html;
+    renderChart(chartData);
 
-// Делегирование событий для форм
-document.addEventListener('click', function(e) {
-  // Сохранение записи
-  if (e.target.classList.contains('submit-btn')) {
-    e.preventDefault();
-    var metricId = e.target.dataset.metric;
-    submitEntry(metricId);
-    return;
+    // Счётчики
+    setTimeout(() => {
+      document.querySelectorAll('#metricContent [data-counter]').forEach(el => {
+        if (window.AnimationsEngine) {
+          window.AnimationsEngine.animateCounter(el, parseInt(el.dataset.counter), 800);
+        }
+      });
+    }, 200);
   }
 
-  // Звёздочки рейтинга
-  if (e.target.classList.contains('rating-star')) {
-    var container = e.target.parentElement;
-    var metricId = container.dataset.metric;
-    var fieldId = container.dataset.field;
-    var value = parseInt(e.target.dataset.value);
-    ratings[metricId + '-' + fieldId] = value;
-    container.querySelectorAll('.rating-star').forEach(function(s) {
-      s.classList.toggle('active', parseInt(s.dataset.value) <= value);
-    });
-    return;
-  }
-
-  // Удаление записи
-  if (e.target.classList.contains('delete-btn')) {
-    var metricId = e.target.dataset.metric;
-    var entryId = e.target.dataset.entry;
-    if (confirm('Удалить эту запись?')) {
-      window.DiaryEngine.deleteEntry(metricId, entryId);
-      updateMetricContent(metricId);
-      renderOverallStats();
-    }
-    return;
-  }
-});
-
-// Периоды для графика
-document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('period-tab')) {
-    var metricId = e.target.dataset.metric;
-    var days = parseInt(e.target.dataset.days);
+  window.setPeriod = function(days) {
     currentPeriod = days;
+    renderMetricContent();
+  };
 
-    // Обновляем активную кнопку периода
-    e.target.parentElement.querySelectorAll('.period-tab').forEach(function(b) {
-      b.classList.toggle('active', parseInt(b.dataset.days) === days);
-    });
-
-    updateChart(metricId);
-  }
-});
-
-function submitEntry(metricId) {
-  var m = window.DiaryEngine.metrics[metricId];
-  var form = document.querySelector('#content-' + metricId + ' .entry-form');
-  var entry = {};
-  var valid = true;
-
-  m.fields.forEach(function(f) {
-    var el = form.querySelector('[data-field="' + f.id + '"]');
-    if (!el) return;
-
-    var value;
-    if (f.type === 'number') {
-      value = parseFloat(el.value);
-      if (isNaN(value)) value = null;
-    } else if (f.type === 'rating') {
-      value = ratings[metricId + '-' + f.id] || 0;
-    } else {
-      value = el.value;
+  function renderChart(chartData) {
+    if (chartInstance) {
+      chartInstance.destroy();
+      chartInstance = null;
     }
+    
+    const canvas = document.getElementById('metricChart');
+    if (!canvas || !chartData || chartData.entries.length === 0) return;
 
-    if (f.required && (value === null || value === '' || value === 0)) {
-      valid = false;
-      if (el.focus) el.focus();
-    }
+    const ctx = canvas.getContext('2d');
+    const metric = window.DiaryEngine.metrics[currentMetric];
+    const field = metric.fields.find(f => f.id === metric.primaryValue);
+    const unit = field ? field.unit || '' : '';
 
-    entry[f.id] = value;
-  });
-
-  if (!valid) {
-    alert('Заполните все обязательные поля');
-    return;
-  }
-
-  window.DiaryEngine.addEntry(metricId, entry);
-
-  // Сбрасываем форму
-  m.fields.forEach(function(f) {
-    var el = form.querySelector('[data-field="' + f.id + '"]');
-    if (!el) return;
-    if (f.type === 'rating') {
-      ratings[metricId + '-' + f.id] = 0;
-      el.querySelectorAll('.rating-star').forEach(function(s) { s.classList.remove('active'); });
-    } else if (el.tagName === 'SELECT') {
-      el.selectedIndex = 0;
-    } else {
-      el.value = '';
-    }
-  });
-
-  updateMetricContent(metricId);
-  renderOverallStats();
-
-  // Подсветка кнопки
-  var btn = form.querySelector('.submit-btn');
-  var original = btn.textContent;
-  btn.textContent = '✓ Сохранено!';
-  btn.style.background = 'var(--c-ok)';
-  setTimeout(function() {
-    btn.textContent = original;
-    btn.style.background = '';
-  }, 1500);
-}
-
-// ═══════════════════════════════════════
-// СЕКЦИЯ СТАТИСТИКИ
-// ═══════════════════════════════════════
-function renderStatsSection(metricId) {
-  return '<section class="stats-section"><h2>📊 Статистика за 30 дней</h2>' +
-    '<div class="stats-grid" id="stats-grid-' + metricId + '"></div>' +
-    '<div id="interp-' + metricId + '"></div>' +
-    '</section>';
-}
-
-function updateStatsSection(metricId) {
-  var m = window.DiaryEngine.metrics[metricId];
-  var stats = window.DiaryEngine.getStats(metricId, 30);
-  var grid = document.getElementById('stats-grid-' + metricId);
-  var interpDiv = document.getElementById('interp-' + metricId);
-
-  if (stats.count === 0) {
-    grid.innerHTML = '<div class="stat-box"><div class="label">Записей</div><div class="value">0</div></div>';
-    interpDiv.innerHTML = '';
-    return;
-  }
-
-  var field = m.fields.find(function(f) { return f.id === m.primaryValue; });
-  var unit = field ? field.unit || '' : '';
-
-  var html = '';
-  html += '<div class="stat-box"><div class="label">Записей</div><div class="value">' + stats.count + '</div></div>';
-  if (stats.avg !== null) {
-    html += '<div class="stat-box"><div class="label">Среднее</div><div class="value">' + stats.avg.toFixed(1) + ' <small>' + unit + '</small></div></div>';
-  }
-  if (stats.min !== null) {
-    html += '<div class="stat-box"><div class="label">Минимум</div><div class="value">' + stats.min + ' <small>' + unit + '</small></div></div>';
-  }
-  if (stats.max !== null) {
-    html += '<div class="stat-box"><div class="label">Максимум</div><div class="value">' + stats.max + ' <small>' + unit + '</small></div></div>';
-  }
-  var trendLabel = stats.trend === 'up' ? '📈 Рост' : stats.trend === 'down' ? '📉 Снижение' : '➡ Стабильно';
-  var trendClass = stats.trend === 'up' ? 'warn' : stats.trend === 'down' ? 'normal' : '';
-  html += '<div class="stat-box ' + trendClass + '"><div class="label">Тренд</div><div class="value" style="font-size:16px">' + trendLabel + '</div></div>';
-  grid.innerHTML = html;
-
-  // Интерпретация последней записи
-  if (stats.latest) {
-    var interp = m.interpret(stats.latest, window.DiaryEngine.getProfile());
-    interpDiv.innerHTML = '<div class="latest-interp ' + interp.status + '">' +
-      '<strong>Последняя запись: ' + interp.label + '</strong>' +
-      (interp.advice ? interp.advice : '') +
-    '</div>';
-  }
-}
-
-// ═══════════════════════════════════════
-// ГРАФИК
-// ═══════════════════════════════════════
-function renderChartSection(metricId) {
-  return '<section class="chart-section">' +
-    '<div class="chart-header">' +
-      '<h2>📈 Динамика</h2>' +
-      '<div class="period-tabs">' +
-        '<button class="period-tab" data-metric="' + metricId + '" data-days="7">7 дн</button>' +
-        '<button class="period-tab active" data-metric="' + metricId + '" data-days="30">30 дн</button>' +
-        '<button class="period-tab" data-metric="' + metricId + '" data-days="90">3 мес</button>' +
-        '<button class="period-tab" data-metric="' + metricId + '" data-days="365">Год</button>' +
-      '</div>' +
-    '</div>' +
-    '<div class="chart-container"><canvas id="chart-' + metricId + '"></canvas></div>' +
-    '</section>';
-}
-
-function updateChart(metricId) {
-  var m = window.DiaryEngine.metrics[metricId];
-  var chartData = window.DiaryEngine.getChartData(metricId, currentPeriod);
-  var canvas = document.getElementById('chart-' + metricId);
-
-  if (!canvas) return;
-
-  if (chartData.entries.length < 2) {
-    if (chartInstances[metricId]) {
-      chartInstances[metricId].destroy();
-      delete chartInstances[metricId];
-    }
-    canvas.parentElement.innerHTML = '<div class="chart-empty">📭 Недостаточно данных для графика. Нужно минимум 2 записи.</div>';
-    return;
-  }
-
-  // Восстанавливаем canvas если был заменён
-  if (!canvas.parentElement.querySelector('canvas')) {
-    canvas.parentElement.innerHTML = '<canvas id="chart-' + metricId + '"></canvas>';
-    canvas = document.getElementById('chart-' + metricId);
-  }
-
-  if (chartInstances[metricId]) {
-    chartInstances[metricId].destroy();
-  }
-
-  var ctx = canvas.getContext('2d');
-  var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  var textColor = isDark ? '#F9FAFB' : '#111827';
-  var gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-
-  var field = m.fields.find(function(f) { return f.id === m.primaryValue; });
-  var unit = field ? field.unit || '' : '';
-
-  chartInstances[metricId] = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: chartData.labels,
-      datasets: [{
-        label: m.title,
-        data: chartData.data,
-        borderColor: '#2563EB',
-        backgroundColor: 'rgba(37,99,235,0.1)',
-        pointBackgroundColor: chartData.colors,
-        pointBorderColor: chartData.colors,
-        pointRadius: 5,
-        pointHoverRadius: 7,
-        tension: 0.3,
-        fill: true,
-        borderWidth: 2
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
-          titleColor: textColor,
-          bodyColor: textColor,
-          borderColor: 'rgba(37,99,235,0.3)',
-          borderWidth: 1,
-          padding: 12,
-          callbacks: {
-            title: function(items) {
-              var idx = items[0].dataIndex;
-              var entry = chartData.entries[idx];
-              var d = new Date(entry.date);
-              return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
-            },
-            label: function(context) {
-              var idx = context.dataIndex;
-              var entry = chartData.entries[idx];
-              var interp = m.interpret(entry, window.DiaryEngine.getProfile());
-              var parts = [];
-              m.fields.forEach(function(f) {
-                if (entry[f.id] !== undefined && entry[f.id] !== '') {
-                  parts.push(f.label + ': ' + entry[f.id] + (f.unit ? ' ' + f.unit : ''));
-                }
-              });
-              parts.push('Статус: ' + interp.label);
-              return parts;
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: chartData.labels,
+        datasets: [{
+          label: metric.title,
+          data: chartData.data,
+          borderColor: '#3D8B4E',
+          backgroundColor: 'rgba(61, 139, 78, 0.1)',
+          pointBackgroundColor: chartData.colors,
+          pointBorderColor: chartData.colors,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          tension: 0.3,
+          fill: true,
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1C2B1C',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            padding: 12,
+            callbacks: {
+              title: function(items) {
+                const idx = items[0].dataIndex;
+                const entry = chartData.entries[idx];
+                const d = new Date(entry.date);
+                return d.toLocaleDateString('ru-RU');
+              },
+              label: function(context) {
+                const idx = context.dataIndex;
+                const entry = chartData.entries[idx];
+                const interp = metric.interpret(entry, window.DiaryEngine.getProfile());
+                return [
+                  `${metric.title}: ${context.raw} ${unit}`,
+                  `Статус: ${interp.label}`
+                ];
+              }
             }
           }
-        }
-      },
-      scales: {
-        x: {
-          grid: { color: gridColor },
-          ticks: { color: textColor, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }
         },
-        y: {
-          grid: { color: gridColor },
-          ticks: { color: textColor, callback: function(v) { return v + ' ' + unit; } }
+        scales: {
+          x: {
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { color: '#64748b', maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
+          },
+          y: {
+            grid: { color: 'rgba(0,0,0,0.05)' },
+            ticks: { color: '#64748b', callback: v => v + ' ' + unit }
+          }
         }
-      },
-      animation: { duration: 600, easing: 'easeOutQuart' }
-    }
-  });
-}
-
-// ═══════════════════════════════════════
-// ИСТОРИЯ
-// ═══════════════════════════════════════
-function renderHistorySection(metricId) {
-  return '<section class="history-section">' +
-    '<div class="history-header">' +
-      '<h2>📋 История записей</h2>' +
-      '<button class="export-btn" data-export="' + metricId + '">📥 CSV</button>' +
-    '</div>' +
-    '<div class="entry-list" id="history-' + metricId + '"></div>' +
-    '</section>';
-}
-
-document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('export-btn') && e.target.dataset.export) {
-    var metricId = e.target.dataset.export;
-    var csv = window.DiaryEngine.exportToCSV(metricId);
-    if (!csv) { alert('Нет данных для экспорта'); return; }
-    downloadFile(csv, metricId + '.csv', 'text/csv;charset=utf-8');
-  }
-});
-
-function updateHistory(metricId) {
-  var m = window.DiaryEngine.metrics[metricId];
-  var entries = window.DiaryEngine.getEntries(metricId);
-  var container = document.getElementById('history-' + metricId);
-
-  if (entries.length === 0) {
-    container.innerHTML = '<div class="empty-history">📭 Записей пока нет. Добавьте первую выше.</div>';
-    return;
-  }
-
-  // Сортируем по дате (новые сверху)
-  var sorted = entries.slice().sort(function(a, b) { return b.date - a.date; }).slice(0, 30);
-
-  var html = '';
-  sorted.forEach(function(e) {
-    var d = new Date(e.date);
-    var dateStr = d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
-    var interp = m.interpret(e, window.DiaryEngine.getProfile());
-
-    var valuesHtml = '';
-    m.fields.forEach(function(f) {
-      if (e[f.id] === undefined || e[f.id] === '' || e[f.id] === 0) return;
-      if (f.type === 'rating') {
-        valuesHtml += '<span class="value">' + '★'.repeat(e[f.id]) + '☆'.repeat((f.max || 5) - e[f.id]) + '</span>';
-      } else {
-        valuesHtml += '<span class="value">' + e[f.id] + '</span>';
-        if (f.unit) valuesHtml += '<span class="unit">' + f.unit + '</span>';
       }
     });
+  }
 
-    html += '<div class="entry-card ' + interp.status + '">' +
-      '<div class="entry-info">' +
-        '<div class="entry-date">' + dateStr + '</div>' +
-        '<div class="entry-values">' + valuesHtml + '</div>' +
-        '<div class="entry-interp ' + interp.status + '">' + interp.label + '</div>' +
-      '</div>' +
-      '<button class="delete-btn" data-metric="' + metricId + '" data-entry="' + e.id + '" title="Удалить">🗑</button>' +
-    '</div>';
+  window.openAddModal = function() {
+    const metric = window.DiaryEngine.metrics[currentMetric];
+    if (!metric) return;
+
+    document.getElementById('modalTitle').textContent = `+ ${metric.title}`;
+    
+    let html = '';
+    metric.fields.forEach(f => {
+      html += `<div style="margin-bottom: 14px;">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">${f.label}${f.unit ? ` (${f.unit})` : ''}</label>`;
+      
+      if (f.type === 'number') {
+        html += `<input type="number" data-field="${f.id}" 
+                 ${f.min !== undefined ? `min="${f.min}"` : ''}
+                 ${f.max !== undefined ? `max="${f.max}"` : ''}
+                 ${f.step ? `step="${f.step}"` : 'step="1"'}
+                 ${f.required ? 'required' : ''}
+                 ${f.placeholder ? `placeholder="${f.placeholder}"` : ''}
+                 style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">`;
+      } else if (f.type === 'select') {
+        html += `<select data-field="${f.id}" ${f.required ? 'required' : ''}
+                 style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+                 <option value="">— выберите —</option>
+                 ${f.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                 </select>`;
+      } else if (f.type === 'rating') {
+        ratings[f.id] = 0;
+        html += `<div class="rating-input" data-field="${f.id}" style="display: flex; gap: 4px;">`;
+        for (let i = 1; i <= (f.max || 5); i++) {
+          html += `<button type="button" class="rating-star ripple-element" data-value="${i}" 
+                   onclick="setRating('${f.id}', ${i})"
+                   style="font-size: 28px; background: none; border: none; cursor: pointer; color: #D4E8D4; padding: 0;">★</button>`;
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+
+    html += `<button class="next-btn magnetic-btn ripple-element" onclick="submitEntry()">✓ Сохранить</button>`;
+    
+    document.getElementById('modalBody').innerHTML = html;
+    document.getElementById('addModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.setRating = function(fieldId, value) {
+    ratings[fieldId] = value;
+    const container = document.querySelector(`[data-field="${fieldId}"]`);
+    if (container) {
+      container.querySelectorAll('.rating-star').forEach(s => {
+        s.style.color = parseInt(s.dataset.value) <= value ? '#F4A261' : '#D4E8D4';
+      });
+    }
+  };
+
+  window.closeAddModal = function() {
+    document.getElementById('addModal').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+
+  window.submitEntry = function() {
+    const metric = window.DiaryEngine.metrics[currentMetric];
+    const entry = {};
+    let valid = true;
+
+    metric.fields.forEach(f => {
+      const el = document.querySelector(`[data-field="${f.id}"]`);
+      if (!el) return;
+
+      let value;
+      if (f.type === 'number') {
+        value = parseFloat(el.value);
+        if (isNaN(value)) value = null;
+      } else if (f.type === 'rating') {
+        value = ratings[f.id] || 0;
+      } else {
+        value = el.value;
+      }
+
+      if (f.required && (value === null || value === '' || value === 0)) {
+        valid = false;
+      }
+      entry[f.id] = value;
+    });
+
+    if (!valid) {
+      showToast('Заполните все поля', '⚠️');
+      return;
+    }
+
+    window.DiaryEngine.addEntry(currentMetric, entry);
+    closeAddModal();
+    renderMetricContent();
+    renderOverallStats();
+    showToast('Запись добавлена', '✓');
+  };
+
+  window.deleteEntry = function(entryId) {
+    if (confirm('Удалить эту запись?')) {
+      window.DiaryEngine.deleteEntry(currentMetric, entryId);
+      renderMetricContent();
+      renderOverallStats();
+      showToast('Запись удалена', '🗑');
+    }
+  };
+
+  window.exportMetric = function() {
+    const csv = window.DiaryEngine.exportToCSV(currentMetric);
+    if (!csv) {
+      showToast('Нет данных', '⚠️');
+      return;
+    }
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentMetric}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Экспортировано', '📥');
+  };
+
+  window.exportAll = function() {
+    const text = window.DiaryEngine.exportAllForDoctor();
+    if (!text || text.split('\n').length < 10) {
+      showToast('Нет данных', '⚠️');
+      return;
+    }
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `diary_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Экспортировано', '📥');
+  };
+
+  // Init
+  renderOverallStats();
+  renderMetricContent();
+
+  document.getElementById('addModal').addEventListener('click', (e) => {
+    if (e.target.id === 'addModal') closeAddModal();
   });
 
-  container.innerHTML = html;
-}
-
-// ═══════════════════════════════════════
-// ЭКСПОРТ ДЛЯ ВРАЧА
-// ═══════════════════════════════════════
-function exportForDoctor() {
-  var text = window.DiaryEngine.exportAllForDoctor();
-  if (!text || text.split('\n').length < 10) {
-    alert('Нет данных для экспорта. Добавьте хотя бы несколько записей.');
-    return;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
   }
-  downloadFile(text, 'diary_for_doctor_' + new Date().toISOString().slice(0,10) + '.txt', 'text/plain;charset=utf-8');
-}
-
-function downloadFile(content, filename, mime) {
-  var blob = new Blob([content], { type: mime });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-// Запуск
-init();
-
 })();
 </script>
 
-<script>
-(function(){
-if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('SW:',e)})})}
-var deferredPrompt=null,installBtn=document.getElementById('pwaInstallBtn');
-window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredPrompt=e;if(installBtn)installBtn.style.display='block'});
-if(installBtn){installBtn.addEventListener('click',async function(){if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.style.display='none'})}
-})();
-</script>
-
-<button id="pwaInstallBtn" style="display:none;position:fixed;bottom:20px;right:20px;background:#2563EB;color:white;border:none;padding:16px 24px;border-radius:12px;font-size:18px;font-weight:600;box-shadow:0 4px 12px rgba(37,99,235,0.3);cursor:pointer;z-index:1000;font-family:inherit">📱 Установить приложение</button>
 </body>
 </html>

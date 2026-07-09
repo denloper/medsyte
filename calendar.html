@@ -1,509 +1,408 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<!-- Запрет кеширования HTML (F5 всегда берёт с сервера) -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
-<!-- Версия приложения (меняйте при каждом деплое) -->
-<meta name="app-version" content="5.1.0">
-<base href="./">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
-<meta name="theme-color" content="#2563EB">
-<meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
-<title>Календарь здоровья — Семейный доктор</title>
-<style>
-:root{--c-primary:#2563EB;--c-primary-dark:#1E40AF;--c-primary-light:#DBEAFE;--c-ok:#059669;--c-ok-bg:#ECFDF5;--c-warn:#D97706;--c-warn-bg:#FFFBEB;--c-danger:#B91C1C;--c-danger-bg:#FEF2F2;--c-bg:#F9FAFB;--c-card:#FFFFFF;--c-border:#E5E7EB;--c-text:#111827;--c-text-muted:#6B7280;--fs-base:18px;--fs-lg:20px;--fs-xl:24px;--fs-2xl:28px;--sp-1:8px;--sp-2:16px;--sp-3:24px;--sp-4:32px;--r-sm:8px;--r-md:12px;--r-lg:16px;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--shadow-md:0 4px 12px rgba(0,0,0,0.08);--focus-ring:0 0 0 4px rgba(37,99,235,0.3)}
-*{box-sizing:border-box;margin:0;padding:0}html{font-size:var(--fs-base)}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--c-bg);color:var(--c-text);line-height:1.6;min-height:100vh}
-.container{max-width:900px;margin:0 auto;padding:var(--sp-3)}
-header{background:var(--c-card);border-bottom:1px solid var(--c-border);padding:var(--sp-3);margin-bottom:var(--sp-3);box-shadow:var(--shadow-sm)}
-.header-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
-.back-link{text-decoration:none;color:var(--c-primary);font-size:var(--fs-base);padding:8px 12px;border-radius:var(--r-sm);display:inline-flex;align-items:center;gap:8px;font-weight:600}
-.back-link:hover{background:var(--c-primary-light)}
-h1{font-size:var(--fs-2xl);color:var(--c-primary-dark)}
-.subtitle{color:var(--c-text-muted);margin:var(--sp-1) 0 var(--sp-3)}
-
-/* Сводка */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--sp-2);margin-bottom:var(--sp-3)}
-.stat-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);text-align:center}
-.stat-card h3{font-size:14px;color:var(--c-text-muted);margin-bottom:6px;font-weight:600}
-.stat-card .number{font-size:var(--fs-2xl);font-weight:700;display:block;margin-bottom:4px}
-.stat-card.overdue{background:var(--c-danger-bg);color:var(--c-danger);border-color:var(--c-danger)}
-.stat-card.urgent{background:#FEF3C7;color:#92400E;border-color:#F59E0B}
-.stat-card.soon{background:var(--c-warn-bg);color:var(--c-warn);border-color:var(--c-warn)}
-.stat-card.completed{background:var(--c-ok-bg);color:var(--c-ok);border-color:var(--c-ok)}
-
-/* Профиль пациента */
-.patient-bar{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);margin-bottom:var(--sp-3);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--sp-2)}
-.patient-info{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap}
-.patient-info strong{color:var(--c-primary-dark)}
-.notif-btn{padding:10px 16px;background:var(--c-primary);color:white;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;min-height:44px;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
-.notif-btn.granted{background:var(--c-ok)}
-.notif-btn.denied{background:var(--c-text-muted);cursor:not-allowed}
-
-/* Фильтры */
-.filters{display:flex;gap:var(--sp-1);margin-bottom:var(--sp-3);flex-wrap:wrap}
-.filter-btn{padding:8px 14px;font-size:14px;font-weight:600;border:2px solid var(--c-border);background:var(--c-card);color:var(--c-text);border-radius:20px;cursor:pointer;font-family:inherit;transition:all 0.2s}
-.filter-btn:hover{border-color:var(--c-primary)}
-.filter-btn.active{background:var(--c-primary);color:white;border-color:var(--c-primary)}
-
-/* Категории */
-.category-section{margin-bottom:var(--sp-4)}
-.category-title{font-size:var(--fs-lg);color:var(--c-primary-dark);margin-bottom:var(--sp-2);padding-bottom:var(--sp-1);border-bottom:2px solid var(--c-primary-light);display:flex;align-items:center;gap:8px}
-
-/* Карточка события */
-.event-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);margin-bottom:var(--sp-2);border-left:4px solid var(--c-border);transition:all 0.2s}
-.event-card:hover{box-shadow:var(--shadow-md)}
-.event-card.overdue{border-left-color:var(--c-danger);background:var(--c-danger-bg)}
-.event-card.urgent{border-left-color:#F59E0B;background:#FEF3C7}
-.event-card.soon{border-left-color:var(--c-warn);background:var(--c-warn-bg)}
-.event-card.upcoming{border-left-color:var(--c-primary);background:var(--c-primary-light)}
-.event-card.planned{border-left-color:var(--c-text-muted)}
-.event-card.completed{border-left-color:var(--c-ok);background:var(--c-ok-bg);opacity:0.75}
-
-.event-header{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-2);margin-bottom:var(--sp-1)}
-.event-title{font-size:var(--fs-lg);font-weight:700;display:flex;align-items:center;gap:8px;flex:1}
-.event-title .icon{font-size:24px}
-.event-badge{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap}
-.event-badge.overdue{background:var(--c-danger);color:white}
-.event-badge.urgent{background:#F59E0B;color:white}
-.event-badge.soon{background:var(--c-warn);color:white}
-.event-badge.upcoming{background:var(--c-primary);color:white}
-.event-badge.planned{background:var(--c-text-muted);color:white}
-.event-badge.completed{background:var(--c-ok);color:white}
-
-.event-description{color:var(--c-text-muted);font-size:15px;margin-bottom:var(--sp-1)}
-.event-meta{display:flex;gap:var(--sp-3);flex-wrap:wrap;font-size:14px;color:var(--c-text-muted);margin-bottom:var(--sp-2)}
-.event-meta strong{color:var(--c-text)}
-
-.event-actions{display:flex;gap:var(--sp-1);flex-wrap:wrap;margin-top:var(--sp-2)}
-.btn{padding:10px 16px;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;min-height:40px;transition:all 0.2s}
-.btn-primary{background:var(--c-ok);color:white}
-.btn-primary:hover{background:#047857}
-.btn-secondary{background:var(--c-card);color:var(--c-primary);border:2px solid var(--c-primary)}
-.btn-secondary:hover{background:var(--c-primary-light)}
-.btn-tertiary{background:transparent;color:var(--c-text-muted)}
-.btn-tertiary:hover{background:var(--c-bg);color:var(--c-text)}
-.btn-danger{background:var(--c-danger);color:white}
-
-/* Пустое состояние */
-.empty-state{text-align:center;padding:var(--sp-4);background:var(--c-card);border-radius:var(--r-md);border:1px solid var(--c-border)}
-.empty-state .icon{font-size:64px;margin-bottom:var(--sp-2)}
-.empty-state h2{margin-bottom:var(--sp-2);color:var(--c-primary-dark)}
-.empty-state p{margin-bottom:var(--sp-3);color:var(--c-text-muted)}
-
-/* Модальное окно планирования */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:1000;padding:var(--sp-3)}
-.modal-overlay.active{display:flex}
-.modal{background:var(--c-card);border-radius:var(--r-lg);max-width:480px;width:100%;padding:var(--sp-4);box-shadow:0 20px 60px rgba(0,0,0,0.3)}
-.modal h2{color:var(--c-primary-dark);font-size:var(--fs-xl);margin-bottom:var(--sp-2)}
-.modal p{color:var(--c-text-muted);margin-bottom:var(--sp-3)}
-.modal label{display:block;margin-bottom:6px;font-weight:600;color:var(--c-text)}
-.modal input[type=date]{width:100%;padding:12px;font-size:var(--fs-base);border:1px solid var(--c-border);border-radius:var(--r-sm);background:var(--c-bg);color:var(--c-text);margin-bottom:var(--sp-2);font-family:inherit}
-.modal-buttons{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
-.modal-buttons .btn{flex:1;min-width:120px}
-
-.quick-dates{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-1);margin-bottom:var(--sp-2)}
-.quick-date-btn{padding:10px;background:var(--c-bg);border:2px solid var(--c-border);border-radius:var(--r-sm);cursor:pointer;text-align:center;font-size:13px;font-weight:600;font-family:inherit;color:var(--c-text);transition:all 0.2s}
-.quick-date-btn:hover{border-color:var(--c-primary);background:var(--c-primary-light)}
-
-.disclaimer{background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--r-md);padding:var(--sp-3);text-align:center;color:#92400E;font-size:14px;margin-top:var(--sp-3)}
-
-@media(prefers-color-scheme:dark){
-  :root{--c-bg:#111827;--c-card:#1F2937;--c-border:#374151;--c-text:#F9FAFB;--c-text-muted:#9CA3AF;--c-primary-light:#1E3A8A;--c-ok-bg:#064E3B;--c-ok:#6EE7B7;--c-warn-bg:#78350F;--c-warn:#FCD34D;--c-danger-bg:#7F1D1D;--c-danger:#FCA5A5}
-  .stat-card.urgent{background:#78350F;color:#FCD34D;border-color:#F59E0B}
-  .event-card.urgent{background:#78350F;border-left-color:#F59E0B}
-  .event-card.overdue{background:var(--c-danger-bg)}
-  .event-card.soon{background:var(--c-warn-bg)}
-  .event-card.upcoming{background:#1E3A8A}
-  .quick-date-btn{background:#374151;border-color:#4B5563;color:#F9FAFB}
-  .quick-date-btn:hover{background:var(--c-primary-light);border-color:var(--c-primary)}
-  .disclaimer{background:#78350F;border-color:#92400E;color:#FCD34D}
-}
-</style>
+  <meta charset="UTF-8">
+  <base href="./">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8BAF8B">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="animations.css">
+  <title>Календарь здоровья</title>
 </head>
 <body>
-<header>
-  <div class="header-inner">
-    <a href="index.html" class="back-link">← Назад</a>
-    <h1>📅 Календарь здоровья</h1>
-  </div>
-</header>
 
-<main class="container">
-  <p class="subtitle">Персональный план обследований на основе вашего возраста, пола и истории анализов.</p>
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastText">Готово</span>
+</div>
 
-  <!-- Профиль пациента -->
-  <div class="patient-bar">
-    <div class="patient-info">
-      <span>👤 <strong id="profileName">Я</strong></span>
-      <span id="profileAge"></span>
-      <span id="profileSex"></span>
+<div class="app">
+  
+  <div class="status-bar animate-on-scroll animate-fade-in">
+    <span id="currentTime">9:41</span>
+    <div class="status-icons">
+      <span>📶</span>
+      <span>📡</span>
+      <span class="pulse-dot">🔋</span>
     </div>
-    <button class="notif-btn" id="notifBtn">🔔 Включить уведомления</button>
   </div>
 
-  <!-- Сводка -->
-  <div class="stats-grid" id="statsGrid"></div>
-
-  <!-- Фильтры -->
-  <div class="filters">
-    <button class="filter-btn active" data-filter="all">Все</button>
-    <button class="filter-btn" data-filter="overdue">Просрочено</button>
-    <button class="filter-btn" data-filter="urgent">Срочно</button>
-    <button class="filter-btn" data-filter="soon">Скоро</button>
-    <button class="filter-btn" data-filter="completed">Выполнено</button>
+  <!-- Header -->
+  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
+    <div class="pc-top" style="margin-bottom: 0;">
+      <div class="pc-identity">
+        <a href="index.html" class="circle-btn ripple-element">←</a>
+        <div>
+          <div class="pc-name">Календарь здоровья</div>
+          <div class="pc-id" id="profileInfo">Персональный план</div>
+        </div>
+      </div>
+      <button class="circle-btn dark-btn ripple-element" id="notifBtn" onclick="requestNotifications()">🔔</button>
+    </div>
   </div>
 
-  <!-- Контент -->
-  <div id="calendarContent"></div>
-
-  <div class="disclaimer">
-    ⚕ План составлен на основе клинических рекомендаций. Индивидуальные показания обсуждайте с врачом.
+  <!-- Stats -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Состояние</h2>
   </div>
-</main>
 
-<!-- Модальное окно планирования -->
+  <div class="vitals-grid stagger" id="statsGrid"></div>
+
+  <!-- Filters -->
+  <div class="filter-row animate-on-scroll animate-fade-in" id="filterRow">
+    <button class="filter-chip active ripple-element click-scale" data-filter="all">Все</button>
+    <button class="filter-chip ripple-element click-scale" data-filter="overdue">Просрочено</button>
+    <button class="filter-chip ripple-element click-scale" data-filter="urgent">Срочно</button>
+    <button class="filter-chip ripple-element click-scale" data-filter="soon">Скоро</button>
+    <button class="filter-chip ripple-element click-scale" data-filter="completed">Выполнено</button>
+  </div>
+
+  <!-- Events -->
+  <div id="eventsContainer"></div>
+
+  <div style="padding: 16px; background: #FFF8E1; border-radius: var(--r-md); margin: 14px 0; font-size: 13px; color: #92400E; line-height: 1.5;" class="animate-on-scroll animate-fade-up">
+    ⚕️ План составлен на основе клинических рекомендаций. Индивидуальные показания обсуждайте с врачом.
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a href="index.html" class="nav-item">
+      <div class="nav-icon">🏠</div>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a href="upload.html" class="nav-item">
+      <div class="nav-icon">📄</div>
+      <span class="nav-label">Анализы</span>
+    </a>
+    <a href="index.html" class="nav-fab">🩺</a>
+    <a href="calendar.html" class="nav-item active">
+      <div class="nav-icon">
+        📅
+        <span class="nav-badge" id="urgentBadge">0</span>
+      </div>
+      <span class="nav-label">Календарь</span>
+    </a>
+    <a href="diary.html" class="nav-item">
+      <div class="nav-icon">📓</div>
+      <span class="nav-label">Дневник</span>
+    </a>
+  </div>
+</div>
+
+<!-- Schedule Modal -->
 <div class="modal-overlay" id="scheduleModal">
-  <div class="modal">
-    <h2 id="modalTitle">📅 Запланировать</h2>
-    <p id="modalDescription"></p>
-    
-    <label>Быстрый выбор:</label>
-    <div class="quick-dates" id="quickDates">
-      <button class="quick-date-btn" data-days="7">Через неделю</button>
-      <button class="quick-date-btn" data-days="14">Через 2 недели</button>
-      <button class="quick-date-btn" data-days="30">Через месяц</button>
-      <button class="quick-date-btn" data-days="60">Через 2 месяца</button>
-      <button class="quick-date-btn" data-days="90">Через 3 месяца</button>
-      <button class="quick-date-btn" data-days="180">Через полгода</button>
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Запланировать</div>
+      <button class="modal-close ripple-element" onclick="closeModal()">✕</button>
     </div>
-
-    <label for="customDate">Или выберите дату:</label>
-    <input type="date" id="customDate">
-
-    <div class="modal-buttons">
-      <button class="btn btn-primary" id="confirmSchedule">✓ Запланировать</button>
-      <button class="btn btn-tertiary" id="cancelSchedule">Отмена</button>
-    </div>
+    <div class="modal-body" id="modalBody"></div>
   </div>
 </div>
 
 <script src="calendar-engine.js"></script>
+<script src="animations.js"></script>
 <script>
 (function(){
-'use strict';
+  'use strict';
 
-var currentFilter = 'all';
-var currentPlan = [];
-var schedulingEventId = null;
+  let currentFilter = 'all';
+  let currentPlan = [];
+  let schedulingEventId = null;
 
-// ═══════════════════════════════════════
-// ИНИЦИАЛИЗАЦИЯ
-// ═══════════════════════════════════════
-function init() {
-  var profileInfo = getActiveProfile();
-  document.getElementById('profileName').textContent = profileInfo.name;
-  document.getElementById('profileAge').textContent = profileInfo.age ? profileInfo.age + ' лет' : '';
-  document.getElementById('profileSex').textContent = profileInfo.sex === 'male' ? '♂ Муж.' : profileInfo.sex === 'female' ? '♀ Жен.' : '';
-
-  renderPlan();
-  setupFilters();
-  setupNotifications();
-  setupScheduleModal();
-}
-
-function getActiveProfile() {
-  try {
-    var profiles = JSON.parse(localStorage.getItem('family_profiles_v4') || '[]');
-    var activeId = localStorage.getItem('active_profile_v4') || 'self';
-    var profile = profiles.find(function(p) { return p.id === activeId; });
-    return {
-      name: profile ? profile.name : 'Я',
-      sex: 'any',
-      age: 35
-    };
-  } catch (e) {
-    return { name: 'Я', sex: 'any', age: 35 };
+  function updateTime() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    document.getElementById('currentTime').textContent = `${h}:${m}`;
   }
-}
+  updateTime();
+  setInterval(updateTime, 60000);
 
-// ═══════════════════════════════════════
-// РЕНДЕР ПЛАНА
-// ═══════════════════════════════════════
-function renderPlan() {
-  var profile = getActiveProfile();
-  currentPlan = window.HealthCalendar.generatePlan(profile);
-  var stats = window.HealthCalendar.getStats(currentPlan);
-
-  renderStats(stats);
-  renderEvents();
-}
-
-function renderStats(stats) {
-  var html = '';
-  html += '<div class="stat-card overdue"><h3>⚠ Просрочено</h3><div class="number">' + stats.overdue + '</div></div>';
-  html += '<div class="stat-card urgent"><h3>🔥 Срочно (7 дн.)</h3><div class="number">' + stats.urgent + '</div></div>';
-  html += '<div class="stat-card soon"><h3>📅 Скоро (30 дн.)</h3><div class="number">' + stats.soon + '</div></div>';
-  html += '<div class="stat-card completed"><h3>✓ Выполнено за год</h3><div class="number">' + stats.completedThisYear + '</div></div>';
-  document.getElementById('statsGrid').innerHTML = html;
-}
-
-function renderEvents() {
-  var container = document.getElementById('calendarContent');
-  
-  var filtered = currentPlan.filter(function(e) {
-    if (currentFilter === 'all') return true;
-    if (currentFilter === 'completed') return e.status === 'completed';
-    return e.status === currentFilter;
-  });
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="icon">🎉</div><h2>Всё в порядке!</h2><p>Нет событий с выбранным статусом.</p></div>';
-    return;
-  }
-
-  // Группируем по категориям
-  var grouped = {};
-  filtered.forEach(function(e) {
-    if (!grouped[e.category]) grouped[e.category] = [];
-    grouped[e.category].push(e);
-  });
-
-  var html = '';
-  Object.keys(grouped).forEach(function(category) {
-    html += '<section class="category-section">';
-    html += '<h2 class="category-title">' + category + '</h2>';
-    grouped[category].forEach(function(e) {
-      html += renderEventCard(e);
-    });
-    html += '</section>';
-  });
-
-  container.innerHTML = html;
-  attachEventHandlers();
-}
-
-function renderEventCard(e) {
-  var statusLabels = {
-    overdue: 'Просрочено',
-    urgent: 'Срочно',
-    soon: 'Скоро',
-    upcoming: 'Впереди',
-    planned: 'Запланировано',
-    completed: 'Выполнено'
+  window.showToast = function(text, icon = '✓') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = text;
+    toast.querySelector('.toast-icon').textContent = icon;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
-  var dateInfo = '';
-  if (e.status === 'overdue') {
-    dateInfo = '⚠ Было нужно ' + Math.abs(e.daysUntil) + ' дн. назад';
-  } else if (e.status === 'urgent') {
-    dateInfo = '🔥 Осталось ' + e.daysUntil + ' дн.';
-  } else if (e.status === 'soon') {
-    dateInfo = '📅 Через ' + e.daysUntil + ' дн.';
-  } else if (e.daysUntil > 365) {
-    dateInfo = '📆 Через ' + Math.floor(e.daysUntil / 365) + ' г. ' + (e.daysUntil % 365 > 30 ? Math.floor((e.daysUntil % 365) / 30) + ' мес.' : '');
-  } else if (e.daysUntil > 30) {
-    dateInfo = '📆 Через ' + Math.floor(e.daysUntil / 30) + ' мес.';
-  } else {
-    dateInfo = '📆 Через ' + e.daysUntil + ' дн.';
+  function getProfile() {
+    try {
+      const user = JSON.parse(localStorage.getItem('user_account_v1') || '{}');
+      return {
+        name: user.name || 'Пользователь',
+        sex: user.sex || 'any',
+        age: user.age || 35
+      };
+    } catch(e) {
+      return { name: 'Пользователь', sex: 'any', age: 35 };
+    }
   }
 
-  var lastInfo = '';
-  if (e.lastCompleted) {
-    var lastDate = new Date(e.lastCompleted);
-    var daysAgo = Math.floor((Date.now() - e.lastCompleted) / (24 * 60 * 60 * 1000));
-    lastInfo = '<span>📋 Последнее: <strong>' + lastDate.toLocaleDateString('ru-RU') + '</strong> (' + daysAgo + ' дн. назад)</span>';
-  } else {
-    lastInfo = '<span>📋 <strong>Ещё не делали</strong></span>';
+  function renderPlan() {
+    const profile = getProfile();
+    document.getElementById('profileInfo').textContent = `${profile.name}, ${profile.age} лет`;
+    
+    currentPlan = window.HealthCalendar ? window.HealthCalendar.generatePlan(profile) : [];
+    const stats = window.HealthCalendar ? window.HealthCalendar.getStats(currentPlan) : { overdue: 0, urgent: 0, soon: 0, upcoming: 0, completedThisYear: 0, total: 0 };
+
+    document.getElementById('urgentBadge').textContent = stats.urgent + stats.overdue;
+
+    // Stats
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="v-card tilt-card ripple-element">
+        <div class="v-icon red">⚠</div>
+        <div class="v-label">Просрочено</div>
+        <div class="v-value"><span data-counter="${stats.overdue}">${stats.overdue}</span></div>
+      </div>
+      <div class="v-card tilt-card ripple-element">
+        <div class="v-icon amber">🔥</div>
+        <div class="v-label">Срочно</div>
+        <div class="v-value"><span data-counter="${stats.urgent}">${stats.urgent}</span></div>
+      </div>
+      <div class="v-card tilt-card ripple-element">
+        <div class="v-icon blue">📅</div>
+        <div class="v-label">Скоро</div>
+        <div class="v-value"><span data-counter="${stats.soon}">${stats.soon}</span></div>
+      </div>
+      <div class="v-card tilt-card ripple-element">
+        <div class="v-icon green">✓</div>
+        <div class="v-label">За год</div>
+        <div class="v-value"><span data-counter="${stats.completedThisYear}">${stats.completedThisYear}</span></div>
+      </div>
+    `;
+
+    setTimeout(() => {
+      document.querySelectorAll('#statsGrid [data-counter]').forEach(el => {
+        if (window.AnimationsEngine) {
+          window.AnimationsEngine.animateCounter(el, parseInt(el.dataset.counter), 1000);
+        }
+      });
+    }, 300);
+
+    renderEvents();
   }
 
-  var actions = '';
-  actions += '<button class="btn btn-primary" data-action="complete" data-id="' + e.id + '">✓ Сделано</button>';
-  actions += '<button class="btn btn-secondary" data-action="schedule" data-id="' + e.id + '">📅 Запланировать</button>';
-  if (e.daysUntil < 0 || e.daysUntil > 7) {
-    actions += '<button class="btn btn-tertiary" data-action="postpone" data-id="' + e.id + '">⏰ Напомнить позже</button>';
+  function renderEvents() {
+    const filtered = currentPlan.filter(e => {
+      if (currentFilter === 'all') return true;
+      if (currentFilter === 'completed') return e.status === 'completed';
+      return e.status === currentFilter;
+    });
+
+    const container = document.getElementById('eventsContainer');
+    
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state animate-on-scroll animate-fade-up">
+          <div class="empty-icon">🎉</div>
+          <div class="empty-title">Всё в порядке!</div>
+          <div class="empty-sub">Нет событий с таким статусом</div>
+        </div>
+      `;
+      return;
+    }
+
+    // Group by category
+    const grouped = {};
+    filtered.forEach(e => {
+      if (!grouped[e.category]) grouped[e.category] = [];
+      grouped[e.category].push(e);
+    });
+
+    let html = '';
+    let idx = 0;
+    Object.entries(grouped).forEach(([category, events]) => {
+      html += `
+        <div class="sec-hd animate-on-scroll animate-slide-left" style="animation-delay: ${idx * 0.05}s;">
+          <h2>${category}</h2>
+          <span class="see-all">${events.length}</span>
+        </div>
+      `;
+      
+      events.forEach((e, eIdx) => {
+        const statusLabels = {
+          overdue: 'Просрочено', urgent: 'Срочно', soon: 'Скоро',
+          upcoming: 'Впереди', planned: 'Запланировано', completed: 'Выполнено'
+        };
+        const statusColors = {
+          overdue: 'red', urgent: 'red', soon: 'orange',
+          upcoming: 'blue', planned: 'green', completed: 'green'
+        };
+        const color = statusColors[e.status] || 'blue';
+        
+        let dateInfo = '';
+        if (e.status === 'overdue') {
+          dateInfo = `⚠ Было ${Math.abs(e.daysUntil)} дн. назад`;
+        } else if (e.status === 'urgent') {
+          dateInfo = `🔥 Осталось ${e.daysUntil} дн.`;
+        } else if (e.daysUntil > 365) {
+          dateInfo = `📆 Через ${Math.floor(e.daysUntil / 365)} г.`;
+        } else if (e.daysUntil > 30) {
+          dateInfo = `📆 Через ${Math.floor(e.daysUntil / 30)} мес.`;
+        } else {
+          dateInfo = `📆 Через ${e.daysUntil} дн.`;
+        }
+
+        html += `
+          <div class="other-card animate-on-scroll animate-fade-up tilt-card" style="border-left: 4px solid var(--${color}); animation-delay: ${(idx + eIdx) * 0.06}s;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+              <div style="display: flex; gap: 12px; align-items: center; flex: 1;">
+                <div style="font-size: 28px;">${e.icon}</div>
+                <div style="flex: 1;">
+                  <div style="font-size: 16px; font-weight: 800; color: var(--dark); margin-bottom: 2px;">${e.title}</div>
+                  <div style="font-size: 12px; color: var(--text-3);">${e.description}</div>
+                </div>
+              </div>
+              <div style="padding: 4px 10px; background: var(--${color}); color: white; border-radius: var(--r-full); font-size: 11px; font-weight: 700;">
+                ${statusLabels[e.status]}
+              </div>
+            </div>
+            
+            <div style="padding: 10px; background: var(--surface-2); border-radius: var(--r-sm); margin-bottom: 10px; font-size: 13px; color: var(--text-2);">
+              ${dateInfo}
+              ${e.lastCompleted ? `<br><span style="color: var(--text-3);">📋 Последнее: ${new Date(e.lastCompleted).toLocaleDateString('ru-RU')}</span>` : ''}
+            </div>
+
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="pill pill-green ripple-element click-scale" onclick="markCompleted('${e.id}')">✓ Сделано</button>
+              <button class="pill pill-outline ripple-element click-scale" onclick="openSchedule('${e.id}')">📅 Запланировать</button>
+              ${e.daysUntil < 0 || e.daysUntil > 7 ? `<button class="pill pill-outline ripple-element click-scale" onclick="postpone('${e.id}')">⏰ Позже</button>` : ''}
+            </div>
+          </div>
+        `;
+        idx++;
+      });
+    });
+
+    container.innerHTML = html;
   }
 
-  return '<div class="event-card ' + e.status + '">' +
-    '<div class="event-header">' +
-      '<div class="event-title"><span class="icon">' + e.icon + '</span>' + e.title + '</div>' +
-      '<span class="event-badge ' + e.status + '">' + statusLabels[e.status] + '</span>' +
-    '</div>' +
-    '<div class="event-description">' + e.description + '</div>' +
-    '<div class="event-meta">' +
-      '<span>' + dateInfo + '</span>' +
-      lastInfo +
-    '</div>' +
-    '<div class="event-actions">' + actions + '</div>' +
-  '</div>';
-}
-
-function attachEventHandlers() {
-  document.querySelectorAll('[data-action="complete"]').forEach(function(btn) {
+  // Filters
+  document.querySelectorAll('#filterRow .filter-chip').forEach(btn => {
     btn.addEventListener('click', function() {
-      var id = this.dataset.id;
-      window.HealthCalendar.markCompleted(id);
-      renderPlan();
-      showNotification('✓ Отмечено как выполненное!', 'Запись добавлена в историю. Следующее напоминание будет рассчитано автоматически.');
-    });
-  });
-
-  document.querySelectorAll('[data-action="schedule"]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      openScheduleModal(this.dataset.id);
-    });
-  });
-
-  document.querySelectorAll('[data-action="postpone"]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var id = this.dataset.id;
-      window.HealthCalendar.postpone(id, 30);
-      renderPlan();
-      showNotification('⏰ Отложено на 30 дней', 'Мы напомним вам позже.');
-    });
-  });
-}
-
-// ═══════════════════════════════════════
-// ФИЛЬТРЫ
-// ═══════════════════════════════════════
-function setupFilters() {
-  document.querySelectorAll('.filter-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.querySelectorAll('#filterRow .filter-chip').forEach(b => b.classList.remove('active'));
       this.classList.add('active');
       currentFilter = this.dataset.filter;
       renderEvents();
     });
   });
-}
 
-// ═══════════════════════════════════════
-// МОДАЛКА ПЛАНИРОВАНИЯ
-// ═══════════════════════════════════════
-function setupScheduleModal() {
-  var modal = document.getElementById('scheduleModal');
-  
-  document.getElementById('cancelSchedule').addEventListener('click', function() {
-    modal.classList.remove('active');
-    schedulingEventId = null;
-  });
-
-  modal.addEventListener('click', function(e) {
-    if (e.target === modal) {
-      modal.classList.remove('active');
-      schedulingEventId = null;
+  window.markCompleted = function(id) {
+    if (window.HealthCalendar) {
+      window.HealthCalendar.markCompleted(id);
+      renderPlan();
+      showToast('Отмечено как выполненное', '✓');
     }
-  });
+  };
 
-  document.querySelectorAll('.quick-date-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var days = parseInt(this.dataset.days);
-      var date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-      document.getElementById('customDate').value = date.toISOString().split('T')[0];
-    });
-  });
+  window.postpone = function(id) {
+    if (window.HealthCalendar) {
+      window.HealthCalendar.postpone(id, 30);
+      renderPlan();
+      showToast('Отложено на 30 дней', '⏰');
+    }
+  };
 
-  document.getElementById('confirmSchedule').addEventListener('click', function() {
-    var dateValue = document.getElementById('customDate').value;
+  window.openSchedule = function(id) {
+    schedulingEventId = id;
+    const rec = window.HealthCalendar.recommendations.find(r => r.id === id);
+    if (!rec) return;
+
+    document.getElementById('modalTitle').textContent = `📅 ${rec.title}`;
+    
+    const defaultDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const minDate = new Date().toISOString().split('T')[0];
+
+    document.getElementById('modalBody').innerHTML = `
+      <p style="color: var(--text-2); margin-bottom: 16px; font-size: 14px;">${rec.description}</p>
+      
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px;">
+        <button class="pill pill-outline ripple-element click-scale" onclick="setQuickDate(7)">Неделя</button>
+        <button class="pill pill-outline ripple-element click-scale" onclick="setQuickDate(30)">Месяц</button>
+        <button class="pill pill-outline ripple-element click-scale" onclick="setQuickDate(90)">3 месяца</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Или выберите дату</label>
+        <input type="date" id="customDate" value="${defaultDate.toISOString().split('T')[0]}" min="${minDate}"
+               style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      </div>
+
+      <button class="next-btn magnetic-btn ripple-element" onclick="confirmSchedule()">✓ Запланировать</button>
+    `;
+
+    document.getElementById('scheduleModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.setQuickDate = function(days) {
+    const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    document.getElementById('customDate').value = date.toISOString().split('T')[0];
+  };
+
+  window.confirmSchedule = function() {
+    const dateValue = document.getElementById('customDate').value;
     if (!dateValue) {
-      alert('Выберите дату');
+      showToast('Выберите дату', '⚠️');
       return;
     }
-    var date = new Date(dateValue).getTime() + 12 * 60 * 60 * 1000; // полдень
-    window.HealthCalendar.scheduleEvent(schedulingEventId, date);
-    modal.classList.remove('active');
+    const date = new Date(dateValue).getTime() + 12 * 60 * 60 * 1000;
+    if (window.HealthCalendar) {
+      window.HealthCalendar.scheduleEvent(schedulingEventId, date);
+      closeModal();
+      renderPlan();
+      showToast('Запланировано', '📅');
+    }
+  };
+
+  window.closeModal = function() {
+    document.getElementById('scheduleModal').classList.remove('open');
+    document.body.style.overflow = '';
     schedulingEventId = null;
-    renderPlan();
-    showNotification('📅 Запланировано!', 'Уведомление придёт в выбранную дату.');
-  });
-}
+  };
 
-function openScheduleModal(eventId) {
-  schedulingEventId = eventId;
-  var rec = window.HealthCalendar.recommendations.find(function(r) { return r.id === eventId; });
-  if (!rec) return;
-
-  document.getElementById('modalTitle').textContent = '📅 Запланировать: ' + rec.title;
-  document.getElementById('modalDescription').textContent = rec.description;
-  
-  var defaultDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  document.getElementById('customDate').value = defaultDate.toISOString().split('T')[0];
-  document.getElementById('customDate').min = new Date().toISOString().split('T')[0];
-
-  document.getElementById('scheduleModal').classList.add('active');
-}
-
-// ═══════════════════════════════════════
-// УВЕДОМЛЕНИЯ
-// ═══════════════════════════════════════
-function setupNotifications() {
-  var btn = document.getElementById('notifBtn');
-  updateNotifButton();
-
-  btn.addEventListener('click', async function() {
-    if (this.classList.contains('denied')) {
-      alert('Уведомления заблокированы. Разрешите их в настройках браузера.');
+  window.requestNotifications = async function() {
+    if (!('Notification' in window)) {
+      showToast('Не поддерживается', '❌');
       return;
     }
-    var result = await window.HealthCalendar.requestPermission();
-    updateNotifButton();
-    if (result === 'granted') {
-      window.HealthCalendar.sendImmediateNotification(
-        '🎉 Уведомления включены!',
-        'Мы будем напоминать о важных обследованиях.'
-      );
+    if (Notification.permission === 'granted') {
+      showToast('Уже включены', '🔔');
+      return;
     }
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+      showToast('Уведомления включены', '🔔');
+      new Notification('Семейный доктор', {
+        body: 'Будем напоминать о важных обследованиях',
+        icon: './manifest.json'
+      });
+    } else {
+      showToast('Отключены', '🔕');
+    }
+  };
+
+  // Init
+  renderPlan();
+
+  document.getElementById('scheduleModal').addEventListener('click', (e) => {
+    if (e.target.id === 'scheduleModal') closeModal();
   });
-}
 
-function updateNotifButton() {
-  var btn = document.getElementById('notifBtn');
-  if (!('Notification' in window)) {
-    btn.textContent = '❌ Не поддерживается';
-    btn.classList.add('denied');
-    return;
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
   }
-  if (Notification.permission === 'granted') {
-    btn.textContent = '🔔 Уведомления включены';
-    btn.classList.add('granted');
-    btn.classList.remove('denied');
-  } else if (Notification.permission === 'denied') {
-    btn.textContent = '🔕 Уведомления заблокированы';
-    btn.classList.add('denied');
-  } else {
-    btn.textContent = '🔔 Включить уведомления';
-    btn.classList.remove('granted', 'denied');
-  }
-}
-
-function showNotification(title, body) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    window.HealthCalendar.sendImmediateNotification(title, body);
-  }
-}
-
-// Запуск
-init();
-
 })();
 </script>
 
-<script>
-(function(){
-if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('SW:',e)})})}
-var deferredPrompt=null,installBtn=document.getElementById('pwaInstallBtn');
-window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredPrompt=e;if(installBtn)installBtn.style.display='block'});
-if(installBtn){installBtn.addEventListener('click',async function(){if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.style.display='none'})}
-})();
-</script>
-
-<button id="pwaInstallBtn" style="display:none;position:fixed;bottom:20px;right:20px;background:#2563EB;color:white;border:none;padding:16px 24px;border-radius:12px;font-size:18px;font-weight:600;box-shadow:0 4px 12px rgba(37,99,235,0.3);cursor:pointer;z-index:1000;font-family:inherit">📱 Установить приложение</button>
 </body>
 </html>

@@ -1,200 +1,416 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<!-- Запрет кеширования HTML (F5 всегда берёт с сервера) -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
-<!-- Версия приложения (меняйте при каждом деплое) -->
-<meta name="app-version" content="5.1.0">
-<base href="./">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
-<meta name="theme-color" content="#2563EB">
-<meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
-<title>Результаты анализов — Семейный доктор</title>
-<style>
-:root{--c-primary:#2563EB;--c-primary-dark:#1E40AF;--c-primary-light:#DBEAFE;--c-ok:#059669;--c-ok-bg:#ECFDF5;--c-warn:#D97706;--c-warn-bg:#FFFBEB;--c-danger:#B91C1C;--c-danger-bg:#FEF2F2;--c-bg:#F9FAFB;--c-card:#FFFFFF;--c-border:#E5E7EB;--c-text:#111827;--c-text-muted:#6B7280;--fs-base:18px;--fs-lg:20px;--fs-xl:24px;--fs-2xl:28px;--sp-1:8px;--sp-2:16px;--sp-3:24px;--sp-4:32px;--r-sm:8px;--r-md:12px;--r-lg:16px;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--focus-ring:0 0 0 4px rgba(37,99,235,0.3)}
-*{box-sizing:border-box;margin:0;padding:0}html{font-size:var(--fs-base)}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--c-bg);color:var(--c-text);line-height:1.6;min-height:100vh}
-.container{max-width:900px;margin:0 auto;padding:var(--sp-3)}
-header{background:var(--c-card);border-bottom:1px solid var(--c-border);padding:var(--sp-3);margin-bottom:var(--sp-3);box-shadow:var(--shadow-sm)}
-.header-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);flex-wrap:wrap}
-.back-link{text-decoration:none;color:var(--c-primary);font-size:var(--fs-base);padding:8px 12px;border-radius:var(--r-sm);display:inline-flex;align-items:center;gap:8px}
-.back-link:hover{background:var(--c-primary-light)}.back-link:focus{outline:none;box-shadow:var(--focus-ring)}
-h1{font-size:var(--fs-2xl);color:var(--c-primary-dark)}
-.meta-info{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);margin-bottom:var(--sp-3);display:flex;gap:var(--sp-3);flex-wrap:wrap;font-size:16px}
-.meta-info strong{color:var(--c-text-muted);margin-right:4px}
-.summary{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
-.summary h2{font-size:var(--fs-xl);margin-bottom:var(--sp-2)}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:var(--sp-2)}
-.stat-card{padding:var(--sp-2);border-radius:var(--r-sm);text-align:center}
-.stat-card.ok{background:var(--c-ok-bg);color:var(--c-ok)}.stat-card.warn{background:var(--c-warn-bg);color:var(--c-warn)}.stat-card.danger{background:var(--c-danger-bg);color:var(--c-danger)}
-.stat-number{font-size:var(--fs-2xl);font-weight:700;display:block;margin-bottom:4px}
-.category{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
-.category h2{font-size:var(--fs-xl);margin-bottom:var(--sp-2);color:var(--c-primary-dark)}
-.test-row{padding:var(--sp-2);background:var(--c-bg);border-radius:var(--r-sm);margin-bottom:var(--sp-1);display:grid;grid-template-columns:1fr auto;gap:var(--sp-2);align-items:start;border-left:4px solid transparent}
-.test-row.ok{border-left-color:var(--c-ok)}.test-row.warn{border-left-color:var(--c-warn)}.test-row.danger{border-left-color:var(--c-danger)}
-.test-name{font-weight:600;margin-bottom:4px}.test-value{font-size:var(--fs-lg);font-weight:600}.test-ref{font-size:14px;color:var(--c-text-muted)}
-.test-status{text-align:right;font-weight:700;font-size:var(--fs-lg)}
-.test-status.ok{color:var(--c-ok)}.test-status.warn{color:var(--c-warn)}.test-status.danger{color:var(--c-danger)}
-.recommendations{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
-.recommendations h2{font-size:var(--fs-xl);margin-bottom:var(--sp-2)}
-.rec-item{padding:var(--sp-2);border-radius:var(--r-sm);margin-bottom:var(--sp-1);border-left:4px solid}
-.rec-item.high{background:var(--c-danger-bg);border-color:var(--c-danger)}.rec-item.medium{background:var(--c-warn-bg);border-color:var(--c-warn)}.rec-item.low{background:var(--c-ok-bg);border-color:var(--c-ok)}
-.rec-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-1);flex-wrap:wrap;gap:var(--sp-1)}
-.rec-name{font-weight:700;font-size:var(--fs-lg)}
-.rec-badge{padding:4px 10px;border-radius:12px;font-size:14px;font-weight:600;color:white}
-.rec-badge.high{background:var(--c-danger)}.rec-badge.medium{background:var(--c-warn)}.rec-badge.low{background:var(--c-ok)}
-.rec-description{margin-bottom:var(--sp-1)}.rec-danger{font-style:italic;color:var(--c-text-muted);margin-bottom:var(--sp-1)}
-.rec-action{padding:var(--sp-1);background:rgba(255,255,255,0.6);border-radius:var(--r-sm);margin-bottom:var(--sp-1)}
-.rec-action strong{color:var(--c-primary-dark)}
-.rec-doctors{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-top:var(--sp-1)}
-.rec-doctor{padding:6px 12px;background:var(--c-primary-light);color:var(--c-primary-dark);border-radius:16px;font-size:14px;font-weight:600}
-.patterns{background:var(--c-danger-bg);border:1px solid var(--c-danger);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
-.patterns h2{color:var(--c-danger);font-size:var(--fs-xl);margin-bottom:var(--sp-2)}
-.pattern-item{padding:var(--sp-2);background:rgba(255,255,255,0.7);border-radius:var(--r-sm);margin-bottom:var(--sp-1)}
-.pattern-name{font-weight:700;font-size:var(--fs-lg);margin-bottom:4px}
-.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:var(--sp-2);margin-bottom:var(--sp-3)}
-.action-btn{padding:16px;background:var(--c-primary);color:white;border:none;border-radius:var(--r-md);font-size:var(--fs-base);font-weight:600;cursor:pointer;min-height:56px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit}
-.action-btn:hover{background:var(--c-primary-dark)}.action-btn:focus{outline:none;box-shadow:var(--focus-ring)}
-.action-btn.secondary{background:var(--c-card);color:var(--c-primary);border:2px solid var(--c-primary)}
-.disclaimer{background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--r-md);padding:var(--sp-3);text-align:center;color:#92400E;font-size:16px}
-.empty-state{text-align:center;padding:var(--sp-4);background:var(--c-card);border-radius:var(--r-md);border:1px solid var(--c-border)}
-.empty-state h2{margin-bottom:var(--sp-2)}.empty-state p{margin-bottom:var(--sp-3);color:var(--c-text-muted)}
-@media(prefers-color-scheme:dark){:root{--c-bg:#111827;--c-card:#1F2937;--c-border:#374151;--c-text:#F9FAFB;--c-text-muted:#9CA3AF;--c-primary-light:#1E3A8A;--c-ok-bg:#064E3B;--c-ok:#6EE7B7;--c-warn-bg:#78350F;--c-warn:#FCD34D;--c-danger-bg:#7F1D1D;--c-danger:#FCA5A5}.disclaimer{background:#78350F;border-color:#92400E;color:#FCD34D}.rec-action{background:rgba(0,0,0,0.3)}.pattern-item{background:rgba(0,0,0,0.3)}}
-</style>
+  <meta charset="UTF-8">
+  <base href="./">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8BAF8B">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="animations.css">
+  <title>Результаты анализов</title>
 </head>
 <body>
-<header><div class="header-inner"><a href="index.html" class="back-link">← На главную</a><h1>📊 Результаты анализов</h1><a href="upload.html" class="back-link">+ Новые анализы</a></div></header>
-<main class="container" id="main"></main>
+
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastText">Готово</span>
+</div>
+
+<div class="app">
+  
+  <div class="status-bar animate-on-scroll animate-fade-in">
+    <span id="currentTime">9:41</span>
+    <div class="status-icons">
+      <span>📶</span>
+      <span>📡</span>
+      <span class="pulse-dot">🔋</span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
+    <div class="pc-top" style="margin-bottom: 0;">
+      <div class="pc-identity">
+        <a href="index.html" class="circle-btn ripple-element">←</a>
+        <div>
+          <div class="pc-name">Результаты</div>
+          <div class="pc-id" id="resultDate">Сегодня</div>
+        </div>
+      </div>
+      <button class="circle-btn dark-btn ripple-element" onclick="downloadSummary()">⬇</button>
+    </div>
+  </div>
+
+  <!-- Summary stats -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Краткое саммари</h2>
+  </div>
+
+  <div class="vitals-grid stagger" id="statsGrid">
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon green">✓</div>
+      <div class="v-label">В норме</div>
+      <div class="v-value"><span id="statNormal" data-counter="0">0</span></div>
+    </div>
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon amber">↓</div>
+      <div class="v-label">Понижено</div>
+      <div class="v-value"><span id="statLow" data-counter="0">0</span></div>
+    </div>
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon red">↑</div>
+      <div class="v-label">Повышено</div>
+      <div class="v-value"><span id="statHigh" data-counter="0">0</span></div>
+    </div>
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon blue">📊</div>
+      <div class="v-label">Всего</div>
+      <div class="v-value"><span id="statTotal" data-counter="0">0</span></div>
+    </div>
+  </div>
+
+  <!-- Patterns -->
+  <div id="patternsSection" style="display: none;">
+    <div class="sec-hd animate-on-scroll animate-slide-left">
+      <h2>Возможные состояния</h2>
+      <span style="color: var(--red); font-size: 13px; font-weight: 600;">⚠ Важно</span>
+    </div>
+    <div id="patternsList"></div>
+  </div>
+
+  <!-- Recommendations -->
+  <div id="recsSection" style="display: none;">
+    <div class="sec-hd animate-on-scroll animate-slide-left">
+      <h2>Рекомендации</h2>
+      <span class="see-all" id="recsCount">0</span>
+    </div>
+    <div id="recsList"></div>
+  </div>
+
+  <!-- Results by category -->
+  <div id="resultsSection"></div>
+
+  <!-- Actions -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Действия</h2>
+  </div>
+
+  <div class="quick-grid stagger">
+    <a href="upload.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon">📄</div>
+      <span class="qi-label">Новые<br>анализы</span>
+    </a>
+    <a href="compare.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon">📈</div>
+      <span class="qi-label">Сравнить<br>динамику</span>
+    </a>
+    <a href="calendar.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon qi-dark">📅</div>
+      <span class="qi-label">План<br>обслед.</span>
+    </a>
+    <a href="index.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon">🏠</div>
+      <span class="qi-label">На<br>главную</span>
+    </a>
+  </div>
+
+  <div style="padding: 16px; background: #FFF8E1; border-radius: var(--r-md); margin-bottom: 14px; font-size: 13px; color: #92400E; line-height: 1.5;" class="animate-on-scroll animate-fade-up">
+    ⚕️ Это справочная информация на основе клинических рекомендаций. Окончательный диагноз и лечение назначает только врач.
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a href="index.html" class="nav-item">
+      <div class="nav-icon">🏠</div>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a href="upload.html" class="nav-item active">
+      <div class="nav-icon">📄</div>
+      <span class="nav-label">Анализы</span>
+    </a>
+    <a href="index.html" class="nav-fab">🩺</a>
+    <a href="calendar.html" class="nav-item">
+      <div class="nav-icon">📅</div>
+      <span class="nav-label">Календарь</span>
+    </a>
+    <a href="diary.html" class="nav-item">
+      <div class="nav-icon">📓</div>
+      <span class="nav-label">Дневник</span>
+    </a>
+  </div>
+</div>
+
 <script src="database.js"></script>
+<script src="animations.js"></script>
 <script>
 (function(){
-'use strict';
-var main=document.getElementById('main'),data;
-try{var stored=sessionStorage.getItem('analysisResults');if(!stored){showEmpty();return}data=JSON.parse(stored)}catch(e){showEmpty();return}
-if(!data.results||Object.keys(data.results).length===0){showEmpty();return}
-render();
+  'use strict';
 
-function escapeHtml(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+  let data = null;
 
-function showEmpty(){main.innerHTML='<div class="empty-state"><h2>📭 Нет данных</h2><p>Загрузите анализы, чтобы увидеть результаты</p><a href="upload.html" class="action-btn">📄 Загрузить анализы</a></div>'}
-
-function render(){
-  var results=data.results,patient=data.patient||{};
-  var stats={normal:0,low:0,high:0};
-  Object.values(results).forEach(function(r){if(r.status==='normal')stats.normal++;else if(r.status==='low')stats.low++;else if(r.status==='high')stats.high++});
-  
-  var categories={};
-  for(var testName in results){
-    var test=window.labTests.find(function(t){return t.canonicalName===testName});
-    var cat=test?test.category:'Прочее';
-    if(!categories[cat])categories[cat]=[];
-    categories[cat].push({name:testName,result:results[testName],test:test});
+  function updateTime() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    document.getElementById('currentTime').textContent = `${h}:${m}`;
   }
-  
-  var recommendations=window.getRecommendations(results);
-  var patterns=window.detectPatterns(results);
+  updateTime();
+  setInterval(updateTime, 60000);
 
-  var html='<div class="meta-info"><div><strong>Пациент:</strong> '+(patient.sex==='male'?'Мужчина':'Женщина')+', '+(patient.age||'?')+' лет</div><div><strong>Дата:</strong> '+new Date(data.date).toLocaleDateString('ru-RU')+'</div>'+(data.fileName?'<div><strong>Файл:</strong> '+escapeHtml(data.fileName)+'</div>':'')+'</div>';
+  window.showToast = function(text, icon = '✓') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = text;
+    toast.querySelector('.toast-icon').textContent = icon;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  };
 
-  html+='<section class="summary"><h2>📊 Краткое саммари</h2><div class="stats-grid"><div class="stat-card ok"><span class="stat-number">'+stats.normal+'</span><div>В норме</div></div><div class="stat-card warn"><span class="stat-number">'+stats.low+'</span><div>Понижено</div></div><div class="stat-card danger"><span class="stat-number">'+stats.high+'</span><div>Повышено</div></div></div></section>';
-
-  if(patterns.length>0){
-    html+='<section class="patterns"><h2>⚠ Возможные состояния</h2><p style="margin-bottom:var(--sp-2)">Паттерны на основе отклонений. Требуется консультация врача.</p>'+patterns.map(function(p){return'<div class="pattern-item"><div class="pattern-name">'+p.name+'</div><div>Опасность: <strong>'+(p.danger==='high'?'высокая':p.danger==='medium'?'средняя':'низкая')+'</strong></div><div class="rec-doctors">'+p.doctors.map(function(d){return'<span class="rec-doctor">👨‍⚕ '+d+'</span>'}).join('')+'</div></div>'}).join('')+'</section>';
+  function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
-  if(recommendations.length>0){
-    html+='<section class="recommendations"><h2>💊 Рекомендации</h2>'+recommendations.map(function(r){return'<div class="rec-item '+r.danger+'"><div class="rec-header"><span class="rec-name">'+r.testName+'</span><span class="rec-badge '+r.danger+'">'+(r.danger==='high'?'Важно':r.danger==='medium'?'Внимание':'Контроль')+'</span></div><div class="test-value">'+r.value+' '+r.unit+' <span class="test-ref">(норма: '+(r.refMin!=null?r.refMin:'?')+'–'+(r.refMax!=null?r.refMax:'?')+')</span></div>'+(r.description?'<div class="rec-description">'+escapeHtml(r.description)+'</div>':'')+(r.dangerDesc?'<div class="rec-danger">'+escapeHtml(r.dangerDesc)+'</div>':'')+'<div class="rec-action"><strong>Что делать:</strong> '+escapeHtml(r.supplement||'')+'<br>'+(r.duration?'<strong>Срок:</strong> '+escapeHtml(r.duration):'')+'</div><div class="rec-doctors">'+(r.doctors||[]).map(function(d){return'<span class="rec-doctor">👨‍⚕ '+d+'</span>'}).join('')+'</div></div>'}).join('')+'</section>';
+  function showEmpty() {
+    document.querySelector('.app').innerHTML = `
+      <div class="empty-state" style="min-height: 80vh; display: flex; align-items: center; justify-content: center;">
+        <div>
+          <div class="empty-icon">📭</div>
+          <div class="empty-title">Нет данных</div>
+          <div class="empty-sub">Загрузите анализы, чтобы увидеть результаты</div>
+          <a href="upload.html" class="empty-btn magnetic-btn ripple-element">📄 Загрузить анализы</a>
+        </div>
+      </div>
+    `;
   }
 
-  for(var category in categories){
-    html+='<section class="category"><h2>'+category+'</h2>'+categories[category].map(function(i){var r=i.result,cls=r.status==='normal'?'ok':r.status==='low'?'warn':'danger',lbl=r.status==='normal'?'✓ Норма':r.status==='low'?'↓ Понижен':r.status==='high'?'↑ Повышен':'?';return'<div class="test-row '+cls+'"><div><div class="test-name">'+i.name+'</div><div class="test-value">'+r.value+' <small>'+r.unit+'</small></div><div class="test-ref">Референс: '+(r.refMin!=null?r.refMin:'?')+'–'+(r.refMax!=null?r.refMax:'?')+' '+r.unit+'</div></div><div class="test-status '+cls+'">'+lbl+'</div></div>'}).join('')+'</section>';
-  }
+  function render() {
+    const results = data.results;
+    const patient = data.patient || {};
 
-  html+='<div class="actions"><button class="action-btn" id="downloadBtn">📥 Скачать саммари для врача</button><a href="upload.html" class="action-btn secondary">📄 Загрузить новые</a><a href="compare.html" class="action-btn secondary">📈 Сравнить с предыдущими</a></div><div class="disclaimer">⚕ Это не медицинская консультация. Результаты подготовлены алгоритмом.</div>';
-  main.innerHTML=html;
-  document.getElementById('downloadBtn').addEventListener('click',downloadSummary);
-}
+    // Дата
+    const d = new Date(data.date);
+    document.getElementById('resultDate').textContent = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 
-// ═══════════════════════════════════════
-// ИСПРАВЛЕННАЯ ФУНКЦИЯ СКАЧИВАНИЯ САММАРИ
-// ═══════════════════════════════════════
-function downloadSummary(){
-  var patient=data.patient||{};
-  var results=data.results||{};
-  var patterns=window.detectPatterns(results);
-  var lines=[];
-
-  lines.push('═'.repeat(60));
-  lines.push('САММАРИ ДЛЯ ВРАЧА');
-  lines.push('═'.repeat(60));
-  lines.push('');
-  lines.push('Дата: '+new Date(data.date).toLocaleDateString('ru-RU'));
-  lines.push('Пол: '+(patient.sex==='male'?'Мужской':'Женский'));
-  lines.push('Возраст: '+(patient.age||'Не указан')+' лет');
-  if(data.fileName) lines.push('Источник: '+data.fileName);
-  lines.push('');
-
-  // Отклонения
-  var abnormal=[];
-  var normal=[];
-  for(var k in results){
-    var r=results[k];
-    var entry=k+': '+r.value+' '+r.unit+' ['+(r.refMin!=null?r.refMin:'?')+'–'+(r.refMax!=null?r.refMax:'?')+'] ('+r.status+')';
-    if(r.status!=='normal') abnormal.push('⚠ '+entry);
-    else normal.push('  '+entry);
-  }
-
-  lines.push('ОТКЛОНЕНИЯ ('+abnormal.length+'):');
-  if(abnormal.length>0) lines.push(abnormal.join('\n'));
-  else lines.push('  Нет отклонений');
-  lines.push('');
-
-  // Паттерны
-  if(patterns.length>0){
-    lines.push('ВОЗМОЖНЫЕ СОСТОЯНИЯ ('+patterns.length+'):');
-    patterns.forEach(function(p){
-      lines.push('• '+p.name+' (опасность: '+(p.danger==='high'?'высокая':p.danger==='medium'?'средняя':'низкая')+') → '+p.doctors.join(', '));
+    // Статистика
+    const stats = { normal: 0, low: 0, high: 0, total: 0 };
+    Object.values(results).forEach(r => {
+      stats.total++;
+      if (r.status === 'normal') stats.normal++;
+      else if (r.status === 'low') stats.low++;
+      else if (r.status === 'high') stats.high++;
     });
-    lines.push('');
+
+    document.getElementById('statNormal').dataset.counter = stats.normal;
+    document.getElementById('statLow').dataset.counter = stats.low;
+    document.getElementById('statHigh').dataset.counter = stats.high;
+    document.getElementById('statTotal').dataset.counter = stats.total;
+
+    // Запускаем счётчики
+    setTimeout(() => {
+      if (window.AnimationsEngine) {
+        ['statNormal', 'statLow', 'statHigh', 'statTotal'].forEach(id => {
+          const el = document.getElementById(id);
+          window.AnimationsEngine.animateCounter(el, parseInt(el.dataset.counter), 1200);
+        });
+      }
+    }, 300);
+
+    // Паттерны
+    const patterns = window.diagnosticRules ? window.detectPatterns(results) : [];
+    if (patterns && patterns.length > 0) {
+      document.getElementById('patternsSection').style.display = 'block';
+      document.getElementById('patternsList').innerHTML = patterns.map((p, i) => {
+        const dangerColor = p.danger === 'high' ? 'red' : p.danger === 'medium' ? 'orange' : 'green';
+        const dangerBg = p.danger === 'high' ? 'red-bg' : p.danger === 'medium' ? 'amber-bg' : 'green-bg';
+        return `
+          <div class="notif-card animate-on-scroll animate-fade-up hover-lift" style="border-left: 4px solid var(--${dangerColor}); animation-delay: ${i * 0.1}s;">
+            <div class="notif-item ripple-element" style="cursor: default;">
+              <div class="notif-icon-wrap ${dangerBg}">⚠️</div>
+              <div class="notif-body">
+                <div class="notif-title">${p.name}</div>
+                <div class="notif-desc">Рекомендуемые специалисты: ${p.doctors.join(', ')}</div>
+                <div class="notif-time">Опасность: ${p.danger === 'high' ? 'высокая' : p.danger === 'medium' ? 'средняя' : 'низкая'}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Рекомендации
+    const recs = window.supplementMap ? window.getRecommendations(results) : [];
+    if (recs && recs.length > 0) {
+      document.getElementById('recsSection').style.display = 'block';
+      document.getElementById('recsCount').textContent = recs.length;
+      document.getElementById('recsList').innerHTML = recs.map((r, i) => {
+        const dangerColor = r.danger === 'high' ? 'red' : r.danger === 'medium' ? 'orange' : 'green';
+        const dangerBg = r.danger === 'high' ? 'red-bg' : r.danger === 'medium' ? 'amber-bg' : 'green-bg';
+        return `
+          <div class="other-card animate-on-scroll animate-fade-up tilt-card" style="animation-delay: ${i * 0.08}s;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+              <div style="flex: 1;">
+                <div style="font-size: 17px; font-weight: 800; color: var(--dark); margin-bottom: 4px;">${r.testName}</div>
+                <div style="font-size: 20px; font-weight: 700; color: var(--${dangerColor});">${r.value} ${r.unit}</div>
+                <div style="font-size: 12px; color: var(--text-3);">Норма: ${r.refMin ?? '?'} – ${r.refMax ?? '?'}</div>
+              </div>
+              <div style="padding: 4px 12px; background: var(--${dangerColor}); color: white; border-radius: var(--r-full); font-size: 11px; font-weight: 700;">
+                ${r.danger === 'high' ? 'Важно' : r.danger === 'medium' ? 'Внимание' : 'Контроль'}
+              </div>
+            </div>
+            ${r.description ? `<div style="font-size: 13px; color: var(--text-2); margin-bottom: 8px; line-height: 1.5;">${r.description}</div>` : ''}
+            ${r.dangerDesc ? `<div style="font-size: 12px; color: var(--text-3); font-style: italic; margin-bottom: 12px; line-height: 1.5;">${r.dangerDesc}</div>` : ''}
+            <div style="padding: 12px; background: var(--surface-2); border-radius: var(--r-sm);">
+              <div style="font-size: 12px; color: var(--text-3); margin-bottom: 4px;">Что делать:</div>
+              <div style="font-size: 14px; color: var(--text-1); font-weight: 600; margin-bottom: 6px;">${r.supplement || ''}</div>
+              ${r.duration ? `<div style="font-size: 12px; color: var(--text-3);">Срок: ${r.duration}</div>` : ''}
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px;">
+              ${(r.doctors || []).map(d => `<span style="padding: 4px 12px; background: var(--primary-light, #dbeafe); color: var(--primary, #1e5fb8); border-radius: var(--r-full); font-size: 12px; font-weight: 600;">👨‍⚕ ${d}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Результаты по категориям
+    const categories = {};
+    Object.entries(results).forEach(([name, r]) => {
+      const test = window.labTests ? window.labTests.find(t => t.canonicalName === name) : null;
+      const cat = test ? test.category : 'Прочее';
+      if (!categories[cat]) categories[cat] = [];
+      categories[cat].push({ name, result: r });
+    });
+
+    let resultsHtml = '';
+    Object.entries(categories).forEach(([cat, items], catIdx) => {
+      resultsHtml += `
+        <div class="sec-hd animate-on-scroll animate-slide-left" style="animation-delay: ${catIdx * 0.05}s;">
+          <h2>${cat}</h2>
+          <span class="see-all">${items.length}</span>
+        </div>
+        <div class="other-card animate-on-scroll animate-fade-up" style="animation-delay: ${catIdx * 0.08}s;">
+      `;
+      items.forEach(item => {
+        const r = item.result;
+        const cls = r.status === 'normal' ? 'ok' : r.status === 'high' ? 'danger' : 'warn';
+        const bgColor = cls === 'ok' ? 'green-bg' : cls === 'warn' ? 'amber-bg' : 'red-bg';
+        const icon = cls === 'ok' ? '✓' : cls === 'warn' ? '↓' : '↑';
+        const label = cls === 'ok' ? 'Норма' : cls === 'warn' ? 'Понижен' : 'Повышен';
+        
+        resultsHtml += `
+          <div class="metric-row ripple-element">
+            <div class="mr-circle ${bgColor}">${icon}</div>
+            <div class="mr-info">
+              <div class="mr-label">${item.name}</div>
+              <div class="mr-value">${r.value}<span> ${r.unit}</span></div>
+              <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">
+                Норма: ${r.refMin ?? '?'} – ${r.refMax ?? '?'}
+              </div>
+            </div>
+            <div style="font-size: 12px; font-weight: 700; color: var(--${cls === 'ok' ? 'green' : cls === 'warn' ? 'orange' : 'red'});">
+              ${label}
+            </div>
+          </div>
+        `;
+      });
+      resultsHtml += `</div>`;
+    });
+
+    document.getElementById('resultsSection').innerHTML = resultsHtml;
+
+    // Перезапускаем scroll-анимации
+    if (window.AnimationsEngine) {
+      window.AnimationsEngine.reinit();
+    }
   }
 
-  // В норме
-  lines.push('В НОРМЕ ('+normal.length+'):');
-  if(normal.length>0) lines.push(normal.join('\n'));
-  else lines.push('  —');
-  lines.push('');
+  window.downloadSummary = function() {
+    if (!data) return;
+    
+    const results = data.results;
+    const patient = data.patient || {};
+    const patterns = window.diagnosticRules ? window.detectPatterns(results) : [];
+    const recs = window.supplementMap ? window.getRecommendations(results) : [];
 
-  lines.push('═'.repeat(60));
-  lines.push('Сформировано приложением "Семейный доктор ИИ" v4.2');
-  lines.push('Это справочная информация, не заменяет консультацию врача.');
+    let text = '═'.repeat(50) + '\n';
+    text += 'РЕЗУЛЬТАТЫ АНАЛИЗОВ\n';
+    text += '═'.repeat(50) + '\n\n';
+    text += `Дата: ${new Date(data.date).toLocaleDateString('ru-RU')}\n`;
+    text += `Пол: ${patient.sex === 'male' ? 'Мужской' : 'Женский'}\n`;
+    text += `Возраст: ${patient.age} лет\n`;
+    if (data.fileName) text += `Файл: ${data.fileName}\n`;
+    text += '\n';
 
-  var text=lines.join('\n');
-  var blob=new Blob([text],{type:'text/plain;charset=utf-8'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url;
-  a.download='summary_'+new Date().toISOString().slice(0,10)+'.txt';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
+    if (patterns && patterns.length > 0) {
+      text += '━━━ ВОЗМОЖНЫЕ СОСТОЯНИЯ ━━━\n';
+      patterns.forEach(p => {
+        text += `• ${p.name} (${p.danger})\n`;
+        text += `  Специалисты: ${p.doctors.join(', ')}\n`;
+      });
+      text += '\n';
+    }
+
+    if (recs && recs.length > 0) {
+      text += '━━━ РЕКОМЕНДАЦИИ ━━━\n';
+      recs.forEach(r => {
+        text += `\n${r.testName}: ${r.value} ${r.unit} (норма: ${r.refMin ?? '?'}-${r.refMax ?? '?'})\n`;
+        text += `  → ${r.supplement || ''}\n`;
+        if (r.doctors) text += `  Специалисты: ${r.doctors.join(', ')}\n`;
+      });
+      text += '\n';
+    }
+
+    text += '━━━ ПОКАЗАТЕЛИ ━━━\n';
+    Object.entries(results).forEach(([name, r]) => {
+      const statusLabel = r.status === 'normal' ? '✓' : r.status === 'high' ? '↑' : '↓';
+      text += `${statusLabel} ${name}: ${r.value} ${r.unit} [${r.refMin ?? '?'}-${r.refMax ?? '?'}]\n`;
+    });
+
+    text += '\n' + '═'.repeat(50) + '\n';
+    text += 'Сформировано: Семейный доктор ИИ\n';
+    text += '⚕ Это справочная информация, не заменяет консультацию врача.\n';
+
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `results_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Саммари скачано', '✓');
+  };
+
+  // Загрузка данных
+  try {
+    const stored = sessionStorage.getItem('analysisResults');
+    if (!stored) {
+      showEmpty();
+      return;
+    }
+    data = JSON.parse(stored);
+    if (!data.results || Object.keys(data.results).length === 0) {
+      showEmpty();
+      return;
+    }
+    render();
+  } catch (e) {
+    console.error(e);
+    showEmpty();
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
+  }
 })();
 </script>
-<script>
-(function(){
-if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('SW:',e)})})}
-var deferredPrompt=null,installBtn=document.getElementById('pwaInstallBtn');
-window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredPrompt=e;if(installBtn)installBtn.style.display='block'});
-if(installBtn){installBtn.addEventListener('click',async function(){if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.style.display='none'})}
-})();
-</script>
-<button id="pwaInstallBtn" style="display:none;position:fixed;bottom:20px;right:20px;background:#2563EB;color:white;border:none;padding:16px 24px;border-radius:12px;font-size:18px;font-weight:600;box-shadow:0 4px 12px rgba(37,99,235,0.3);cursor:pointer;z-index:1000;font-family:inherit">📱 Установить приложение</button>
+
 </body>
 </html>

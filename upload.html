@@ -1,433 +1,442 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<!-- Запрет кеширования HTML (F5 всегда берёт с сервера) -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-
-<!-- Версия приложения (меняйте при каждом деплое) -->
-<meta name="app-version" content="5.1.0">
-<base href="./">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
-<meta name="theme-color" content="#2563EB">
-<meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
-<title>Загрузка анализов — Семейный доктор</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<style>
-:root{--c-primary:#2563EB;--c-primary-dark:#1E40AF;--c-primary-light:#DBEAFE;--c-ok:#059669;--c-ok-bg:#ECFDF5;--c-warn:#D97706;--c-warn-bg:#FFFBEB;--c-danger:#B91C1C;--c-danger-bg:#FEF2F2;--c-bg:#F9FAFB;--c-card:#FFFFFF;--c-border:#E5E7EB;--c-text:#111827;--c-text-muted:#6B7280;--fs-base:18px;--fs-lg:20px;--fs-xl:24px;--fs-2xl:28px;--sp-1:8px;--sp-2:16px;--sp-3:24px;--sp-4:32px;--r-sm:8px;--r-md:12px;--r-lg:16px;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--focus-ring:0 0 0 4px rgba(37,99,235,0.3)}
-*{box-sizing:border-box;margin:0;padding:0}html{font-size:var(--fs-base)}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--c-bg);color:var(--c-text);line-height:1.6;min-height:100vh}
-.container{max-width:760px;margin:0 auto;padding:var(--sp-3)}
-header{background:var(--c-card);border-bottom:1px solid var(--c-border);padding:var(--sp-3);margin-bottom:var(--sp-3);box-shadow:var(--shadow-sm)}
-.header-inner{max-width:760px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);flex-wrap:wrap}
-.back-link{text-decoration:none;color:var(--c-primary);font-size:var(--fs-base);padding:8px 12px;border-radius:var(--r-sm);min-height:44px;display:inline-flex;align-items:center;gap:8px}
-.back-link:hover{background:var(--c-primary-light)}.back-link:focus{outline:none;box-shadow:var(--focus-ring)}
-h1{font-size:var(--fs-2xl);color:var(--c-primary-dark);margin-bottom:var(--sp-1)}
-.subtitle{color:var(--c-text-muted);margin-bottom:var(--sp-3)}
-.patient-form{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
-.patient-form h2{font-size:var(--fs-xl);margin-bottom:var(--sp-2)}
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
-@media(max-width:480px){.form-grid{grid-template-columns:1fr}}
-.form-group label{display:block;margin-bottom:6px;font-weight:600;color:var(--c-text-muted)}
-.form-group input,.form-group select{width:100%;padding:12px 16px;font-size:var(--fs-base);border:1px solid var(--c-border);border-radius:var(--r-sm);background:var(--c-card);color:var(--c-text);min-height:48px;font-family:inherit}
-.form-group input:focus,.form-group select:focus{outline:none;box-shadow:var(--focus-ring);border-color:var(--c-primary)}
-.sex-buttons{display:flex;gap:var(--sp-1)}
-.sex-btn{flex:1;padding:12px;font-size:var(--fs-base);border:2px solid var(--c-border);background:var(--c-card);color:var(--c-text);border-radius:var(--r-sm);cursor:pointer;min-height:48px;font-family:inherit}
-.sex-btn.active{border-color:var(--c-primary);background:var(--c-primary-light);color:var(--c-primary-dark);font-weight:600}
-.drop-zone{background:var(--c-card);border:2px dashed var(--c-border);border-radius:var(--r-md);padding:var(--sp-4);text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:var(--sp-3)}
-.drop-zone:hover,.drop-zone.dragover{border-color:var(--c-primary);background:var(--c-primary-light)}
-.drop-icon{font-size:64px;margin-bottom:var(--sp-2)}.drop-zone h2{font-size:var(--fs-xl);margin-bottom:var(--sp-1)}.drop-zone p{color:var(--c-text-muted)}
-.file-info{margin-top:var(--sp-2);padding:var(--sp-2);background:var(--c-ok-bg);color:var(--c-ok);border-radius:var(--r-sm);font-weight:600}
-.btn-row{display:flex;gap:var(--sp-2);margin-bottom:var(--sp-3);flex-wrap:wrap}
-.analyze-btn,.llm-btn{flex:1;min-width:200px;padding:18px;font-size:var(--fs-lg);font-weight:700;border:none;border-radius:var(--r-md);cursor:pointer;min-height:60px;font-family:inherit;transition:all 0.2s}
-.analyze-btn{background:var(--c-primary);color:white}
-.analyze-btn:hover:not(:disabled){background:var(--c-primary-dark)}
-.llm-btn{background:linear-gradient(135deg,#8B5CF6 0%,#EC4899 100%);color:white}
-.llm-btn:hover:not(:disabled){opacity:0.9;transform:translateY(-1px)}
-.analyze-btn:disabled,.llm-btn:disabled{background:var(--c-border);color:var(--c-text-muted);cursor:not-allowed;transform:none}
-.analyze-btn:focus,.llm-btn:focus{outline:none;box-shadow:var(--focus-ring)}
-.progress{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3);display:none}
-.progress.active{display:block}.progress-bar{height:12px;background:var(--c-bg);border-radius:6px;overflow:hidden;margin:var(--sp-2) 0}
-.progress-fill{height:100%;background:var(--c-primary);width:0;transition:width 0.3s}
-.progress-fill.llm{background:linear-gradient(90deg,#8B5CF6,#EC4899)}
-.progress-text{text-align:center;color:var(--c-text-muted)}
-.parse-review{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3);display:none}
-.parse-review.active{display:block}.parse-review h2{font-size:var(--fs-xl);margin-bottom:var(--sp-1)}
-.parse-hint{background:var(--c-warn-bg);border-left:4px solid var(--c-warn);padding:var(--sp-2);border-radius:var(--r-sm);margin-bottom:var(--sp-2);color:#92400E}
-.parsed-item{padding:var(--sp-2);background:var(--c-bg);border-radius:var(--r-sm);margin-bottom:var(--sp-1);display:grid;grid-template-columns:1fr auto auto auto;gap:var(--sp-1);align-items:center}
-.parsed-name{font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.source-badge{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700}
-.source-badge.local{background:#E0E7FF;color:#3730A3}
-.source-badge.llm{background:#F3E8FF;color:#7C3AED}
-.parsed-value{padding:6px 10px;background:var(--c-card);color:var(--c-text);border:1px solid var(--c-border);border-radius:4px;min-width:80px;font-size:var(--fs-base);font-weight:600}
-.parsed-value:focus{outline:none;box-shadow:var(--focus-ring);border-color:var(--c-primary)}
-.parsed-unit{color:var(--c-text-muted);font-size:14px}
-.status-ok{color:var(--c-ok);font-size:14px}.status-warn{color:var(--c-warn);font-size:14px}.status-danger{color:var(--c-danger);font-size:14px}
-.disclaimer{background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--r-md);padding:var(--sp-3);text-align:center;color:#92400E;font-size:16px}
-
-/* Модальные окна */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;z-index:1000;padding:var(--sp-3)}
-.modal-overlay.active{display:flex}
-.modal{background:var(--c-card);color:var(--c-text);border-radius:var(--r-lg);max-width:560px;width:100%;padding:var(--sp-4);max-height:90vh;overflow-y:auto}
-.modal h2{font-size:var(--fs-2xl);color:var(--c-primary-dark);margin-bottom:var(--sp-2)}
-.modal p{margin-bottom:var(--sp-2);color:var(--c-text-muted)}
-.modal label{display:block;margin-bottom:6px;font-weight:600;color:var(--c-text)}
-.modal input[type=text],.modal input[type=password],.modal select{width:100%;padding:12px;font-size:var(--fs-base);border:1px solid var(--c-border);border-radius:var(--r-sm);background:var(--c-bg);color:var(--c-text);margin-bottom:var(--sp-2);font-family:inherit}
-.modal input:focus,.modal select:focus{outline:none;box-shadow:var(--focus-ring);border-color:var(--c-primary)}
-.modal-buttons{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
-.modal-buttons button{flex:1;min-width:120px;padding:14px;border-radius:var(--r-md);border:none;font-size:var(--fs-lg);font-weight:700;cursor:pointer;font-family:inherit}
-.btn-primary{background:var(--c-primary);color:white}
-.btn-cancel{background:var(--c-bg);color:var(--c-text);border:1px solid var(--c-border)!important}
-.help-link{color:var(--c-primary);text-decoration:underline;font-size:14px}
-.settings-btn{background:var(--c-card);color:var(--c-text);border:1px solid var(--c-border);padding:10px 14px;border-radius:var(--r-sm);cursor:pointer;font-size:16px;min-height:44px;font-family:inherit;display:inline-flex;align-items:center;gap:6px}
-.settings-btn:hover{background:var(--c-bg)}
-
-/* Consent checkbox */
-.consent-row{background:var(--c-warn-bg);border-left:4px solid var(--c-warn);padding:var(--sp-2);border-radius:var(--r-sm);margin:var(--sp-2) 0;display:flex;gap:10px;align-items:flex-start;color:#92400E}
-.consent-row input{margin-top:4px;width:20px;height:20px;flex-shrink:0}
-.consent-row label{font-size:14px;line-height:1.4;cursor:pointer}
-
-.llm-stats{background:linear-gradient(135deg,#F3E8FF 0%,#FCE7F3 100%);border-radius:var(--r-sm);padding:var(--sp-2);margin:var(--sp-2) 0;font-size:14px}
-.llm-stats strong{color:#7C3AED}
-
-@media(prefers-color-scheme:dark){:root{--c-bg:#111827;--c-card:#1F2937;--c-border:#374151;--c-text:#F9FAFB;--c-text-muted:#9CA3AF;--c-primary-light:#1E3A8A;--c-ok-bg:#064E3B;--c-ok:#6EE7B7;--c-warn-bg:#78350F;--c-warn:#FCD34D;--c-danger-bg:#7F1D1D;--c-danger:#FCA5A5}.disclaimer{background:#78350F;border-color:#92400E;color:#FCD34D}.modal{background:#1F2937}.consent-row{background:#78350F;color:#FCD34D}.llm-stats{background:linear-gradient(135deg,#3B0764,#500724)}}
-</style>
+  <meta charset="UTF-8">
+  <base href="./">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8BAF8B">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="animations.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <title>Загрузка анализов</title>
 </head>
 <body>
-<header>
-  <div class="header-inner">
-    <a href="index.html" class="back-link">← Назад</a>
-    <h1>📄 Загрузка анализов</h1>
-    <button class="settings-btn" id="settingsBtn">⚙️ LLM Vision</button>
+
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastText">Готово</span>
+</div>
+
+<div class="app">
+  
+  <div class="status-bar animate-on-scroll animate-fade-in">
+    <span id="currentTime">9:41</span>
+    <div class="status-icons">
+      <span>📶</span>
+      <span>📡</span>
+      <span class="pulse-dot">🔋</span>
+    </div>
   </div>
-</header>
 
-<main class="container">
-  <p class="subtitle">Загрузите PDF или фото бланка — расшифруем локально или через ИИ.</p>
-
-  <section class="patient-form">
-    <h2>👤 Данные пациента</h2>
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Пол</label>
-        <div class="sex-buttons">
-          <button type="button" class="sex-btn active" data-sex="female">👩 Жен</button>
-          <button type="button" class="sex-btn" data-sex="male">👨 Муж</button>
+  <!-- Header -->
+  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
+    <div class="pc-top" style="margin-bottom: 0;">
+      <div class="pc-identity">
+        <a href="index.html" class="circle-btn ripple-element" aria-label="Назад">←</a>
+        <div>
+          <div class="pc-name">Загрузка анализов</div>
+          <div class="pc-id">PDF или фото бланка</div>
         </div>
       </div>
-      <div class="form-group">
-        <label for="ageInput">Возраст</label>
-        <input type="number" id="ageInput" min="0" max="120" value="35" inputmode="numeric">
+      <button class="circle-btn dark-btn ripple-element" onclick="showToast('Помощь', 'ℹ️')">?</button>
+    </div>
+  </div>
+
+  <!-- Patient Info -->
+  <div class="doctor-card animate-on-scroll animate-fade-up tilt-card">
+    <div class="doc-row">
+      <div class="doc-avatar float-slow">👤</div>
+      <div style="flex: 1;">
+        <div class="doc-name">Данные пациента</div>
+        <div class="doc-spec">• Для точных референсов</div>
       </div>
     </div>
-  </section>
 
-  <div class="drop-zone" id="dropZone" role="button" tabindex="0">
-    <div class="drop-icon">📁</div>
-    <h2>Перетащите PDF или фото сюда</h2>
-    <p>или нажмите, чтобы выбрать файл</p>
-    <div class="file-info" id="fileInfo" style="display:none"></div>
-    <input type="file" id="fileInput" accept="application/pdf,image/*" style="display:none">
-  </div>
-
-  <div class="btn-row">
-    <button class="analyze-btn" id="analyzeBtn" disabled>🔍 Локальный парсер</button>
-    <button class="llm-btn" id="llmBtn" disabled>🤖 Через LLM Vision</button>
-  </div>
-
-  <div class="progress" id="progress">
-    <div class="progress-text" id="progressText">Обработка...</div>
-    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-  </div>
-
-  <section class="parse-review" id="parseReview">
-    <h2>✅ Проверьте распознанные показатели</h2>
-    <div id="parseStats"></div>
-    <div class="parse-hint">⚠ Иногда парсер ошибается. Сравните с оригиналом и поправьте значения.</div>
-    <div id="parsedList"></div>
-    <button class="analyze-btn" id="confirmBtn" style="margin-top:var(--sp-3)">Получить рекомендации</button>
-  </section>
-
-  <div class="disclaimer">⚕ Автоматическая расшифровка. При неточностях сверяйтесь с оригиналом.</div>
-</main>
-
-<!-- Модалка настроек LLM -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal">
-    <h2>⚙️ Настройки LLM Vision</h2>
-    <p>Для распознавания сложных бланков через ИИ нужен API-ключ. Ключ хранится <strong>только на вашем устройстве</strong> (localStorage).</p>
-    
-    <label for="providerSelect">Провайдер:</label>
-    <select id="providerSelect">
-      <option value="gemini">🆓 Google Gemini (бесплатно, 15 запр/мин)</option>
-      <option value="openai">💳 OpenAI GPT-4o (~$0.01 за бланк)</option>
-    </select>
-    
-    <label for="apiKeyInput">API-ключ:</label>
-    <input type="password" id="apiKeyInput" placeholder="Вставьте ключ">
-    <div id="helpLink"></div>
-    
-    <div class="consent-row">
-      <input type="checkbox" id="consentCheck">
-      <label for="consentCheck">Я понимаю, что изображение бланка будет отправлено в облачный сервис провайдера для распознавания. Медицинские данные не сохраняются на серверах приложения.</label>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+      <div>
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Пол</label>
+        <div class="pc-pills" style="gap: 6px;">
+          <button class="pill pill-outline ripple-element click-scale active" id="sexFemale" onclick="selectSex('female')">👩 Жен</button>
+          <button class="pill pill-outline ripple-element click-scale" id="sexMale" onclick="selectSex('male')">👨 Муж</button>
+        </div>
+      </div>
+      <div>
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Возраст</label>
+        <input type="number" id="ageInput" value="35" min="0" max="120" 
+               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      </div>
     </div>
-    
-    <div class="modal-buttons">
-      <button class="btn-primary" id="saveSettings">Сохранить</button>
-      <button class="btn-cancel" id="cancelSettings">Отмена</button>
+  </div>
+
+  <!-- Drop Zone -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Загрузить файл</h2>
+  </div>
+
+  <div class="sleep-card animate-on-scroll animate-fade-up tilt-card" id="dropZone" 
+       style="cursor: pointer; border: 2px dashed #C8DCC8; text-align: center; padding: 40px 20px;">
+    <div style="font-size: 64px; margin-bottom: 12px;" class="float">📁</div>
+    <div class="sc-title" style="margin-bottom: 8px;">Перетащите PDF сюда</div>
+    <p style="color: var(--text-3); font-size: 14px; margin-bottom: 16px;">
+      или нажмите для выбора файла
+    </p>
+    <div id="fileInfo" style="display: none; padding: 12px; background: var(--surface-2); border-radius: var(--r-md); margin-top: 12px;">
+      <div style="font-weight: 700; color: var(--green);">✓ Файл выбран</div>
+      <div id="fileName" style="font-size: 13px; color: var(--text-3); margin-top: 4px;"></div>
     </div>
+    <input type="file" id="fileInput" accept="application/pdf,image/*" style="display: none;">
+  </div>
+
+  <!-- Analyze Button -->
+  <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" 
+          id="analyzeBtn" onclick="analyzePDF()" disabled style="opacity: 0.5;">
+    🔍 Анализировать
+  </button>
+
+  <!-- Progress -->
+  <div id="progressSection" style="display: none;" class="animate-on-scroll animate-fade-in">
+    <div class="doctor-card">
+      <div class="doc-row">
+        <div class="doc-avatar"><span class="spin" style="display: inline-block;">⏳</span></div>
+        <div style="flex: 1;">
+          <div class="doc-name" id="progressText">Обрабатываем PDF...</div>
+          <div class="doc-spec">• Это займёт несколько секунд</div>
+        </div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressBar" style="width: 0%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parse Review -->
+  <div id="parseReview" style="display: none;">
+    <div class="sec-hd animate-on-scroll animate-slide-left">
+      <h2>Распознанные показатели</h2>
+      <span class="see-all" id="parsedCount">0</span>
+    </div>
+
+    <div class="other-card animate-on-scroll animate-fade-up">
+      <div style="padding: 12px; background: #FFF8E1; border-radius: var(--r-sm); margin-bottom: 16px; font-size: 13px; color: #92400E;">
+        ⚠️ Проверьте значения — при необходимости исправьте
+      </div>
+      <div id="parsedList"></div>
+      <button class="next-btn ripple-element magnetic-btn" style="margin-top: 16px;" onclick="confirmResults()">
+        ✓ Подтвердить и показать результаты
+      </button>
+    </div>
+  </div>
+
+  <!-- Info cards -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Поддерживаемые форматы</h2>
+  </div>
+
+  <div class="quick-grid stagger">
+    <div class="qi">
+      <div class="qi-icon">📄</div>
+      <span class="qi-label">PDF<br>бланки</span>
+    </div>
+    <div class="qi">
+      <div class="qi-icon">📸</div>
+      <span class="qi-label">Фото<br>бланка</span>
+    </div>
+    <div class="qi">
+      <div class="qi-icon qi-dark">🔬</div>
+      <span class="qi-label">150+<br>тестов</span>
+    </div>
+    <div class="qi">
+      <div class="qi-icon">🏥</div>
+      <span class="qi-label">Все<br>лаборат.</span>
+    </div>
+  </div>
+
+  <div style="padding: 16px; background: var(--surface-2); border-radius: var(--r-md); margin-bottom: 14px; font-size: 13px; color: var(--text-2); line-height: 1.5;" class="animate-on-scroll animate-fade-up">
+    ⚕️ Автоматическая расшифровка. При неточностях сверяйтесь с оригиналом. Все данные хранятся только на вашем устройстве.
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a href="index.html" class="nav-item">
+      <div class="nav-icon">🏠</div>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a href="upload.html" class="nav-item active">
+      <div class="nav-icon">📄</div>
+      <span class="nav-label">Анализы</span>
+    </a>
+    <a href="index.html" class="nav-fab" aria-label="Симптомы">🩺</a>
+    <a href="calendar.html" class="nav-item">
+      <div class="nav-icon">📅</div>
+      <span class="nav-label">Календарь</span>
+    </a>
+    <a href="diary.html" class="nav-item">
+      <div class="nav-icon">📓</div>
+      <span class="nav-label">Дневник</span>
+    </a>
   </div>
 </div>
 
 <script src="database.js"></script>
-<script src="llm-vision.js"></script>
+<script src="animations.js"></script>
 <script>
 (function(){
-'use strict';
+  'use strict';
 
-if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
 
-var selectedFile=null, parsedResults={}, selectedSex='female', currentSource='local';
+  let selectedFile = null;
+  let parsedResults = {};
+  let selectedSex = 'female';
 
-// ═══════════════════════════════════════
-//  ВЫБОР ПОЛА
-// ═══════════════════════════════════════
-document.querySelectorAll('.sex-btn').forEach(function(btn){
-  btn.addEventListener('click',function(){
-    document.querySelectorAll('.sex-btn').forEach(function(b){b.classList.remove('active')});
-    btn.classList.add('active');
-    selectedSex=btn.dataset.sex;
-  });
-});
+  function updateTime() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    document.getElementById('currentTime').textContent = `${h}:${m}`;
+  }
+  updateTime();
+  setInterval(updateTime, 60000);
 
-// ═══════════════════════════════════════
-//  DRAG & DROP
-// ═══════════════════════════════════════
-var dropZone=document.getElementById('dropZone');
-var fileInput=document.getElementById('fileInput');
-var fileInfo=document.getElementById('fileInfo');
-var analyzeBtn=document.getElementById('analyzeBtn');
-var llmBtn=document.getElementById('llmBtn');
+  window.showToast = function(text, icon = '✓') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = text;
+    toast.querySelector('.toast-icon').textContent = icon;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  };
 
-dropZone.addEventListener('click',function(){fileInput.click()});
-dropZone.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();fileInput.click()}});
-['dragenter','dragover'].forEach(function(ev){dropZone.addEventListener(ev,function(e){e.preventDefault();dropZone.classList.add('dragover')})});
-['dragleave','drop'].forEach(function(ev){dropZone.addEventListener(ev,function(e){e.preventDefault();dropZone.classList.remove('dragover')})});
-dropZone.addEventListener('drop',function(e){if(e.dataTransfer.files.length>0)handleFile(e.dataTransfer.files[0])});
-fileInput.addEventListener('change',function(e){if(e.target.files.length>0)handleFile(e.target.files[0])});
+  window.selectSex = function(sex) {
+    selectedSex = sex;
+    const fBtn = document.getElementById('sexFemale');
+    const mBtn = document.getElementById('sexMale');
+    fBtn.className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+    mBtn.className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+  };
 
-function handleFile(file){
-  if(!file.type.match(/pdf|image/)){alert('Загрузите PDF или изображение');return}
-  selectedFile=file;
-  fileInfo.style.display='block';
-  fileInfo.innerHTML='✓ '+file.name+' <small>('+((file.size/1024/1024).toFixed(2))+' МБ)</small>';
-  analyzeBtn.disabled=false;
-  llmBtn.disabled=false;
-}
+  // Drop zone
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const fileInfo = document.getElementById('fileInfo');
+  const fileName = document.getElementById('fileName');
+  const analyzeBtn = document.getElementById('analyzeBtn');
 
-// ═══════════════════════════════════════
-//  ЛОКАЛЬНЫЙ ПАРСЕР (pdf.js + Tesseract)
-// ═══════════════════════════════════════
-async function localParse(file, onProgress){
-  if(file.type==='application/pdf'){
-    onProgress(10);
-    var arrayBuffer=await file.arrayBuffer();
-    var pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
-    var fullText='',YT=3;
-    for(var i=1;i<=pdf.numPages;i++){
-      onProgress(10+(i/pdf.numPages)*70);
-      var page=await pdf.getPage(i),tc=await page.getTextContent(),lm=new Map();
-      tc.items.forEach(function(item){
-        var y=Math.round(item.transform[5]/YT)*YT;
-        if(!lm.has(y))lm.set(y,[]);
-        lm.get(y).push({text:item.str,x:item.transform[4]});
-      });
-      var sl=Array.from(lm.entries()).sort(function(a,b){return b[0]-a[0]}).map(function(e){return e[1].sort(function(a,b){return a.x-b.x}).map(function(i){return i.text}).join(' ')});
-      var merged=[];
-      for(var j=0;j<sl.length;j++){
-        var cur=sl[j],next=sl[j+1]||'';
-        if(cur.length<60&&/\d/.test(next)&&!/[а-яА-Я]/.test(next.substring(0,20))){merged.push(cur+' '+next);j++}
-        else merged.push(cur);
-      }
-      fullText+=merged.join('\n')+'\n';
-    }
-    onProgress(85);
-    return { text: fullText, source: 'local' };
-  } else {
-    onProgress(20);
-    var result=await Tesseract.recognize(file,'rus+eng',{
-      logger:function(m){if(m.status==='recognizing text')onProgress(20+m.progress*65)}
+  dropZone.addEventListener('click', () => fileInput.click());
+  ['dragenter', 'dragover'].forEach(ev => {
+    dropZone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--green)';
+      dropZone.style.background = 'rgba(61, 139, 78, 0.05)';
     });
-    onProgress(85);
-    return { text: result.data.text, source: 'local' };
-  }
-}
-
-// ═══════════════════════════════════════
-//  ОБРАБОТЧИКИ КНОПОК
-// ═══════════════════════════════════════
-analyzeBtn.addEventListener('click',async function(){
-  if(!selectedFile)return;
-  analyzeBtn.disabled=true;llmBtn.disabled=true;
-  var progress=document.getElementById('progress'),pf=document.getElementById('progressFill'),pt=document.getElementById('progressText');
-  progress.classList.add('active');pf.className='progress-fill';
-  try{
-    pt.textContent='🔍 Локальный парсер: чтение...';
-    var result=await localParse(selectedFile,function(p){pf.style.width=p+'%'});
-    if(!result.text){analyzeBtn.disabled=false;llmBtn.disabled=false;progress.classList.remove('active');return}
-    var age=parseInt(document.getElementById('ageInput').value)||35;
-    parsedResults=window.parseAnalysisText(result.text,selectedSex,age);
-    currentSource='local';
-    pt.textContent='✓ Готово!';pf.style.width='100%';
-    setTimeout(function(){progress.classList.remove('active');showParseReview()},300);
-  }catch(err){
-    console.error(err);alert('Ошибка локального парсера: '+err.message);
-    analyzeBtn.disabled=false;llmBtn.disabled=false;progress.classList.remove('active');
-  }
-});
-
-llmBtn.addEventListener('click',async function(){
-  if(!selectedFile)return;
-  
-  // Проверка настроек
-  var provider=window.LLMVision.getProvider();
-  var apiKey=window.LLMVision.getApiKey(provider);
-  if(!apiKey){
-    alert('Сначала настройте API-ключ в разделе ⚙️ LLM Vision');
-    document.getElementById('settingsBtn').click();
-    return;
-  }
-  if(!window.LLMVision.hasConsent()){
-    alert('Необходимо дать согласие на отправку данных в облако (в настройках LLM Vision)');
-    document.getElementById('settingsBtn').click();
-    return;
-  }
-
-  analyzeBtn.disabled=true;llmBtn.disabled=true;
-  var progress=document.getElementById('progress'),pf=document.getElementById('progressFill'),pt=document.getElementById('progressText');
-  progress.classList.add('active');pf.className='progress-fill llm';
-  try{
-    pt.textContent='🤖 LLM Vision: отправка изображения...';
-    var llmResult=await window.LLMVision.parseFile(selectedFile,function(p){pf.style.width=p+'%'});
-    pt.textContent='🔄 Конвертация в формат базы...';
-    var age=parseInt(document.getElementById('ageInput').value)||35;
-    parsedResults=window.LLMVision.toMedDBFormat(llmResult,selectedSex,age);
-    currentSource='llm';
-    pt.textContent='✓ Готово!';pf.style.width='100%';
-    setTimeout(function(){progress.classList.remove('active');showParseReview()},300);
-  }catch(err){
-    console.error(err);alert('Ошибка LLM Vision: '+err.message);
-    analyzeBtn.disabled=false;llmBtn.disabled=false;progress.classList.remove('active');
-  }
-});
-
-// ═══════════════════════════════════════
-//  ПОКАЗ РЕЗУЛЬТАТОВ ПАРСИНГА
-// ═══════════════════════════════════════
-function showParseReview(){
-  var review=document.getElementById('parseReview'),list=document.getElementById('parsedList'),stats=document.getElementById('parseStats');
-  var keys=Object.keys(parsedResults);
-  if(keys.length===0){
-    alert('Не удалось распознать ни одного показателя.\n\nПопробуйте:\n• Другой файл\n• Кнопку "🤖 Через LLM Vision"');
-    analyzeBtn.disabled=false;llmBtn.disabled=false;
-    return;
-  }
-  
-  var llmCount=keys.filter(function(k){return parsedResults[k].source==='llm'}).length;
-  var localCount=keys.length-llmCount;
-  stats.innerHTML='<div class="llm-stats">📊 Распознано: <strong>'+keys.length+' показателей</strong>'+(llmCount>0?' · <strong>'+llmCount+' через LLM</strong>':'')+(localCount>0?' · <strong>'+localCount+' локально</strong>':'')+'</div>';
-
-  var sorted=keys.map(function(name){
-    var test=window.labTests.find(function(t){return t.canonicalName===name});
-    return{name:name,result:parsedResults[name],category:test?test.category:'Прочее'};
-  }).sort(function(a,b){return a.category.localeCompare(b.category)});
-
-  list.innerHTML=sorted.map(function(item){
-    var r=item.result;
-    var cls=r.status==='normal'?'status-ok':r.status==='high'?'status-danger':r.status==='low'?'status-warn':'status-ok';
-    var lbl=r.status==='normal'?'✓ Норма':r.status==='high'?'↑ Повышен':r.status==='low'?'↓ Понижен':'?';
-    var sourceBadge=r.source==='llm'?'<span class="source-badge llm">🤖 LLM</span>':'<span class="source-badge local">📍 Локально</span>';
-    return'<div class="parsed-item"><div><div class="parsed-name">'+item.name+' '+sourceBadge+'</div><div class="'+cls+'">'+lbl+'</div></div><input type="text" class="parsed-value" data-test="'+item.name+'" value="'+r.value+'" inputmode="decimal"><span class="parsed-unit">'+r.unit+'</span></div>';
-  }).join('');
-  review.classList.add('active');
-  review.scrollIntoView({behavior:'smooth'});
-}
-
-// ═══════════════════════════════════════
-//  ПОДТВЕРЖДЕНИЕ И ПЕРЕХОД
-// ═══════════════════════════════════════
-document.getElementById('confirmBtn').addEventListener('click',function(){
-  var updated={};
-  document.querySelectorAll('.parsed-value').forEach(function(input){
-    var testName=input.dataset.test,newValue=parseFloat(input.value.replace(',','.')),original=parsedResults[testName];
-    if(!isNaN(newValue)&&original){
-      var test=window.labTests.find(function(t){return t.canonicalName===testName}),age=parseInt(document.getElementById('ageInput').value)||35,ref=window.getReference(test,selectedSex,age),status='normal';
-      if(ref&&ref.min!=null&&newValue<ref.min)status='low';
-      if(ref&&ref.max!=null&&newValue>ref.max)status='high';
-      updated[testName]=Object.assign({},original,{value:newValue,status:status});
-    }else if(original)updated[testName]=original;
   });
-  var data={results:updated,patient:{sex:selectedSex,age:parseInt(document.getElementById('ageInput').value)||35},date:new Date().toISOString(),fileName:selectedFile.name,source:currentSource};
-  try{
-    sessionStorage.setItem('analysisResults',JSON.stringify(data));
-    if(window.FamilyApp)window.FamilyApp.addAnalysisToHistory(selectedFile.name,Object.keys(updated).length);
-    window.location.href='results.html';
-  }catch(e){alert('Ошибка сохранения.')}
-});
+  ['dragleave', 'drop'].forEach(ev => {
+    dropZone.addEventListener(ev, (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = '#C8DCC8';
+      dropZone.style.background = '';
+    });
+  });
+  dropZone.addEventListener('drop', (e) => {
+    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) handleFile(e.target.files[0]);
+  });
 
-// ═══════════════════════════════════════
-//  НАСТРОЙКИ LLM
-// ═══════════════════════════════════════
-var settingsModal=document.getElementById('settingsModal');
-var providerSelect=document.getElementById('providerSelect');
-var apiKeyInput=document.getElementById('apiKeyInput');
-var consentCheck=document.getElementById('consentCheck');
-var helpLink=document.getElementById('helpLink');
+  function handleFile(file) {
+    if (!file.type.match(/pdf|image/)) {
+      showToast('Только PDF или изображение', '⚠️');
+      return;
+    }
+    selectedFile = file;
+    fileInfo.style.display = 'block';
+    fileName.textContent = `${file.name} (${(file.size/1024/1024).toFixed(2)} МБ)`;
+    analyzeBtn.disabled = false;
+    analyzeBtn.style.opacity = '1';
+    showToast('Файл загружен', '📄');
+  }
 
-function updateHelpLink(){
-  var provider=providerSelect.value;
-  var info=window.LLMVision.providers.find(function(p){return p.id===provider});
-  helpLink.innerHTML='<a href="'+info.url+'" target="_blank" class="help-link">🔗 Получить ключ для '+info.name+'</a>';
-}
+  async function parsePDF(file) {
+    if (file.type === 'application/pdf') {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      const YT = 3;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        updateProgress(10 + (i / pdf.numPages) * 70, `Страница ${i} из ${pdf.numPages}`);
+        const page = await pdf.getPage(i);
+        const tc = await page.getTextContent();
+        const lm = new Map();
+        tc.items.forEach(item => {
+          const y = Math.round(item.transform[5] / YT) * YT;
+          if (!lm.has(y)) lm.set(y, []);
+          lm.get(y).push({ text: item.str, x: item.transform[4] });
+        });
+        const sl = Array.from(lm.entries())
+          .sort((a, b) => b[0] - a[0])
+          .map(e => e[1].sort((a, b) => a.x - b.x).map(i => i.text).join(' '));
+        fullText += sl.join('\n') + '\n';
+      }
+      return fullText;
+    } else {
+      updateProgress(20, 'Распознаём текст (OCR)...');
+      const result = await Tesseract.recognize(file, 'rus+eng', {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            updateProgress(20 + m.progress * 70, `OCR: ${Math.round(m.progress * 100)}%`);
+          }
+        }
+      });
+      return result.data.text;
+    }
+  }
 
-document.getElementById('settingsBtn').addEventListener('click',function(){
-  var config=window.LLMVision.getConfig();
-  providerSelect.value=config.provider||'gemini';
-  apiKeyInput.value=config.keys?.[providerSelect.value]||'';
-  consentCheck.checked=!!config.consent;
-  updateHelpLink();
-  settingsModal.classList.add('active');
-});
+  function updateProgress(percent, text) {
+    document.getElementById('progressBar').style.width = percent + '%';
+    document.getElementById('progressText').textContent = text;
+  }
 
-providerSelect.addEventListener('change',function(){
-  var config=window.LLMVision.getConfig();
-  apiKeyInput.value=config.keys?.[providerSelect.value]||'';
-  updateHelpLink();
-});
+  window.analyzePDF = async function() {
+    if (!selectedFile) return;
+    
+    analyzeBtn.disabled = true;
+    analyzeBtn.style.opacity = '0.5';
+    document.getElementById('progressSection').style.display = 'block';
+    updateProgress(5, 'Начинаем обработку...');
 
-document.getElementById('saveSettings').addEventListener('click',function(){
-  window.LLMVision.setProvider(providerSelect.value);
-  var key=apiKeyInput.value.trim();
-  if(key)window.LLMVision.setApiKey(providerSelect.value,key);
-  window.LLMVision.setConsent(consentCheck.checked);
-  settingsModal.classList.remove('active');
-  alert('✅ Настройки сохранены');
-});
+    try {
+      const text = await parsePDF(selectedFile);
+      if (!text) {
+        showToast('Не удалось прочитать файл', '❌');
+        analyzeBtn.disabled = false;
+        analyzeBtn.style.opacity = '1';
+        document.getElementById('progressSection').style.display = 'none';
+        return;
+      }
+      
+      updateProgress(90, 'Анализируем показатели...');
+      const age = parseInt(document.getElementById('ageInput').value) || 35;
+      parsedResults = window.parseAnalysisText(text, selectedSex, age);
+      
+      updateProgress(100, 'Готово!');
+      
+      setTimeout(() => {
+        document.getElementById('progressSection').style.display = 'none';
+        showParseReview();
+      }, 500);
+    } catch (err) {
+      console.error(err);
+      showToast('Ошибка: ' + err.message, '❌');
+      analyzeBtn.disabled = false;
+      analyzeBtn.style.opacity = '1';
+      document.getElementById('progressSection').style.display = 'none';
+    }
+  };
 
-document.getElementById('cancelSettings').addEventListener('click',function(){settingsModal.classList.remove('active')});
-settingsModal.addEventListener('click',function(e){if(e.target===settingsModal)settingsModal.classList.remove('active')});
+  function showParseReview() {
+    const keys = Object.keys(parsedResults);
+    document.getElementById('parsedCount').textContent = keys.length;
+    
+    if (keys.length === 0) {
+      showToast('Не распознано ни одного показателя', '⚠️');
+      analyzeBtn.disabled = false;
+      analyzeBtn.style.opacity = '1';
+      return;
+    }
 
+    const list = document.getElementById('parsedList');
+    list.innerHTML = keys.map((name, idx) => {
+      const r = parsedResults[name];
+      const cls = r.status === 'normal' ? 'ok' : r.status === 'high' ? 'danger' : 'warn';
+      const label = r.status === 'normal' ? '✓ Норма' : r.status === 'high' ? '↑ Повышен' : '↓ Понижен';
+      return `
+        <div class="metric-row ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.05}s backwards;">
+          <div class="mr-circle ${cls === 'ok' ? 'green-bg' : cls === 'warn' ? 'amber-bg' : 'red-bg'}">
+            ${cls === 'ok' ? '✓' : cls === 'warn' ? '↓' : '↑'}
+          </div>
+          <div class="mr-info">
+            <div class="mr-label">${name}</div>
+            <input type="number" step="0.01" value="${r.value}" 
+                   data-test="${name}"
+                   style="font-size: 18px; font-weight: 700; border: none; background: transparent; color: var(--dark); width: 100px; padding: 0;">
+            <span style="font-size: 13px; color: var(--text-3); margin-left: 4px;">${r.unit}</span>
+          </div>
+          <div style="font-size: 12px; font-weight: 600; color: var(--${cls === 'ok' ? 'green' : cls === 'warn' ? 'orange' : 'red'}-pill);">
+            ${label}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    document.getElementById('parseReview').style.display = 'block';
+    document.getElementById('parseReview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showToast(`Распознано ${keys.length} показателей`, '✓');
+  }
+
+  window.confirmResults = function() {
+    // Собираем обновлённые значения
+    document.querySelectorAll('#parsedList input[data-test]').forEach(input => {
+      const testName = input.dataset.test;
+      const newValue = parseFloat(input.value);
+      if (!isNaN(newValue) && parsedResults[testName]) {
+        parsedResults[testName].value = newValue;
+        // Пересчитываем статус
+        const test = window.labTests.find(t => t.canonicalName === testName);
+        if (test) {
+          const age = parseInt(document.getElementById('ageInput').value) || 35;
+          const ref = window.getReference(test, selectedSex, age);
+          if (ref) {
+            let status = 'normal';
+            if (ref.min !== null && ref.min !== undefined && newValue < ref.min) status = 'low';
+            if (ref.max !== null && ref.max !== undefined && newValue > ref.max) status = 'high';
+            parsedResults[testName].status = status;
+          }
+        }
+      }
+    });
+
+    const data = {
+      results: parsedResults,
+      patient: { sex: selectedSex, age: parseInt(document.getElementById('ageInput').value) || 35 },
+      date: new Date().toISOString(),
+      fileName: selectedFile.name
+    };
+
+    sessionStorage.setItem('analysisResults', JSON.stringify(data));
+    
+    // Сохраняем в историю
+    try {
+      const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
+      history.push({
+        id: 'a_' + Date.now(),
+        fileName: selectedFile.name,
+        date: Date.now(),
+        count: Object.keys(parsedResults).length
+      });
+      localStorage.setItem('analysis_history_v1', JSON.stringify(history));
+    } catch (e) {}
+
+    showToast('Переход к результатам...', '📊');
+    setTimeout(() => {
+      window.location.href = 'results.html';
+    }, 500);
+  };
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
+  }
 })();
 </script>
-<script>
-(function(){
-if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('SW:',e)})})}
-})();
-</script>
+
 </body>
 </html>
