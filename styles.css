@@ -265,14 +265,17 @@ header {
 }
 
 /* Dropdown аккаунта */
+/* ═══════════════════════════════════════
+   ACCOUNT DROPDOWN — ЯВНЫЕ ЦВЕТА
+   ═══════════════════════════════════════ */
 .account-dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  background: white;
+  background: #ffffff;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
   min-width: 280px;
   padding: 8px;
   opacity: 0;
@@ -297,17 +300,19 @@ header {
 .account-name {
   font-weight: 700;
   font-size: 16px;
-  color: var(--text);
+  color: #1e293b;
 }
 
 .account-email {
   font-size: 13px;
-  color: var(--text-muted);
+  color: #64748b;
   margin-top: 2px;
 }
 
 .account-menu {
   list-style: none;
+  padding: 0;
+  margin: 0;
 }
 
 .account-menu-item {
@@ -316,7 +321,7 @@ header {
   gap: 12px;
   padding: 12px 16px;
   border-radius: var(--radius);
-  color: var(--text);
+  color: #1e293b;
   cursor: pointer;
   transition: background 0.2s;
   font-size: 14px;
@@ -328,14 +333,61 @@ header {
   font-family: inherit;
 }
 
-.account-menu-item:hover { background: var(--bg-light); }
+.account-menu-item:hover {
+  background: #f1f5f9;
+}
 
-.account-menu-item.danger { color: var(--danger); }
+.account-menu-item.danger {
+  color: #dc2626;
+}
+
+.account-menu-item.danger:hover {
+  background: #fef2f2;
+}
 
 .account-divider {
   height: 1px;
   background: var(--border);
   margin: 8px 0;
+}
+
+/* ═══════════════════════════════════════
+   DARK MODE — DROPDOWN
+   ═══════════════════════════════════════ */
+@media (prefers-color-scheme: dark) {
+  .account-dropdown {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+
+  .account-name {
+    color: #f1f5f9;
+  }
+
+  .account-email {
+    color: #94a3b8;
+  }
+
+  .account-menu-item {
+    color: #f1f5f9;
+  }
+
+  .account-menu-item:hover {
+    background: #334155;
+  }
+
+  .account-menu-item.danger {
+    color: #fca5a5;
+  }
+
+  .account-menu-item.danger:hover {
+    background: #7f1d1d;
+  }
+
+  .account-divider {
+    background: #334155;
+  }
 }
 
 /* ═══════════════════════════════════════
