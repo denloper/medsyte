@@ -10,23 +10,24 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232563EB'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
 <title>Динамика анализов — Семейный доктор</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{--c-primary:#2563EB;--c-primary-dark:#1E40AF;--c-primary-light:#DBEAFE;--c-ok:#059669;--c-ok-bg:#ECFDF5;--c-warn:#D97706;--c-warn-bg:#FFFBEB;--c-danger:#B91C1C;--c-danger-bg:#FEF2F2;--c-bg:#F9FAFB;--c-card:#FFFFFF;--c-border:#E5E7EB;--c-text:#111827;--c-text-muted:#6B7280;--fs-base:18px;--fs-lg:20px;--fs-xl:24px;--fs-2xl:28px;--sp-1:8px;--sp-2:16px;--sp-3:24px;--sp-4:32px;--r-sm:8px;--r-md:12px;--r-lg:16px;--shadow-sm:0 1px 2px rgba(0,0,0,0.05);--focus-ring:0 0 0 4px rgba(37,99,235,0.3)}
 *{box-sizing:border-box;margin:0;padding:0}html{font-size:var(--fs-base)}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--c-bg);color:var(--c-text);line-height:1.6;min-height:100vh}
-.container{max-width:900px;margin:0 auto;padding:var(--sp-3)}
+.container{max-width:1100px;margin:0 auto;padding:var(--sp-3)}
 header{background:var(--c-card);border-bottom:1px solid var(--c-border);padding:var(--sp-3);margin-bottom:var(--sp-3);box-shadow:var(--shadow-sm)}
-.header-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:var(--sp-2)}
+.header-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
 .back-link{text-decoration:none;color:var(--c-primary);font-size:var(--fs-base);padding:8px 12px;border-radius:var(--r-sm);display:inline-flex;align-items:center;gap:8px}
 .back-link:hover{background:var(--c-primary-light)}.back-link:focus{outline:none;box-shadow:var(--focus-ring)}
 h1{font-size:var(--fs-2xl);color:var(--c-primary-dark)}
-.subtitle{color:var(--c-text-muted);margin-bottom:var(--sp-3)}
+.subtitle{color:var(--c-text-muted);margin:var(--sp-1) 0 var(--sp-3)}
 .patient-form{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
 .patient-form h2{font-size:var(--fs-xl);margin-bottom:var(--sp-2)}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2)}
 @media(max-width:480px){.form-grid{grid-template-columns:1fr}}
 .form-group label{display:block;margin-bottom:6px;font-weight:600;color:var(--c-text-muted)}
-.form-group input{width:100%;padding:12px 16px;font-size:var(--fs-base);border:1px solid var(--c-border);border-radius:var(--r-sm);background:var(--c-card);color:var(--c-text);min-height:48px}
+.form-group input{width:100%;padding:12px 16px;font-size:var(--fs-base);border:1px solid var(--c-border);border-radius:var(--r-sm);background:var(--c-card);color:var(--c-text);min-height:48px;font-family:inherit}
 .form-group input:focus{outline:none;box-shadow:var(--focus-ring);border-color:var(--c-primary)}
 .sex-buttons{display:flex;gap:var(--sp-1)}
 .sex-btn{flex:1;padding:12px;font-size:var(--fs-base);border:2px solid var(--c-border);background:var(--c-card);color:var(--c-text);border-radius:var(--r-sm);cursor:pointer;min-height:48px;font-family:inherit}
@@ -35,20 +36,39 @@ h1{font-size:var(--fs-2xl);color:var(--c-primary-dark)}
 @media(max-width:640px){.compare-grid{grid-template-columns:1fr}}
 .drop-zone{background:var(--c-card);border:2px dashed var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);text-align:center;cursor:pointer;min-height:200px;display:flex;flex-direction:column;justify-content:center;align-items:center}
 .drop-zone:hover,.drop-zone.dragover{border-color:var(--c-primary);background:var(--c-primary-light)}
-.drop-zone:focus{outline:none;box-shadow:var(--focus-ring)}
 .drop-icon{font-size:48px;margin-bottom:var(--sp-1)}.drop-zone h3{font-size:var(--fs-lg);margin-bottom:8px}.drop-zone p{color:var(--c-text-muted);font-size:16px}
 .file-info{margin-top:var(--sp-2);padding:var(--sp-1) var(--sp-2);background:var(--c-ok-bg);color:var(--c-ok);border-radius:var(--r-sm);font-size:16px;font-weight:600;word-break:break-word}
 .compare-btn{width:100%;padding:18px;font-size:var(--fs-lg);font-weight:700;background:var(--c-primary);color:white;border:none;border-radius:var(--r-md);cursor:pointer;min-height:60px;margin-bottom:var(--sp-3);font-family:inherit}
-.compare-btn:hover:not(:disabled){background:var(--c-primary-dark)}.compare-btn:focus{outline:none;box-shadow:var(--focus-ring)}
-.compare-btn:disabled{background:var(--c-border);color:var(--c-text-muted);cursor:not-allowed}
+.compare-btn:hover:not(:disabled){background:var(--c-primary-dark)}.compare-btn:disabled{background:var(--c-border);color:var(--c-text-muted);cursor:not-allowed}
 .progress{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3);display:none}
 .progress.active{display:block}.progress-bar{height:12px;background:var(--c-bg);border-radius:6px;overflow:hidden;margin:var(--sp-2) 0}
 .progress-fill{height:100%;background:var(--c-primary);width:0;transition:width 0.3s}.progress-text{text-align:center;color:var(--c-text-muted)}
+
+/* ═══════ РЕЗУЛЬТАТЫ СРАВНЕНИЯ ═══════ */
 .results{display:none}.results.active{display:block}
+
+/* Сводка */
 .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--sp-2);margin-bottom:var(--sp-3)}
 .summary-card{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-2) var(--sp-3);text-align:center}
-.summary-card h3{font-size:16px;color:var(--c-text-muted);margin-bottom:8px}.summary-card .number{font-size:var(--fs-2xl);font-weight:700}
+.summary-card h3{font-size:16px;color:var(--c-text-muted);margin-bottom:8px}
+.summary-card .number{font-size:var(--fs-2xl);font-weight:700}
 .summary-card.better{color:var(--c-ok)}.summary-card.worse{color:var(--c-danger)}.summary-card.stable{color:var(--c-text)}
+
+/* ═══════ ГРАФИК (НОВОЕ) ═══════ */
+.chart-section{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-2);flex-wrap:wrap;gap:var(--sp-2)}
+.chart-header h2{font-size:var(--fs-xl);color:var(--c-primary-dark);margin:0}
+.chart-filters{display:flex;gap:var(--sp-1);flex-wrap:wrap}
+.filter-btn{padding:8px 14px;font-size:14px;font-weight:600;border:2px solid var(--c-border);background:var(--c-card);color:var(--c-text);border-radius:20px;cursor:pointer;font-family:inherit;transition:all 0.2s}
+.filter-btn:hover{border-color:var(--c-primary)}
+.filter-btn.active{background:var(--c-primary);color:white;border-color:var(--c-primary)}
+.chart-container{position:relative;height:500px;margin-top:var(--sp-2)}
+.chart-legend{display:flex;gap:var(--sp-3);margin-top:var(--sp-2);padding:var(--sp-2);background:var(--c-bg);border-radius:var(--r-sm);flex-wrap:wrap;font-size:14px}
+.legend-item{display:flex;align-items:center;gap:6px}
+.legend-color{width:16px;height:16px;border-radius:3px}
+.chart-empty{text-align:center;padding:var(--sp-4);color:var(--c-text-muted)}
+
+/* Детальный список */
 .comparison-list{background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--r-md);padding:var(--sp-3);margin-bottom:var(--sp-3)}
 .comparison-list h2{font-size:var(--fs-xl);margin-bottom:var(--sp-2)}
 .comp-item{padding:var(--sp-2);background:var(--c-bg);border-radius:var(--r-sm);margin-bottom:var(--sp-1);border-left:4px solid transparent}
@@ -60,46 +80,505 @@ h1{font-size:var(--fs-2xl);color:var(--c-primary-dark)}
 .comp-values{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
 .comp-old,.comp-new{padding:6px 12px;border-radius:var(--r-sm);background:var(--c-card);font-weight:600}
 .comp-change{font-size:16px;color:var(--c-text-muted)}.comp-change strong{font-size:var(--fs-base)}
-.disclaimer{background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--r-md);padding:var(--sp-3);text-align:center;color:#92400E;font-size:16px}
+
+.disclaimer{background:#FEF3C7;border:1px solid #FDE68A;border-radius:var(--r-md);padding:var(--sp-3);text-align:center;color:#92400E;font-size:16px;margin-top:var(--sp-3)}
 .back-btn{display:block;margin:var(--sp-3) auto;padding:14px 24px;background:var(--c-card);color:var(--c-primary);border:2px solid var(--c-primary);border-radius:var(--r-md);font-size:var(--fs-base);font-weight:600;text-decoration:none;text-align:center;min-height:56px}
-@media(prefers-color-scheme:dark){:root{--c-bg:#111827;--c-card:#1F2937;--c-border:#374151;--c-text:#F9FAFB;--c-text-muted:#9CA3AF;--c-primary-light:#1E3A8A;--c-ok-bg:#064E3B;--c-ok:#6EE7B7;--c-warn-bg:#78350F;--c-warn:#FCD34D;--c-danger-bg:#7F1D1D;--c-danger:#FCA5A5}.disclaimer{background:#78350F;border-color:#92400E;color:#FCD34D}}
+
+@media(prefers-color-scheme:dark){
+  :root{--c-bg:#111827;--c-card:#1F2937;--c-border:#374151;--c-text:#F9FAFB;--c-text-muted:#9CA3AF;--c-primary-light:#1E3A8A;--c-ok-bg:#064E3B;--c-ok:#6EE7B7;--c-warn-bg:#78350F;--c-warn:#FCD34D;--c-danger-bg:#7F1D1D;--c-danger:#FCA5A5}
+  .disclaimer{background:#78350F;border-color:#92400E;color:#FCD34D}
+  .filter-btn{background:#374151;border-color:#4B5563;color:#F9FAFB}
+  .filter-btn.active{background:var(--c-primary);border-color:var(--c-primary)}
+}
 </style>
 </head>
 <body>
-<header><div class="header-inner"><a href="index.html" class="back-link">← Назад</a><h1>📈 Динамика анализов</h1></div></header>
+<header>
+  <div class="header-inner">
+    <a href="index.html" class="back-link">← Назад</a>
+    <h1>📈 Динамика анализов</h1>
+  </div>
+</header>
+
 <main class="container">
-<p class="subtitle">Загрузите два PDF-файла (старый и новый) — увидим изменения и тренды.</p>
-<section class="patient-form"><h2>👤 Данные пациента</h2><div class="form-grid"><div class="form-group"><label>Пол</label><div class="sex-buttons"><button type="button" class="sex-btn active" data-sex="female">👩 Жен</button><button type="button" class="sex-btn" data-sex="male">👨 Муж</button></div></div><div class="form-group"><label for="ageInput">Возраст</label><input type="number" id="ageInput" min="0" max="120" value="35" inputmode="numeric"></div></div></section>
-<div class="compare-grid">
-<div class="drop-zone" id="dropZoneOld" role="button" tabindex="0"><div class="drop-icon">📄</div><h3>Старый анализ</h3><p>Нажмите или перетащите PDF</p><div class="file-info" id="fileInfoOld" style="display:none"></div><input type="file" id="fileInputOld" accept="application/pdf" style="display:none"></div>
-<div class="drop-zone" id="dropZoneNew" role="button" tabindex="0"><div class="drop-icon">📄</div><h3>Новый анализ</h3><p>Нажмите или перетащите PDF</p><div class="file-info" id="fileInfoNew" style="display:none"></div><input type="file" id="fileInputNew" accept="application/pdf" style="display:none"></div>
-</div>
-<button class="compare-btn" id="compareBtn" disabled>🔍 Сравнить анализы</button>
-<div class="progress" id="progress"><div class="progress-text" id="progressText">Обработка...</div><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div></div>
-<div class="results" id="results"></div>
+  <p class="subtitle">Загрузите два PDF-файла — увидим изменения с визуализацией трендов.</p>
+
+  <section class="patient-form">
+    <h2>👤 Данные пациента</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Пол</label>
+        <div class="sex-buttons">
+          <button type="button" class="sex-btn active" data-sex="female">👩 Жен</button>
+          <button type="button" class="sex-btn" data-sex="male">👨 Муж</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="ageInput">Возраст</label>
+        <input type="number" id="ageInput" min="0" max="120" value="35" inputmode="numeric">
+      </div>
+    </div>
+  </section>
+
+  <div class="compare-grid">
+    <div class="drop-zone" id="dropZoneOld" role="button" tabindex="0">
+      <div class="drop-icon">📄</div>
+      <h3>Старый анализ</h3>
+      <p>PDF-файл с предыдущими результатами</p>
+      <div class="file-info" id="fileInfoOld" style="display:none"></div>
+      <input type="file" id="fileInputOld" accept="application/pdf" style="display:none">
+    </div>
+    <div class="drop-zone" id="dropZoneNew" role="button" tabindex="0">
+      <div class="drop-icon">📄</div>
+      <h3>Новый анализ</h3>
+      <p>PDF-файл с новыми результатами</p>
+      <div class="file-info" id="fileInfoNew" style="display:none"></div>
+      <input type="file" id="fileInputNew" accept="application/pdf" style="display:none">
+    </div>
+  </div>
+
+  <button class="compare-btn" id="compareBtn" disabled>🔍 Сравнить анализы</button>
+
+  <div class="progress" id="progress">
+    <div class="progress-text" id="progressText">Обработка...</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  </div>
+
+  <div class="results" id="results"></div>
 </main>
+
 <script src="database.js"></script>
 <script>
 (function(){
 'use strict';
-if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-var fileOld=null,fileNew=null,selectedSex='female';
-document.querySelectorAll('.sex-btn').forEach(function(btn){btn.addEventListener('click',function(){document.querySelectorAll('.sex-btn').forEach(function(b){b.classList.remove('active')});btn.classList.add('active');selectedSex=btn.dataset.sex})});
-function setupDropZone(zoneId,inputId,infoId,setFile){var zone=document.getElementById(zoneId),input=document.getElementById(inputId),info=document.getElementById(infoId);zone.addEventListener('click',function(){input.click()});zone.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click()}});['dragenter','dragover'].forEach(function(ev){zone.addEventListener(ev,function(e){e.preventDefault();zone.classList.add('dragover')})});['dragleave','drop'].forEach(function(ev){zone.addEventListener(ev,function(e){e.preventDefault();zone.classList.remove('dragover')})});zone.addEventListener('drop',function(e){if(e.dataTransfer.files.length>0&&e.dataTransfer.files[0].type==='application/pdf')setFile(e.dataTransfer.files[0],info)});input.addEventListener('change',function(e){if(e.target.files.length>0)setFile(e.target.files[0],info)})}
-function makeSetFile(which){return function(file,info){if(which==='old')fileOld=file;else fileNew=file;info.style.display='block';info.innerHTML='✓ '+file.name;document.getElementById('compareBtn').disabled=!(fileOld&&fileNew)}}
+
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let fileOld=null,fileNew=null,selectedSex='female';
+let comparisonData=null; // глобальные данные для перерисовки графика
+let currentChart=null;   // текущий экземпляр Chart.js
+let currentFilter='all'; // активный фильтр
+
+// ═══════════════════════════════════════
+//  ВЫБОР ПОЛА
+// ═══════════════════════════════════════
+document.querySelectorAll('.sex-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.sex-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedSex=btn.dataset.sex;
+  });
+});
+
+// ═══════════════════════════════════════
+//  DROP ZONES
+// ═══════════════════════════════════════
+function setupDropZone(zoneId,inputId,infoId,setFile){
+  const zone=document.getElementById(zoneId);
+  const input=document.getElementById(inputId);
+  const info=document.getElementById(infoId);
+  zone.addEventListener('click',()=>input.click());
+  zone.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click()}});
+  ['dragenter','dragover'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.add('dragover')}));
+  ['dragleave','drop'].forEach(ev=>zone.addEventListener(ev,e=>{e.preventDefault();zone.classList.remove('dragover')}));
+  zone.addEventListener('drop',e=>{
+    if(e.dataTransfer.files.length>0&&e.dataTransfer.files[0].type==='application/pdf'){
+      setFile(e.dataTransfer.files[0],info);
+    } else {
+      alert('Пожалуйста, загрузите PDF-файл');
+    }
+  });
+  input.addEventListener('change',e=>{if(e.target.files.length>0)setFile(e.target.files[0],info)});
+}
+
+function makeSetFile(which){
+  return (file,info)=>{
+    if(which==='old')fileOld=file;else fileNew=file;
+    info.style.display='block';
+    info.innerHTML='✓ '+file.name;
+    document.getElementById('compareBtn').disabled=!(fileOld&&fileNew);
+  };
+}
 setupDropZone('dropZoneOld','fileInputOld','fileInfoOld',makeSetFile('old'));
 setupDropZone('dropZoneNew','fileInputNew','fileInfoNew',makeSetFile('new'));
-async function parsePDF(file){var ab=await file.arrayBuffer(),pdf=await pdfjsLib.getDocument({data:ab}).promise,fullText='',YT=3;for(var i=1;i<=pdf.numPages;i++){var page=await pdf.getPage(i),tc=await page.getTextContent(),lm=new Map();tc.items.forEach(function(item){var y=Math.round(item.transform[5]/YT)*YT;if(!lm.has(y))lm.set(y,[]);lm.get(y).push({text:item.str,x:item.transform[4]})});var sl=Array.from(lm.entries()).sort(function(a,b){return b[0]-a[0]}).map(function(e){return e[1].sort(function(a,b){return a.x-b.x}).map(function(i){return i.text}).join(' ')});fullText+=sl.join('\n')+'\n'}return fullText}
-document.getElementById('compareBtn').addEventListener('click',async function(){if(!fileOld||!fileNew)return;var btn=document.getElementById('compareBtn');btn.disabled=true;var progress=document.getElementById('progress'),pf=document.getElementById('progressFill'),pt=document.getElementById('progressText');progress.classList.add('active');try{pf.style.width='20%';pt.textContent='📄 Читаем старый анализ...';var tOld=await parsePDF(fileOld);pf.style.width='60%';pt.textContent='📄 Читаем новый анализ...';var tNew=await parsePDF(fileNew);var age=parseInt(document.getElementById('ageInput').value)||35;pf.style.width='80%';pt.textContent='🧠 Сравниваем показатели...';var rOld=window.parseAnalysisText(tOld,selectedSex,age),rNew=window.parseAnalysisText(tNew,selectedSex,age),comparison=window.compareResults(rOld,rNew);pf.style.width='100%';pt.textContent='✓ Готово!';setTimeout(function(){progress.classList.remove('active');renderResults(comparison)},500)}catch(err){console.error(err);alert('Не удалось обработать файлы.');btn.disabled=false;progress.classList.remove('active')}});
-function renderResults(comparison){var results=document.getElementById('results'),better=0,worse=0,stable=0;Object.values(comparison).forEach(function(c){if(c.old===null||c.new===null)return;var ob=c.oldStatus!=='normal',nb=c.newStatus!=='normal';if(ob&&!nb)better++;else if(!ob&&nb)worse++;else if(ob&&nb){if(c.direction==='decreased'&&c.oldStatus==='high')better++;else if(c.direction==='increased'&&c.oldStatus==='low')better++;else if(c.direction==='increased'&&c.oldStatus==='high')worse++;else if(c.direction==='decreased'&&c.oldStatus==='low')worse++;else stable++}else stable++});
-var html='<div class="summary-cards"><div class="summary-card better"><h3>✓ Стало лучше</h3><div class="number">'+better+'</div></div><div class="summary-card worse"><h3>⚠ Ухудшилось</h3><div class="number">'+worse+'</div></div><div class="summary-card stable"><h3>– Без изменений</h3><div class="number">'+stable+'</div></div></div>';
-html+='<section class="comparison-list"><h2>📋 Детальное сравнение</h2>';
-var entries=Object.entries(comparison).filter(function(e){return e[1].old!==null&&e[1].new!==null});
-entries.forEach(function(entry){var name=entry[0],c=entry[1],wn=c.oldStatus==='normal',in_=c.newStatus==='normal',trend,arrow,cls;if(wn&&!in_){trend='ухудшилось';arrow='↘';cls='worse'}else if(!wn&&in_){trend='улучшилось';arrow='↗';cls='better'}else if(wn&&in_){trend='стабильно';arrow='→';cls='stable'}else{if(c.oldStatus==='high'&&c.direction==='decreased'){trend='улучшение';arrow='↗';cls='better'}else if(c.oldStatus==='low'&&c.direction==='increased'){trend='улучшение';arrow='↗';cls='better'}else if(c.oldStatus==='high'&&c.direction==='increased'){trend='ухудшение';arrow='↘';cls='worse'}else if(c.oldStatus==='low'&&c.direction==='decreased'){trend='ухудшение';arrow='↘';cls='worse'}else{trend='стабильно вне нормы';arrow='→';cls='stable'}}var cs=c.change!==null?(c.change>0?'+':'')+c.change.toFixed(2)+' ('+(c.changePercent>0?'+':'')+c.changePercent+'%)':'';html+='<div class="comp-item '+cls+'"><div class="comp-header"><span class="comp-name">'+name+'</span><span class="comp-arrow '+cls+'">'+arrow+'</span></div><div class="comp-values"><div><small style="color:var(--c-text-muted)">Было:</small><div class="comp-old">'+c.old+'</div></div><div style="color:var(--c-text-muted)">→</div><div><small style="color:var(--c-text-muted)">Стало:</small><div class="comp-new">'+c.new+'</div></div></div>'+(cs?'<div class="comp-change"><strong>'+cs+'</strong> — '+trend+'</div>':'')+'</div>'});
-html+='</section><a href="index.html" class="back-btn">← На главную</a><div class="disclaimer">⚕ Динамика — важный показатель, но требует врачебной интерпретации.</div>';
-results.innerHTML=html;results.classList.add('active');results.scrollIntoView({behavior:'smooth'})}
+
+// ═══════════════════════════════════════
+//  ПАРСИНГ PDF
+// ═══════════════════════════════════════
+async function parsePDF(file){
+  const ab=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  let fullText='',YT=3;
+  for(let i=1;i<=pdf.numPages;i++){
+    const page=await pdf.getPage(i);
+    const tc=await page.getTextContent();
+    const lm=new Map();
+    tc.items.forEach(item=>{
+      const y=Math.round(item.transform[5]/YT)*YT;
+      if(!lm.has(y))lm.set(y,[]);
+      lm.get(y).push({text:item.str,x:item.transform[4]});
+    });
+    const sl=Array.from(lm.entries()).sort((a,b)=>b[0]-a[0]).map(e=>
+      e[1].sort((a,b)=>a.x-b.x).map(i=>i.text).join(' ')
+    );
+    fullText+=sl.join('\n')+'\n';
+  }
+  return fullText;
+}
+
+// ═══════════════════════════════════════
+//  СРАВНЕНИЕ
+// ═══════════════════════════════════════
+document.getElementById('compareBtn').addEventListener('click',async()=>{
+  if(!fileOld||!fileNew)return;
+  const btn=document.getElementById('compareBtn');
+  btn.disabled=true;
+  const progress=document.getElementById('progress');
+  const pf=document.getElementById('progressFill');
+  const pt=document.getElementById('progressText');
+  progress.classList.add('active');
+  try{
+    pf.style.width='20%';pt.textContent='📄 Читаем старый анализ...';
+    const tOld=await parsePDF(fileOld);
+    pf.style.width='60%';pt.textContent='📄 Читаем новый анализ...';
+    const tNew=await parsePDF(fileNew);
+    const age=parseInt(document.getElementById('ageInput').value)||35;
+    pf.style.width='80%';pt.textContent='🧠 Сравниваем показатели...';
+    const rOld=window.parseAnalysisText(tOld,selectedSex,age);
+    const rNew=window.parseAnalysisText(tNew,selectedSex,age);
+    comparisonData=window.compareResults(rOld,rNew);
+    pf.style.width='100%';pt.textContent='✓ Готово!';
+    setTimeout(()=>{
+      progress.classList.remove('active');
+      renderResults(comparisonData);
+    },500);
+  }catch(err){
+    console.error(err);
+    alert('Не удалось обработать файлы.');
+    btn.disabled=false;
+    progress.classList.remove('active');
+  }
+});
+
+// ═══════════════════════════════════════
+//  РЕНДЕР РЕЗУЛЬТАТОВ
+// ═══════════════════════════════════════
+function renderResults(comparison){
+  const results=document.getElementById('results');
+  let better=0,worse=0,stable=0,total=0;
+
+  Object.values(comparison).forEach(c=>{
+    if(c.old===null||c.new===null)return;
+    total++;
+    const ob=c.oldStatus!=='normal',nb=c.newStatus!=='normal';
+    if(ob&&!nb)better++;
+    else if(!ob&&nb)worse++;
+    else if(ob&&nb){
+      if(c.direction==='decreased'&&c.oldStatus==='high')better++;
+      else if(c.direction==='increased'&&c.oldStatus==='low')better++;
+      else if(c.direction==='increased'&&c.oldStatus==='high')worse++;
+      else if(c.direction==='decreased'&&c.oldStatus==='low')worse++;
+      else stable++;
+    } else stable++;
+  });
+
+  // Сводка
+  let html=`<div class="summary-cards">
+    <div class="summary-card better"><h3>✓ Стало лучше</h3><div class="number">${better}</div></div>
+    <div class="summary-card worse"><h3>⚠ Ухудшилось</h3><div class="number">${worse}</div></div>
+    <div class="summary-card stable"><h3>– Без изменений</h3><div class="number">${stable}</div></div>
+    <div class="summary-card"><h3>📊 Всего показателей</h3><div class="number">${total}</div></div>
+  </div>`;
+
+  // ═══════ ГРАФИК (НОВОЕ) ═══════
+  html+=`<section class="chart-section">
+    <div class="chart-header">
+      <h2>📊 Визуализация динамики</h2>
+      <div class="chart-filters">
+        <button class="filter-btn active" data-filter="all">Все</button>
+        <button class="filter-btn" data-filter="changed">С изменениями</button>
+        <button class="filter-btn" data-filter="abnormal">Отклонения</button>
+      </div>
+    </div>
+    <div class="chart-container">
+      <canvas id="dynamicChart"></canvas>
+    </div>
+    <div class="chart-legend">
+      <div class="legend-item"><div class="legend-color" style="background:#059669"></div>В норме</div>
+      <div class="legend-item"><div class="legend-color" style="background:#D97706"></div>Небольшое отклонение</div>
+      <div class="legend-item"><div class="legend-color" style="background:#B91C1C"></div>Значительное отклонение</div>
+      <div class="legend-item"><div class="legend-color" style="background:rgba(37,99,235,0.15);border:2px dashed #2563EB"></div>Коридор нормы</div>
+      <div class="legend-item"><div class="legend-color" style="background:#94A3B8"></div>Старое значение</div>
+      <div class="legend-item"><div class="legend-color" style="background:#2563EB"></div>Новое значение</div>
+    </div>
+  </section>`;
+
+  // Детальное сравнение
+  html+=`<section class="comparison-list"><h2>📋 Детальное сравнение</h2>`;
+  const entries=Object.entries(comparison).filter(([,c])=>c.old!==null&&c.new!==null);
+
+  entries.forEach(([name,c])=>{
+    const wn=c.oldStatus==='normal',in_=c.newStatus==='normal';
+    let trend,arrow,cls;
+    if(wn&&!in_){trend='ухудшилось';arrow='↘';cls='worse';}
+    else if(!wn&&in_){trend='улучшилось';arrow='↗';cls='better';}
+    else if(wn&&in_){trend='стабильно';arrow='→';cls='stable';}
+    else{
+      if(c.oldStatus==='high'&&c.direction==='decreased'){trend='улучшение';arrow='↗';cls='better';}
+      else if(c.oldStatus==='low'&&c.direction==='increased'){trend='улучшение';arrow='↗';cls='better';}
+      else if(c.oldStatus==='high'&&c.direction==='increased'){trend='ухудшение';arrow='↘';cls='worse';}
+      else if(c.oldStatus==='low'&&c.direction==='decreased'){trend='ухудшение';arrow='↘';cls='worse';}
+      else{trend='стабильно вне нормы';arrow='→';cls='stable';}
+    }
+    const cs=c.change!==null?(c.change>0?'+':'')+c.change.toFixed(2)+' ('+(c.changePercent>0?'+':'')+c.changePercent+'%)':'';
+    html+=`<div class="comp-item ${cls}">
+      <div class="comp-header">
+        <span class="comp-name">${name}</span>
+        <span class="comp-arrow ${cls}">${arrow}</span>
+      </div>
+      <div class="comp-values">
+        <div><small style="color:var(--c-text-muted)">Было:</small><div class="comp-old">${c.old}</div></div>
+        <div style="color:var(--c-text-muted)">→</div>
+        <div><small style="color:var(--c-text-muted)">Стало:</small><div class="comp-new">${c.new}</div></div>
+      </div>
+      ${cs?`<div class="comp-change"><strong>${cs}</strong> — ${trend}</div>`:''}
+    </div>`;
+  });
+
+  html+=`</section>
+    <a href="index.html" class="back-btn">← На главную</a>
+    <div class="disclaimer">⚕ Динамика — важный показатель, но требует врачебной интерпретации.</div>`;
+
+  results.innerHTML=html;
+  results.classList.add('active');
+  results.scrollIntoView({behavior:'smooth'});
+
+  // Инициализируем график и фильтры
+  initChart(comparison);
+  initFilters(comparison);
+}
+
+// ═══════════════════════════════════════
+//  ФИЛЬТРЫ ГРАФИКА
+// ═══════════════════════════════════════
+function initFilters(comparison){
+  document.querySelectorAll('.filter-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter=btn.dataset.filter;
+      updateChart(comparison);
+    });
+  });
+}
+
+// ═══════════════════════════════════════
+//  ГРАФИК (Chart.js)
+// ═══════════════════════════════════════
+function initChart(comparison){
+  updateChart(comparison);
+}
+
+function updateChart(comparison){
+  // Фильтруем показатели
+  const filtered=Object.entries(comparison).filter(([name,c])=>{
+    if(c.old===null||c.new===null)return false;
+    if(currentFilter==='all')return true;
+    if(currentFilter==='changed')return c.direction!=='unchanged';
+    if(currentFilter==='abnormal')return c.oldStatus!=='normal'||c.newStatus!=='normal';
+    return true;
+  });
+
+  if(filtered.length===0){
+    if(currentChart){currentChart.destroy();currentChart=null;}
+    const container=document.querySelector('.chart-container');
+    container.innerHTML='<div class="chart-empty">📭 Нет данных для отображения с текущим фильтром</div>';
+    return;
+  }
+
+  // Восстанавливаем canvas если был заменён
+  let canvas=document.getElementById('dynamicChart');
+  if(!canvas){
+    const container=document.querySelector('.chart-container');
+    container.innerHTML='<canvas id="dynamicChart"></canvas>';
+    canvas=document.getElementById('dynamicChart');
+  }
+
+  if(currentChart){currentChart.destroy();}
+
+  // Нормализуем значения для визуализации
+  // Для каждого показателя считаем % от верхней границы референса
+  const chartData=filtered.map(([name,c])=>{
+    const test=window.labTests?window.labTests.find(t=>t.canonicalName===name):null;
+    const refMin=c.refMin;
+    const refMax=c.refMax;
+
+    // Определяем масштаб: берём max из (refMax, old, new) * 1.3
+    let scaleMax=0;
+    if(refMax)scaleMax=Math.max(scaleMax,refMax);
+    if(c.old)scaleMax=Math.max(scaleMax,c.old);
+    if(c.new)scaleMax=Math.max(scaleMax,c.new);
+    scaleMax=scaleMax*1.3||100;
+
+    // Цвет нового значения по статусу
+    let newColor;
+    if(c.newStatus==='normal')newColor='#059669';
+    else if(c.newStatus==='low'||c.newStatus==='high'){
+      // Определяем серьёзность по расстоянию от референса
+      const ref=refMax-refMin||refMax||1;
+      const deviation=c.newStatus==='high'?(c.new-refMax):(refMin-c.new);
+      const severity=deviation/ref;
+      newColor=severity>0.5?'#B91C1C':'#D97706';
+    } else newColor='#6B7280';
+
+    return {
+      name,old:c.old,new:c.new,
+      oldStatus:c.oldStatus,newStatus:c.newStatus,
+      refMin,refMax,
+      scaleMax,newColor,
+      change:c.change,changePercent:c.changePercent,direction:c.direction,
+      unit:test?test.units[0]:''
+    };
+  });
+
+  const labels=chartData.map(d=>d.name);
+  const oldValues=chartData.map(d=>d.old||0);
+  const newValues=chartData.map(d=>d.new||0);
+  const newColors=chartData.map(d=>d.newColor);
+
+  // Коридор нормы — используем floating bars для визуализации
+  const refRanges=chartData.map(d=>[d.refMin||0,d.refMax||0]);
+
+  // Высота графика подстраивается под количество показателей
+  const container=document.querySelector('.chart-container');
+  const height=Math.max(400,filtered.length*40);
+  container.style.height=height+'px';
+
+  const ctx=canvas.getContext('2d');
+
+  // Определяем цвета для тёмной темы
+  const isDark=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const textColor=isDark?'#F9FAFB':'#111827';
+  const gridColor=isDark?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)';
+
+  currentChart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:labels,
+      datasets:[
+        // Коридор нормы (floating bars)
+        {
+          label:'Коридор нормы',
+          data:refRanges,
+          backgroundColor:'rgba(37,99,235,0.12)',
+          borderColor:'rgba(37,99,235,0.4)',
+          borderWidth:1,
+          borderDash:[4,4],
+          barThickness:28,
+          categoryPercentage:0.9,
+          barPercentage:1
+        },
+        // Старое значение
+        {
+          label:'Старое значение',
+          data:oldValues,
+          backgroundColor:'rgba(148,163,184,0.7)',
+          borderColor:'#94A3B8',
+          borderWidth:1,
+          barThickness:10,
+          categoryPercentage:0.9,
+          barPercentage:0.8
+        },
+        // Новое значение
+        {
+          label:'Новое значение',
+          data:newValues,
+          backgroundColor:newColors,
+          borderColor:newColors.map(c=>c),
+          borderWidth:2,
+          barThickness:10,
+          categoryPercentage:0.9,
+          barPercentage:0.8
+        }
+      ]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{padding:{right:40}},
+      scales:{
+        x:{
+          beginAtZero:true,
+          grid:{color:gridColor},
+          ticks:{color:textColor,font:{size:12}},
+          title:{
+            display:true,
+            text:'Значение (шкала нормализована для каждого показателя)',
+            color:textColor,
+            font:{size:12,weight:'500'}
+          }
+        },
+        y:{
+          grid:{display:false},
+          ticks:{color:textColor,font:{size:13,weight:'500'}}
+        }
+      },
+      plugins:{
+        legend:{
+          display:false // Используем кастомную легенду
+        },
+        tooltip:{
+          backgroundColor:isDark?'#1F2937':'#FFFFFF',
+          titleColor:textColor,
+          bodyColor:textColor,
+          borderColor:'rgba(37,99,235,0.3)',
+          borderWidth:1,
+          padding:12,
+          titleFont:{size:14,weight:'700'},
+          bodyFont:{size:13},
+          displayColors:true,
+          callbacks:{
+            title:function(items){
+              const idx=items[0].dataIndex;
+              return chartData[idx].name;
+            },
+            label:function(context){
+              const idx=context.dataIndex;
+              const d=chartData[idx];
+              if(context.datasetIndex===0){
+                return `Коридор нормы: ${d.refMin??'?'} – ${d.refMax??'?'}`;
+              }
+              if(context.datasetIndex===1){
+                const statusLabel=d.oldStatus==='normal'?'✓ норма':d.oldStatus==='high'?'↑ повышено':'↓ понижено';
+                return `Было: ${d.old} (${statusLabel})`;
+              }
+              if(context.datasetIndex===2){
+                const statusLabel=d.newStatus==='normal'?'✓ норма':d.newStatus==='high'?'↑ повышено':'↓ понижено';
+                const change=d.change!==null?` | Δ ${d.change>0?'+':''}${d.change.toFixed(2)} (${d.changePercent>0?'+':''}${d.changePercent}%)`:'';
+                return `Стало: ${d.new} (${statusLabel})${change}`;
+              }
+            },
+            afterBody:function(items){
+              const idx=items[0].dataIndex;
+              const d=chartData[idx];
+              const trendText=d.direction==='increased'?'📈 Рост':d.direction==='decreased'?'📉 Снижение':'→ Без изменений';
+              return ['','Тренд: '+trendText];
+            }
+          }
+        }
+      },
+      animation:{
+        duration:800,
+        easing:'easeOutQuart'
+      }
+    }
+  });
+}
+
 })();
 </script>
+
 <script>
 (function(){
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(e){console.warn('SW:',e)})})}
@@ -108,6 +587,7 @@ window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();def
 if(installBtn){installBtn.addEventListener('click',async function(){if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.style.display='none'})}
 })();
 </script>
+
 <button id="pwaInstallBtn" style="display:none;position:fixed;bottom:20px;right:20px;background:#2563EB;color:white;border:none;padding:16px 24px;border-radius:12px;font-size:18px;font-weight:600;box-shadow:0 4px 12px rgba(37,99,235,0.3);cursor:pointer;z-index:1000;font-family:inherit">📱 Установить приложение</button>
 </body>
 </html>
