@@ -236,135 +236,190 @@ footer{text-align:center;padding:var(--sp-4) var(--sp-3);color:var(--c-text-mute
 <script>
 (function(){
 'use strict';
-var PROFILES_KEY='family_profiles_v4',HISTORY_KEY='analysis_history_v4',ACTIVE_KEY='active_profile_v4';
-function getDefault(){return[{id:'self',name:'Я (основной профиль)'}]}
-function loadProfiles(){try{var s=localStorage.getItem(PROFILES_KEY);return s?JSON.parse(s):getDefault()}catch(e){return getDefault()}}
-function saveProfiles(p){localStorage.setItem(PROFILES_KEY,JSON.stringify(p))}
-function loadHistory(){try{var s=localStorage.getItem(HISTORY_KEY);return s?JSON.parse(s):{}}catch(e){return{}}}
-function saveHistory(h){localStorage.setItem(HISTORY_KEY,JSON.stringify(h))}
-var select=document.getElementById('profileSelect');
-function populate(){var profiles=loadProfiles(),active=localStorage.getItem(ACTIVE_KEY)||'self';select.innerHTML='';profiles.forEach(function(p){var o=document.createElement('option');o.value=p.id;o.textContent=p.name;if(p.id===active)o.selected=true;select.appendChild(o)})}
-function renderHistory(){var active=localStorage.getItem(ACTIVE_KEY)||'self',history=loadHistory(),items=history[active]||[],c=document.getElementById('historyContent');if(items.length===0){c.innerHTML='<div class="history-empty">Пока нет загруженных анализов.</div>';return}items.sort(function(a,b){return b.date-a.date});c.innerHTML='<div class="history-list">'+items.slice(0,5).map(function(h){return'<div class="history-item"><div><div>'+(h.label||'Анализы')+'</div><div class="history-item-date">'+new Date(h.date).toLocaleDateString('ru-RU')+'</div></div><div class="history-item-count">'+h.count+' показат.</div></div>'}).join('')+'</div>'}
-select.addEventListener('change',function(e){localStorage.setItem(ACTIVE_KEY,e.target.value);renderHistory()});
-document.getElementById('addProfileBtn').addEventListener('click',function(){var name=prompt('Как назвать профиль?\nНапример: "Мама", "Ребёнок"');if(!name||!name.trim())return;var profiles=loadProfiles();profiles.push({id:'p_'+Date.now(),name:name.trim()});saveProfiles(profiles);populate();alert('Профиль "'+name.trim()+'" добавлен')});
-
-var eModal=document.getElementById('emergencyModal');
-document.getElementById('emergencyBtn').addEventListener('click',function(){eModal.classList.add('active')});
-document.getElementById('emergencyCancel').addEventListener('click',function(){eModal.classList.remove('active')});
-eModal.addEventListener('click',function(e){if(e.target===eModal)eModal.classList.remove('active')});
-
-var sModal=document.getElementById('symptomsModal'),sResult=document.getElementById('symptomsResult');
-document.getElementById('symptomsBtn').addEventListener('click',function(){sModal.classList.add('active');document.getElementById('symptomsText').focus()});
-document.getElementById('symptomsCancel').addEventListener('click',function(){sModal.classList.remove('active');sResult.style.display='none'});
-sModal.addEventListener('click',function(e){if(e.target===sModal)sModal.classList.remove('active')});
 
 // ═══════════════════════════════════════
-// ПЕРЕКЛЮЧАТЕЛЬ АНТИ-ТРЕВОЖНОГО РЕЖИМА
+//  РЕГИСТРАЦИЯ SERVICE WORKER
 // ═══════════════════════════════════════
-var anxietyToggle=document.getElementById('anxietyToggle');
-if(anxietyToggle && window.SymptomRAG){
-  anxietyToggle.checked=window.SymptomRAG.getAnxietyMode();
-  anxietyToggle.addEventListener('change',function(){
-    window.SymptomRAG.setAnxietyMode(anxietyToggle.checked);
-    if(anxietyToggle.checked){
-      console.log('🌿 Спокойный режим включён');
-    } else {
-      console.log('📋 Обычный режим');
-    }
-  });
-}
-
-// ═══════════════════════════════════════
-// RAG-анализ симптомов с поддержкой анти-тревожного режима
-// ═══════════════════════════════════════
-function formatMarkdown(text){
-  if(!text)return'';
-  return text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/^### (.+)$/gm,'<h4>$1</h4>')
-    .replace(/^## (.+)$/gm,'<h3>$1</h3>')
-    .replace(/^- (.+)$/gm,'<li>$1</li>')
-    .replace(/(<li>.*<\/li>\n?)+/g,function(m){return'<ul>'+m+'</ul>';})
-    .replace(/\n\n/g,'</p><p>')
-    .replace(/\n/g,'<br>')
-    .replace(/^/,'<p>').replace(/$/,'</p>');
-}
-
-document.getElementById('analyzeSymptoms').addEventListener('click',function(){
-  var text=document.getElementById('symptomsText').value.trim();
-  if(!text){alert('Опишите симптомы');return}
-
-  var flags=Array.from(document.querySelectorAll('#urgentList input:checked')).map(function(i){return i.dataset.flag});
-  if(flags.length>0){
-    sResult.className='modal-result danger';
-    sResult.style.display='block';
-    sResult.innerHTML='<strong>🚨 Признаки экстренного состояния</strong>Немедленно вызывайте скорую: <a href="tel:112" style="color:inherit;font-weight:700">112</a><br><small>Не ждите, не занимайтесь самолечением.</small>';
-    return;
-  }
-
-  var anxietyMode=window.SymptomRAG?window.SymptomRAG.getAnxietyMode():false;
-  
-  sResult.className='modal-result '+(anxietyMode?'anxiety':'info');
-  sResult.style.display='block';
-  sResult.innerHTML='<strong>'+(anxietyMode?'🌿 Анализирую...':'🔍 Анализирую...')+'</strong><div style="margin-top:10px;display:flex;align-items:center;gap:10px"><div class="loading-dots"><span></span><span></span><span></span></div>'+(anxietyMode?'Подбираю спокойный ответ...':'Ищу клинические рекомендации...')+'</div>';
-
-  var patientInfo={sex:'unknown',age:null};
-
-  window.SymptomRAG.analyzeSymptoms(text,patientInfo).then(function(result){
-    var answerHtml=formatMarkdown(result.answer);
-    var sourcesHtml='';
-    if(result.sources&&result.sources.length>0){
-      sourcesHtml='<div class="sources-box"><strong>📚 Источники (клинические рекомендации):</strong><ul>';
-      result.sources.forEach(function(s){
-        sourcesHtml+='<li>• '+s.title+(s.year?' ('+s.year+')':'')+'</li>';
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js')
+      .then(function(reg){
+        console.log('✅ SW зарегистрирован:', reg.scope);
+        // Проверяем установку через 3 секунды
+        setTimeout(checkInstallability, 3000);
+      })
+      .catch(function(err){
+        console.warn('⚠ Ошибка SW:', err);
       });
-      sourcesHtml+='</ul></div>';
-    }
-
-    var modeIndicator;
-    if(result.anxietyMode){
-      modeIndicator=result.mode==='ai'
-        ?'<span class="mode-badge ai" style="background:#D1FAE5;color:#065F46">🌿 Спокойный ИИ</span>'
-        :'<span class="mode-badge local" style="background:#D1FAE5;color:#065F46">🌿 По протоколам</span>';
-    } else {
-      modeIndicator=result.mode==='ai'
-        ?'<span class="mode-badge ai">🤖 ИИ + протоколы</span>'
-        :'<span class="mode-badge local">📋 По протоколам</span>';
-    }
-
-    var titleText=result.anxietyMode?'💚 Рекомендации':'💡 Рекомендации';
-
-    sResult.className='modal-result '+(result.anxietyMode?'anxiety':'info');
-    sResult.innerHTML='<strong>'+titleText+modeIndicator+'</strong><div class="rag-answer" style="margin-top:12px">'+answerHtml+'</div>'+sourcesHtml+'<small style="display:block;margin-top:12px;opacity:0.7;font-size:12px">⚕ Информация основана на клинических рекомендациях, не заменяет консультацию врача.</small>';
-  }).catch(function(e){
-    console.error('Ошибка анализа:',e);
-    sResult.className='modal-result info';
-    sResult.innerHTML='<strong>⚠ Не удалось получить ответ</strong><br>Попробуйте позже или переформулируйте симптомы.';
   });
+}
+
+// ═══════════════════════════════════════
+//  КНОПКА УСТАНОВКИ PWA
+// ═══════════════════════════════════════
+var deferredPrompt = null;
+var installBtn = document.getElementById('pwaInstallBtn');
+
+// Проверяем, установлено ли уже приложение
+var isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+if(isStandalone){
+  // Приложение уже установлено — скрываем кнопку
+  if(installBtn) installBtn.style.display = 'none';
+} else {
+  // Показываем кнопку СРАЗУ с fallback-текстом
+  if(installBtn){
+    installBtn.style.display = 'block';
+    
+    if(isIOS){
+      installBtn.innerHTML = '📱 Как установить';
+      installBtn.onclick = function(){
+        alert(
+          'Как установить приложение на iPhone:\n\n' +
+          '1. Нажмите кнопку "Поделиться" ⬆ (квадрат со стрелкой)\n' +
+          '2. Прокрутите вниз\n' +
+          '3. Выберите "На экран «Домой»" ➕\n' +
+          '4. Нажмите "Добавить" ✅\n\n' +
+          'Иконка 🩺 появится на вашем рабочем столе!'
+        );
+      };
+    } else {
+      installBtn.innerHTML = '📱 Установить приложение';
+    }
+  }
+}
+
+// Событие готовности к установке
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredPrompt = e;
+  console.log('✅ beforeinstallprompt сработал — можно устанавливать');
+  
+  if(installBtn){
+    installBtn.style.display = 'block';
+    installBtn.innerHTML = '📱 Установить приложение';
+    installBtn.onclick = async function(){
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      var choice = await deferredPrompt.userChoice;
+      console.log('PWA install:', choice.outcome);
+      if(choice.outcome === 'accepted'){
+        installBtn.style.display = 'none';
+      }
+      deferredPrompt = null;
+    };
+  }
 });
 
-// ═══════════════════════════════════════
-// ГОЛОСОВОЙ ВВОД
-// ═══════════════════════════════════════
-var voiceBtn=document.getElementById('voiceBtn'),voiceStatus=document.getElementById('voiceStatus'),symptomsText=document.getElementById('symptomsText');
-if('webkitSpeechRecognition' in window||'SpeechRecognition' in window){
-  var SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  var recognition=new SpeechRecognition();
-  recognition.lang='ru-RU';recognition.continuous=true;recognition.interimResults=true;recognition.maxAlternatives=1;
-  var isListening=false,finalTranscript='';
-  voiceBtn.addEventListener('click',function(){if(isListening){recognition.stop();return}try{finalTranscript=symptomsText.value;recognition.start()}catch(e){alert('Не удалось запустить голосовой ввод')}});
-  recognition.onstart=function(){isListening=true;voiceBtn.classList.add('listening');voiceBtn.textContent='⏹';voiceStatus.style.display='block'};
-  recognition.onend=function(){isListening=false;voiceBtn.classList.remove('listening');voiceBtn.textContent='🎤';voiceStatus.style.display='none'};
-  recognition.onresult=function(event){var interim='';for(var i=event.resultIndex;i<event.results.length;i++){var transcript=event.results[i][0].transcript;if(event.results[i].isFinal){finalTranscript+=transcript+' '}else{interim+=transcript}}symptomsText.value=finalTranscript+interim;symptomsText.scrollTop=symptomsText.scrollHeight};
-  recognition.onerror=function(event){console.error('Speech error:',event.error);if(event.error==='not-allowed'){alert('Разрешите доступ к микрофону')}isListening=false;voiceBtn.classList.remove('listening');voiceBtn.textContent='🎤';voiceStatus.style.display='none'};
-}else{voiceBtn.style.display='none'}
+// Если beforeinstallprompt не сработал за 5 секунд — показываем fallback
+function checkInstallability(){
+  if(!deferredPrompt && !isStandalone && installBtn){
+    console.log('⚠ beforeinstallprompt не сработал — показываем fallback-кнопку');
+    installBtn.style.display = 'block';
+    installBtn.innerHTML = '📱 Установить';
+    installBtn.onclick = function(){
+      showManualInstallDialog();
+    };
+  }
+}
 
-document.addEventListener('keydown',function(e){if(e.key==='Escape'){eModal.classList.remove('active');sModal.classList.remove('active')}});
+// Диалог ручной установки
+function showManualInstallDialog(){
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  
+  var isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  var instructions = isIOSDevice ? 
+    '<ol style="text-align:left;margin:16px 0;padding-left:20px;line-height:1.8">' +
+    '<li>Нажмите кнопку <b>«Поделиться» ⬆</b> внизу Safari</li>' +
+    '<li>Прокрутите вниз и выберите <b>«На экран Домой» ➕</b></li>' +
+    '<li>Нажмите <b>«Добавить»</b></li>' +
+    '</ol>' :
+    '<ol style="text-align:left;margin:16px 0;padding-left:20px;line-height:1.8">' +
+    '<li>Нажмите <b>⋮</b> (меню) в правом верхнем углу браузера</li>' +
+    '<li>Выберите <b>«Установить страницу»</b> или <b>«Добавить на главный экран»</b></li>' +
+    '<li>Подтвердите установку</li>' +
+    '</ol>' +
+    '<p style="margin-top:12px;padding:12px;background:#FEF3C7;border-radius:8px;font-size:14px;color:#92400E">' +
+    '<b>💡 Совет:</b> Если пункта нет — попробуйте открыть сайт в <b>Chrome</b> или <b>Edge</b>. ' +
+    'В Firefox автоматическая установка не поддерживается.' +
+    '</p>';
 
-window.FamilyApp={loadHistory:loadHistory,saveHistory:saveHistory,addAnalysisToHistory:function(label,count){var h=loadHistory(),id=localStorage.getItem(ACTIVE_KEY)||'self';if(!h[id])h[id]=[];h[id].push({date:Date.now(),label:label,count:count});saveHistory(h)}};
-populate();renderHistory();
+  overlay.innerHTML = 
+    '<div style="background:white;color:#111;border-radius:16px;max-width:440px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3)">' +
+    '<h2 style="margin:0 0 8px;color:#1E40AF;font-size:22px">📱 Установка приложения</h2>' +
+    '<p style="color:#6B7280;margin:0 0 16px">Автоматическая установка недоступна. Установите вручную:</p>' +
+    instructions +
+    '<div style="display:flex;gap:12px;margin-top:20px">' +
+    '<button id="manualInstallClose" style="flex:1;padding:14px;background:#2563EB;color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit">Понятно</button>' +
+    '<button id="manualInstallDiag" style="padding:14px 20px;background:#F3F4F6;color:#6B7280;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit">Диагностика</button>' +
+    '</div>' +
+    '</div>';
+  
+  document.body.appendChild(overlay);
+  
+  document.getElementById('manualInstallClose').onclick = function(){
+    document.body.removeChild(overlay);
+  };
+  overlay.onclick = function(e){
+    if(e.target === overlay) document.body.removeChild(overlay);
+  };
+  
+  document.getElementById('manualInstallDiag').onclick = function(){
+    runDiagnostics();
+  };
+}
+
+// Диагностика PWA
+function runDiagnostics(){
+  var results = [];
+  
+  results.push('🔍 Диагностика PWA\n');
+  results.push('HTTPS: ' + (location.protocol === 'https:' ? '✅' : '❌'));
+  results.push('Service Worker: ' + ('serviceWorker' in navigator ? '✅ поддерживается' : '❌ не поддерживается'));
+  results.push('Standalone режим: ' + (isStandalone ? '✅ (приложение установлено)' : '⚠ нет'));
+  
+  // Проверка manifest
+  fetch('./manifest.json')
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(m){
+      results.push('Manifest: ✅ загружен');
+      results.push('  • name: ' + (m.name || '❌ отсутствует'));
+      results.push('  • start_url: ' + (m.start_url || '❌ отсутствует'));
+      results.push('  • display: ' + (m.display || '❌ отсутствует'));
+      results.push('  • icons: ' + (m.icons && m.icons.length ? '✅ ' + m.icons.length + ' шт' : '❌ отсутствуют'));
+      
+      // Проверка SW
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.getRegistration().then(function(reg){
+          if(reg){
+            results.push('SW статус: ✅ ' + (reg.active ? 'active' : 'registered'));
+          } else {
+            results.push('SW статус: ❌ не зарегистрирован');
+          }
+          alert(results.join('\n'));
+        });
+      } else {
+        alert(results.join('\n'));
+      }
+    })
+    .catch(function(e){
+      results.push('Manifest: ❌ ' + e.message);
+      alert(results.join('\n'));
+    });
+}
+
+// Слушаем изменение standalone режима
+window.matchMedia('(display-mode: standalone)').addEventListener('change', function(e){
+  if(e.matches && installBtn){
+    installBtn.style.display = 'none';
+  }
+});
+
 })();
 </script>
 
