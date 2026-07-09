@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'sem-dok-v14';
-const APP_VERSION = '5.1.0'; // ← синхронизируйте с meta в HTML
+const CACHE_VERSION = 'sem-dok-v15';
+const APP_VERSION = '5.2.0';
 
 const STATIC_ASSETS = [
   './',
@@ -35,10 +35,12 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_VERSION)
       .then(cache => {
         const localPromises = STATIC_ASSETS.map(url =>
-          cache.add(url).catch(err => console.warn('[SW] Не удалось:', url))
+          cache.add(url).catch(err => console.warn('[SW] Не удалось закешировать:', url, err.message))
         );
         const cdnPromises = CDN_ASSETS.map(url =>
-          fetch(url).then(r => r.ok && cache.put(url, r)).catch(() => {})
+          fetch(url)
+            .then(r => r.ok && cache.put(url, r))
+            .catch(() => {})
         );
         return Promise.all([...localPromises, ...cdnPromises]);
       })
@@ -47,17 +49,34 @@ self.addEventListener('install', (event) => {
 });
 
 // ═══════════════════════════════════════
-//  ACTIVATE — удаляем старые кеши, НО НЕ перезагружаем страницу
+//  ACTIVATE — удаляем старые кеши + уведомляем клиентов о новой версии
 // ═══════════════════════════════════════
 self.addEventListener('activate', (event) => {
   console.log('[SW v' + CACHE_VERSION + '] Активация');
   event.waitUntil(
     Promise.all([
+      // Удаляем старые кеши
       caches.keys().then(keys =>
-        Promise.all(keys.filter(k => k !== CACHE_VERSION).map(k => caches.delete(k)))
+        Promise.all(
+          keys.filter(k => k !== CACHE_VERSION).map(k => {
+            console.log('[SW] Удаление старого кеша:', k);
+            return caches.delete(k);
+          })
+        )
       ),
+      // Берём контроль над клиентами
       self.clients.claim()
-    ])
+    ]).then(() => {
+      // Уведомляем все открытые вкладки о новой версии
+      return self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+          client.postMessage({
+            type: 'NEW_VERSION_ACTIVE',
+            version: APP_VERSION
+          });
+        });
+      });
+    })
   );
 });
 
@@ -70,81 +89,86 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // CDN — cache-first
+  // ═══════ CDN — cache-first ═══════
   if (url.origin !== self.location.origin) {
     event.respondWith(
       caches.match(event.request).then(cached =>
-        cached || fetch(event.request).then(r => {
-          if (r.ok) caches.open(CACHE_VERSION).then(c => c.put(event.request, r.clone()));
-          return r;
+        cached || fetch(event.request).then(response => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_VERSION).then(c => c.put(event.request, clone));
+          }
+          return response;
         }).catch(() => cached)
       )
     );
     return;
   }
 
-  // ═══════ HTML — NETWORK-FIRST + детект новой версии ═══════
+  // ═══════ HTML — Network-first с fallback ═══════
   if (event.request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
           if (networkResponse.ok) {
-            const clone = networkResponse.clone();
-            // Обновляем кеш свежей версией
-            caches.open(CACHE_VERSION).then(cache => cache.put(event.request, clone));
-            
-            // Возвращаем КЕШИРОВАННУЮ версию (чтобы не было автообновления)
-            // Но параллельно проверяем, есть ли новая версия
-            return caches.match(event.request).then(cached => {
-              // Сравниваем версии через текст
-              return Promise.all([networkResponse.clone().text(), cached.text()])
-                .then(([networkText, cachedText]) => {
-                  const networkVersion = extractVersion(networkText);
-                  const cachedVersion = extractVersion(cachedText);
-                  
-                  if (networkVersion && cachedVersion && networkVersion !== cachedVersion) {
-                    // Уведомляем клиента о новой версии
-                    self.clients.matchAll().then(clients => {
-                      clients.forEach(client => {
-                        client.postMessage({
-                          type: 'NEW_VERSION_AVAILABLE',
-                          version: networkVersion,
-                          currentVersion: cachedVersion
-                        });
-                      });
-                    });
-                  }
-                  
-                  // Возвращаем КЕШ (без автообновления!)
-                  return cached;
-                });
+            // Клонируем ПЕРЕД использованием
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_VERSION).then(cache => {
+              cache.put(event.request, responseToCache);
             });
           }
+          // Возвращаем оригинальный networkResponse (не клон, не кеш!)
           return networkResponse;
         })
-        .catch(() => caches.match(event.request).then(c => c || caches.match('./index.html')))
+        .catch(() => {
+          // Оффлайн: отдаём из кеша
+          return caches.match(event.request)
+            .then(cached => cached || caches.match('./index.html'));
+        })
     );
     return;
   }
 
-  // CSS/JS/JSON — cache-first
+  // ═══════ JSON — Stale-while-revalidate ═══════
+  if (event.request.url.endsWith('.json')) {
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        // Возвращаем КЛОН кеша (чтобы не блокировать оригинал)
+        const responseToSend = cached ? cached.clone() : null;
+        
+        const fetchPromise = fetch(event.request)
+          .then(response => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_VERSION).then(c => c.put(event.request, clone));
+            }
+            return response;
+          })
+          .catch(() => cached);
+        
+        return responseToSend || fetchPromise;
+      })
+    );
+    return;
+  }
+
+  // ═══════ CSS/JS/изображения — Cache-first ═══════
   event.respondWith(
-    caches.match(event.request).then(cached =>
-      cached || fetch(event.request).then(r => {
-        if (r.ok) caches.open(CACHE_VERSION).then(c => c.put(event.request, r.clone()));
-        return r;
-      }).catch(() => new Response('Offline', { status: 503 }))
-    )
+    caches.match(event.request).then(cached => {
+      if (cached) {
+        // Возвращаем КЛОН, чтобы не блокировать
+        return cached.clone();
+      }
+      return fetch(event.request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_VERSION).then(c => c.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => new Response('Offline', { status: 503 }));
+    })
   );
 });
-
-// ═══════════════════════════════════════
-//  Извлечение версии из HTML
-// ═══════════════════════════════════════
-function extractVersion(html) {
-  const match = html.match(/<meta\s+name="app-version"\s+content="([^"]+)"/i);
-  return match ? match[1] : null;
-}
 
 // ═══════════════════════════════════════
 //  MESSAGES от клиента
@@ -152,24 +176,27 @@ function extractVersion(html) {
 self.addEventListener('message', (event) => {
   if (!event.data || !event.data.type) return;
 
-  if (event.data.type === 'FORCE_UPDATE') {
-    // Принудительное обновление по кнопке
-    caches.keys().then(keys => 
-      Promise.all(keys.map(k => caches.delete(k)))
-    ).then(() => {
-      self.skipWaiting();
-      event.source.postMessage({ type: 'UPDATE_COMPLETE' });
-    });
-  }
-
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  if (event.data.type === 'GET_VERSION') {
+    event.source.postMessage({
+      type: 'VERSION_INFO',
+      version: APP_VERSION,
+      cache: CACHE_VERSION
+    });
+  }
 });
 
-// Push-уведомления
+// ═══════════════════════════════════════
+//  PUSH уведомления
+// ═══════════════════════════════════════
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : { title: 'Семейный доктор', body: 'Время проверить здоровье!' };
+  const data = event.data ? event.data.json() : {
+    title: 'Семейный доктор',
+    body: 'Время проверить здоровье!'
+  };
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
@@ -177,4 +204,10 @@ self.addEventListener('push', (event) => {
       data: { url: data.url || './calendar.html' }
     })
   );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || './calendar.html';
+  event.waitUntil(clients.openWindow(url));
 });
