@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'sem-dok-v8';
+const CACHE_VERSION = 'sem-dok-v9';
 
 const STATIC_ASSETS = [
   './',

@@ -93,7 +93,50 @@ footer{text-align:center;padding:var(--sp-4) var(--sp-3);color:var(--c-text-mute
 .loading-dots span:nth-child(3){animation-delay:0.4s}
 @keyframes dot-pulse{0%,80%,100%{opacity:0.3;transform:scale(0.8)}40%{opacity:1;transform:scale(1)}}
 
-@media(prefers-color-scheme:dark){:root{--c-bg:#111827;--c-card:#1F2937;--c-border:#374151;--c-text:#F9FAFB;--c-text-muted:#9CA3AF;--c-primary-light:#1E3A8A;--c-ok-bg:#064E3B;--c-ok:#6EE7B7;--c-warn-bg:#78350F;--c-warn:#FCD34D;--c-danger-bg:#7F1D1D;--c-danger:#FCA5A5}.hero{background:linear-gradient(135deg,#1E3A8A 0%,#1E40AF 100%)}.hero h1{color:#DBEAFE}.hero p{color:#93C5FD}.action-card:hover{border-color:#60A5FA}.disclaimer{background:#78350F;border-color:#92400E;color:#FCD34D}.red-flags h2{color:#FCA5A5}.red-flags p{color:#FCA5A5}.red-flags li{color:#FECACA}.sources-box{background:#1F2937}}
+/* ═══════════════════════════════════════ */
+/* АНТИ-ТРЕВОЖНЫЙ РЕЖИМ (Приоритет 4.4)    */
+/* ═══════════════════════════════════════ */
+.anxiety-toggle{
+  display:flex;align-items:flex-start;gap:10px;padding:12px;
+  background:linear-gradient(135deg,#F0FDF4 0%,#ECFEFF 100%);
+  border:1px solid #86EFAC;border-radius:var(--r-sm);margin-bottom:var(--sp-2);
+  cursor:pointer;font-size:var(--fs-base);transition:all 0.2s
+}
+.anxiety-toggle:hover{border-color:#22C55E}
+.anxiety-toggle input{width:22px;height:22px;cursor:pointer;flex-shrink:0;margin-top:2px}
+.anxiety-toggle label{cursor:pointer;flex:1;line-height:1.4}
+.anxiety-toggle .emoji{font-size:20px}
+.anxiety-toggle .title{font-weight:700;color:#065F46}
+.anxiety-toggle .desc{font-size:13px;color:#047857;display:block;margin-top:4px}
+.modal-result.anxiety{
+  background:linear-gradient(135deg,#F0FDF4 0%,#ECFEFF 100%);
+  border-color:#10B981;color:var(--c-text)
+}
+.modal-result.anxiety strong{color:#065F46}
+.modal-result.anxiety .rag-answer strong{color:#065F46}
+.anxiety-indicator{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:4px 10px;background:#D1FAE5;color:#065F46;
+  border-radius:12px;font-size:12px;font-weight:600;
+  margin-bottom:var(--sp-2)
+}
+
+@media(prefers-color-scheme:dark){
+  :root{--c-bg:#111827;--c-card:#1F2937;--c-border:#374151;--c-text:#F9FAFB;--c-text-muted:#9CA3AF;--c-primary-light:#1E3A8A;--c-ok-bg:#064E3B;--c-ok:#6EE7B7;--c-warn-bg:#78350F;--c-warn:#FCD34D;--c-danger-bg:#7F1D1D;--c-danger:#FCA5A5}
+  .hero{background:linear-gradient(135deg,#1E3A8A 0%,#1E40AF 100%)}
+  .hero h1{color:#DBEAFE}.hero p{color:#93C5FD}
+  .action-card:hover{border-color:#60A5FA}
+  .disclaimer{background:#78350F;border-color:#92400E;color:#FCD34D}
+  .red-flags h2{color:#FCA5A5}.red-flags p{color:#FCA5A5}.red-flags li{color:#FECACA}
+  .sources-box{background:#1F2937}
+  .anxiety-toggle{background:linear-gradient(135deg,#064E3B 0%,#164E63 100%);border-color:#059669}
+  .anxiety-toggle .title{color:#6EE7B7}
+  .anxiety-toggle .desc{color:#A7F3D0}
+  .modal-result.anxiety{background:linear-gradient(135deg,#064E3B 0%,#164E63 100%);border-color:#10B981}
+  .modal-result.anxiety strong{color:#6EE7B7}
+  .modal-result.anxiety .rag-answer strong{color:#6EE7B7}
+  .anxiety-indicator{background:#064E3B;color:#6EE7B7}
+}
 @media(max-width:480px){.hero h1{font-size:var(--fs-2xl)}.action-icon{font-size:32px;width:56px;height:56px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -115,14 +158,26 @@ footer{text-align:center;padding:var(--sp-4) var(--sp-3);color:var(--c-text-mute
 
 <div class="modal-overlay" id="emergencyModal"><div class="modal" style="max-width:480px"><h2 style="color:var(--c-emergency);text-align:center">🚨 Вызвать скорую?</h2><p style="text-align:center">Если состояние угрожает жизни — не ждите.</p><div class="modal-buttons"><a href="tel:112" class="btn-call">📞 112</a><button class="btn-cancel" id="emergencyCancel">Отмена</button></div></div></div>
 
+<!-- ═══════ МОДАЛКА СИМПТОМ-ЧЕКЕРА С АНТИ-ТРЕВОЖНЫМ РЕЖИМОМ ═══════ -->
 <div class="modal-overlay" id="symptomsModal"><div class="modal">
 <h2>🩺 Что вас беспокоит?</h2>
 <p>Опишите симптомы голосом или текстом — подскажем маршрут на основе клинических рекомендаций.</p>
+
 <div style="position:relative;margin-bottom:var(--sp-2)">
 <textarea id="symptomsText" placeholder="Например: третий день болит горло, температура 37.8, кашель сухой..."></textarea>
 <button type="button" id="voiceBtn" class="voice-btn" aria-label="Голосовой ввод">🎤</button>
 </div>
 <div id="voiceStatus" class="voice-status">🔴 Слушаю... Говорите</div>
+
+<!-- ПЕРЕКЛЮЧАТЕЛЬ АНТИ-ТРЕВОЖНОГО РЕЖИМА -->
+<div class="anxiety-toggle">
+  <input type="checkbox" id="anxietyToggle">
+  <label for="anxietyToggle">
+    <span class="emoji">🌿</span> <span class="title">Спокойный режим</span>
+    <span class="desc">Если вы склонны к медицинской тревоге — ответы будут мягче, с вероятностями и поддержкой. Сохраняет честность медицинской информации, но без нагнетания.</span>
+  </label>
+</div>
+
 <label style="display:block;margin-bottom:8px;font-weight:600">Срочные симптомы:</label>
 <div class="urgent-list" id="urgentList">
 <label class="urgent-item"><input type="checkbox" data-flag="chest"> Боль/давление в груди</label>
@@ -131,13 +186,18 @@ footer{text-align:center;padding:var(--sp-4) var(--sp-3);color:var(--c-text-mute
 <label class="urgent-item"><input type="checkbox" data-flag="blood"> Кровь в рвоте/стуле/моче</label>
 <label class="urgent-item"><input type="checkbox" data-flag="temp"> Температура выше 39.5°</label>
 </div>
+
 <div class="modal-result" id="symptomsResult"></div>
-<div class="modal-buttons"><button class="btn-primary" id="analyzeSymptoms">🔍 Проанализировать</button><button class="btn-cancel" id="symptomsCancel">Закрыть</button></div>
+
+<div class="modal-buttons">
+<button class="btn-primary" id="analyzeSymptoms">🔍 Проанализировать</button>
+<button class="btn-cancel" id="symptomsCancel">Закрыть</button>
+</div>
 </div></div>
 
 <button id="pwaInstallBtn" style="display:none;position:fixed;bottom:20px;right:20px;background:#2563EB;color:white;border:none;padding:16px 24px;border-radius:12px;font-size:18px;font-weight:600;box-shadow:0 4px 12px rgba(37,99,235,0.3);cursor:pointer;z-index:1000;font-family:inherit">📱 Установить приложение</button>
 
-<footer><p>Семейный доктор ИИ · Версия 4.3</p><p>Ваши данные не передаются третьим лицам</p></footer>
+<footer><p>Семейный доктор ИИ · Версия 4.4</p><p>Ваши данные не передаются третьим лицам</p></footer>
 
 <script src="database.js"></script>
 <script src="symptom-rag.js"></script>
@@ -167,7 +227,23 @@ document.getElementById('symptomsCancel').addEventListener('click',function(){sM
 sModal.addEventListener('click',function(e){if(e.target===sModal)sModal.classList.remove('active')});
 
 // ═══════════════════════════════════════
-// RAG-анализ симптомов
+// ПЕРЕКЛЮЧАТЕЛЬ АНТИ-ТРЕВОЖНОГО РЕЖИМА
+// ═══════════════════════════════════════
+var anxietyToggle=document.getElementById('anxietyToggle');
+if(anxietyToggle && window.SymptomRAG){
+  anxietyToggle.checked=window.SymptomRAG.getAnxietyMode();
+  anxietyToggle.addEventListener('change',function(){
+    window.SymptomRAG.setAnxietyMode(anxietyToggle.checked);
+    if(anxietyToggle.checked){
+      console.log('🌿 Спокойный режим включён');
+    } else {
+      console.log('📋 Обычный режим');
+    }
+  });
+}
+
+// ═══════════════════════════════════════
+// RAG-анализ симптомов с поддержкой анти-тревожного режима
 // ═══════════════════════════════════════
 function formatMarkdown(text){
   if(!text)return'';
@@ -196,9 +272,11 @@ document.getElementById('analyzeSymptoms').addEventListener('click',function(){
     return;
   }
 
-  sResult.className='modal-result info';
+  var anxietyMode=window.SymptomRAG?window.SymptomRAG.getAnxietyMode():false;
+  
+  sResult.className='modal-result '+(anxietyMode?'anxiety':'info');
   sResult.style.display='block';
-  sResult.innerHTML='<strong>🔍 Анализирую симптомы...</strong><div style="margin-top:10px;display:flex;align-items:center;gap:10px"><div class="loading-dots"><span></span><span></span><span></span></div>Ищу подходящие клинические рекомендации...</div>';
+  sResult.innerHTML='<strong>'+(anxietyMode?'🌿 Анализирую...':'🔍 Анализирую...')+'</strong><div style="margin-top:10px;display:flex;align-items:center;gap:10px"><div class="loading-dots"><span></span><span></span><span></span></div>'+(anxietyMode?'Подбираю спокойный ответ...':'Ищу клинические рекомендации...')+'</div>';
 
   var patientInfo={sex:'unknown',age:null};
 
@@ -213,12 +291,21 @@ document.getElementById('analyzeSymptoms').addEventListener('click',function(){
       sourcesHtml+='</ul></div>';
     }
 
-    var modeIndicator=result.mode==='ai'
-      ?'<span class="mode-badge ai">🤖 ИИ + протоколы</span>'
-      :'<span class="mode-badge local">📋 По протоколам</span>';
+    var modeIndicator;
+    if(result.anxietyMode){
+      modeIndicator=result.mode==='ai'
+        ?'<span class="mode-badge ai" style="background:#D1FAE5;color:#065F46">🌿 Спокойный ИИ</span>'
+        :'<span class="mode-badge local" style="background:#D1FAE5;color:#065F46">🌿 По протоколам</span>';
+    } else {
+      modeIndicator=result.mode==='ai'
+        ?'<span class="mode-badge ai">🤖 ИИ + протоколы</span>'
+        :'<span class="mode-badge local">📋 По протоколам</span>';
+    }
 
-    sResult.className='modal-result info';
-    sResult.innerHTML='<strong>💡 Рекомендации'+modeIndicator+'</strong><div class="rag-answer" style="margin-top:12px">'+answerHtml+'</div>'+sourcesHtml+'<small style="display:block;margin-top:12px;opacity:0.7;font-size:12px">⚕ Информация основана на официальных клинических рекомендациях, но не заменяет консультацию врача.</small>';
+    var titleText=result.anxietyMode?'💚 Рекомендации':'💡 Рекомендации';
+
+    sResult.className='modal-result '+(result.anxietyMode?'anxiety':'info');
+    sResult.innerHTML='<strong>'+titleText+modeIndicator+'</strong><div class="rag-answer" style="margin-top:12px">'+answerHtml+'</div>'+sourcesHtml+'<small style="display:block;margin-top:12px;opacity:0.7;font-size:12px">⚕ Информация основана на клинических рекомендациях, не заменяет консультацию врача.</small>';
   }).catch(function(e){
     console.error('Ошибка анализа:',e);
     sResult.className='modal-result info';
