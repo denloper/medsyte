@@ -1391,3 +1391,192 @@ a.v-card:visited {
 .v-card [style*="text-decoration"] {
   text-decoration: none !important;
 }
+
+/* ═══════════════════════════════════════
+   MODAL MOBILE FIX — исправление для телефонов
+   ═══════════════════════════════════════ */
+
+/* Оверлей модалки */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 43, 28, 0.5);
+  backdrop-filter: blur(6px);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  padding: 0;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Лист модалки — ТЕПЕРЬ СО СКРОЛЛОМ */
+.modal-sheet {
+  width: 100%;
+  max-width: 420px;
+  max-height: 92vh; /* ← КЛЮЧЕВОЕ: ограничение высоты */
+  max-height: calc(100vh - 40px); /* Fallback */
+  margin: 0 auto;
+  background: var(--surface);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: 0 0 32px;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* ← КЛЮЧЕВОЕ: скрываем выходящий контент */
+}
+
+.modal-overlay.open .modal-sheet {
+  transform: translateY(0);
+}
+
+/* Ручка модалки (полоска сверху) */
+.modal-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: #C8DCC8;
+  margin: 14px auto 0;
+  flex-shrink: 0;
+}
+
+/* Заголовок модалки — ФИКСИРОВАН СВЕРХУ */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--surface-2);
+  flex-shrink: 0; /* ← КЛЮЧЕВОЕ: не сжимается */
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 10;
+}
+
+.modal-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--dark);
+  flex: 1;
+}
+
+.modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  flex-shrink: 0;
+  margin-left: 10px;
+}
+
+/* Тело модалки — СКРОЛЛИТСЯ */
+.modal-body {
+  padding: 18px 22px;
+  overflow-y: auto; /* ← КЛЮЧЕВОЕ: вертикальный скролл */
+  flex: 1;
+  -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+  overscroll-behavior: contain; /* Предотвращает pull-to-refresh */
+  padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Скроллбар для десктопа */
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: #C8DCC8;
+  border-radius: 3px;
+}
+
+/* ═══════════════════════════════════════
+   АДАПТИВНОСТЬ ДЛЯ МАЛЕНЬКИХ ЭКРАНОВ
+   ═══════════════════════════════════════ */
+
+/* Маленькие телефоны (iPhone SE, старые Android) */
+@media (max-height: 600px) {
+  .modal-sheet {
+    max-height: 95vh;
+  }
+  
+  .modal-handle {
+    margin-top: 8px;
+    margin-bottom: 0;
+  }
+  
+  .modal-header {
+    padding: 12px 18px 10px;
+  }
+  
+  .modal-title {
+    font-size: 16px;
+  }
+  
+  .modal-body {
+    padding: 14px 18px;
+  }
+}
+
+/* Средние телефоны */
+@media (max-height: 700px) and (min-height: 601px) {
+  .modal-sheet {
+    max-height: 93vh;
+  }
+}
+
+/* ═══════════════════════════════════════
+   iPhone С ЧЁЛКОЙ (Notch) и Dynamic Island
+   ═══════════════════════════════════════ */
+
+@supports (padding: env(safe-area-inset-top)) {
+  .modal-handle {
+    margin-top: calc(14px + env(safe-area-inset-top));
+  }
+  
+  .modal-body {
+    padding-bottom: calc(32px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ═══════════════════════════════════════
+   LANDSCAPE РЕЖИМ (горизонтальный)
+   ═══════════════════════════════════════ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .modal-sheet {
+    max-height: 98vh;
+    border-radius: var(--r-md);
+    margin: 1vh auto;
+  }
+  
+  .modal-handle {
+    display: none;
+  }
+  
+  .modal-header {
+    padding: 10px 18px 8px;
+  }
+  
+  .modal-body {
+    padding: 10px 18px;
+  }
+}
