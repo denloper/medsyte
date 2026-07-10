@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'sem-dok-v18';
-const APP_VERSION = '5.4.0';
+const CACHE_VERSION = 'sem-dok-v19';
+const APP_VERSION = '5.5.0';
 
 const STATIC_ASSETS = [
   './',
