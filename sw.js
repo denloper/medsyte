@@ -1,8 +1,7 @@
-const CACHE_VERSION = 'sem-dok-v20';
-const APP_VERSION = '5.5.1';
+const CACHE_VERSION = 'sem-dok-v21';
+const APP_VERSION = '5.6.0';
 
 const STATIC_ASSETS = [
-  // HTML страницы
   './',
   './index.html',
   './about.html',
@@ -12,19 +11,14 @@ const STATIC_ASSETS = [
   './calendar.html',
   './diary.html',
   './family.html',
-  
-  // CSS
+  './nutrition.html',              // ← новая страница
   './styles.css?v=' + APP_VERSION,
   './animations.css?v=' + APP_VERSION,
-  
-  // JavaScript
   './database.js?v=' + APP_VERSION,
   './animations.js?v=' + APP_VERSION,
   './supabase-client.js?v=' + APP_VERSION,
   './calendar-engine.js?v=' + APP_VERSION,
   './diary-engine.js?v=' + APP_VERSION,
-  
-  // Данные
   './clinical-guidelines.json',
   './manifest.json'
 ];

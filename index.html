@@ -51,6 +51,16 @@
     </div>
 
     <div class="pc-pills stagger">
+        <!-- Спецрежимы -->
+      <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--surface-2);">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 8px;">Режим:</label>
+        <div class="pc-pills" style="gap: 6px;">
+          <button class="pill pill-green ripple-element click-scale" id="modeNormal" onclick="setMode('normal')">👤 Обычный</button>
+          <button class="pill pill-outline ripple-element click-scale" id="modePediatric" onclick="setMode('pediatric')">👶 Педиатрия</button>
+          <button class="pill pill-outline ripple-element click-scale" id="modePregnancy" onclick="setMode('pregnancy')">🤰 Беременность</button>
+          <button class="pill pill-outline ripple-element click-scale" id="modeElderly" onclick="setMode('elderly')">👴 Пожилые</button>
+        </div>
+      </div>
       <button class="pill pill-green ripple-element click-scale" data-filter="all">Все</button>
       <button class="pill pill-outline ripple-element click-scale" data-filter="vitals">Витальные</button>
       <button class="pill pill-outline ripple-element click-scale" data-filter="tests">Анализы</button>
@@ -58,10 +68,35 @@
     </div>
   </div>
 
+  <!-- ═══════ ЧАТ С ПОМОЩНИКОМ (ПЕРЕМЕЩЁН СЮДА) ═══════ -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Чат с помощником</h2>
+  </div>
+
+  <div class="chat-wrap animate-on-scroll animate-fade-up" id="chatWrap" style="max-height: 300px; overflow-y: auto; margin-bottom: 12px;">
+    <div class="chat-bubble ai">
+      <div class="bubble-name">🩺 Медицинский помощник</div>
+      Здравствуйте! Опишите ваши симптомы или задайте вопрос — помогу разобраться.
+      <div class="chat-time" id="chatTime">сейчас</div>
+    </div>
+  </div>
+
+  <div class="chat-input-bar animate-on-scroll animate-fade-up" style="margin-bottom: 20px;">
+    <button class="chat-attach ripple-element" onclick="openModal('symptomsModal')" aria-label="Голосовой ввод">
+      🎤
+    </button>
+    <input type="text" class="chat-input" id="chatInputField" 
+           placeholder="Опишите симптомы или задайте вопрос..."
+           onkeydown="if(event.key==='Enter') sendChatMessage()">
+    <button class="chat-send ripple-element" onclick="sendChatMessage()" aria-label="Отправить">
+      ➤
+    </button>
+  </div>
+
   <!-- ═══════ QUICK ACTIONS ═══════ -->
   <div class="sec-hd animate-on-scroll animate-slide-left">
     <h2>Быстрые действия</h2>
-    <a href="#" class="see-all">Все →</a>
+    <a href="#" class="see-all" onclick="showToast('Скоро будет', '🔜'); return false;">Все →</a>
   </div>
 
   <div class="quick-grid stagger">
@@ -69,7 +104,8 @@
       <div class="qi-icon float">📄</div>
       <span class="qi-label">Загрузить<br>анализ</span>
     </a>
-    <a href="nutrition.html" class="qi magnetic-btn ripple-element">
+    <a href="#" class="qi magnetic-btn ripple-element" 
+       onclick="showToast('Раздел \'План питания\' в разработке', '🚧'); return false;">
       <div class="qi-icon float-slow">🥗</div>
       <span class="qi-label">План<br>питания</span>
     </a>
@@ -77,7 +113,8 @@
       <div class="qi-icon qi-dark float">📅</div>
       <span class="qi-label">Календарь<br>здоровья</span>
     </a>
-    <a href="#" class="qi magnetic-btn ripple-element" onclick="openModal('emergencyModal'); return false;">
+    <a href="#" class="qi magnetic-btn ripple-element" 
+       onclick="openModal('emergencyModal'); return false;">
       <div class="qi-icon float-slow" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">🚨</div>
       <span class="qi-label">Быстрая<br>помощь</span>
     </a>
@@ -291,48 +328,6 @@
     </div>
   </div>
 
-  <!-- ═══════ ЧАТ С ПОМОЩНИКОМ ═══════ -->
-  <div class="sec-hd animate-on-scroll animate-slide-left">
-    <h2>Чат с помощником</h2>
-  </div>
-
-  <div class="chat-wrap animate-on-scroll animate-fade-up" id="chatWrap">
-    <div class="chat-bubble ai">
-      <div class="bubble-name">🩺 Медицинский помощник</div>
-      Здравствуйте! Опишите ваши симптомы или задайте вопрос — помогу разобраться.
-      <div class="chat-time" id="chatTime">сейчас</div>
-    </div>
-  </div>
-
-  <div class="chat-input-bar animate-on-scroll animate-fade-up">
-    <button class="chat-attach ripple-element" onclick="openModal('symptomsModal')" aria-label="Голосовой ввод">
-      🎤
-    </button>
-    <input type="text" class="chat-input" id="chatInputField" 
-           placeholder="Опишите симптомы или задайте вопрос..."
-           onkeydown="if(event.key==='Enter') sendChatMessage()">
-    <button class="chat-send ripple-element" onclick="sendChatMessage()" aria-label="Отправить">
-      ➤
-    </button>
-  </div>
-
-  <!-- ═══════ SYMPTOM CHECKER (скрытая модалка) ═══════ -->
-  <div class="doctor-card fade-in tilt-card" style="display:none;">
-    <div class="doc-row">
-      <div class="doc-avatar float-slow">🩺</div>
-      <div>
-        <div class="doc-name">Персональный план</div>
-        <div class="doc-spec">• Локальный анализ</div>
-      </div>
-    </div>
-    <p style="color:var(--text-2);margin-bottom:16px;font-size:14px;line-height:1.5">
-      Отметьте симптомы и получите структурированный список обследований на основе клинических рекомендаций.
-    </p>
-    <button class="next-btn magnetic-btn ripple-element" onclick="openModal('symptomsModal')">
-      🩺 Проверить симптомы
-    </button>
-  </div>
-
   <div style="height: 100px;"></div>
 </div>
 
@@ -347,7 +342,7 @@
       <div class="nav-icon">📄</div>
       <span class="nav-label">Анализы</span>
     </a>
-    <button class="nav-fab" onclick="document.getElementById('chatInputField').focus()" aria-label="Чат">
+    <button class="nav-fab" onclick="document.getElementById('chatInputField')?.focus()" aria-label="Чат">
       💬
     </button>
     <a href="calendar.html" class="nav-item">
@@ -357,7 +352,7 @@
       </div>
       <span class="nav-label">Календарь</span>
     </a>
-    <a href="nutrition.html" class="nav-item">
+    <a href="#" class="nav-item" onclick="showToast('Раздел питания в разработке', '🥗'); return false;">
       <div class="nav-icon">🥗</div>
       <span class="nav-label">Питание</span>
     </a>
@@ -446,9 +441,7 @@
       <div class="modal-title" id="accountModalTitle">👤 Мой аккаунт</div>
       <button class="modal-close ripple-element" onclick="closeModal('accountModal')">✕</button>
     </div>
-    <div class="modal-body" id="accountModalBody">
-      <!-- Динамически заполняется -->
-    </div>
+    <div class="modal-body" id="accountModalBody"></div>
   </div>
 </div>
 
@@ -543,7 +536,6 @@
 (function(){
   'use strict';
 
-  // ═══════ CURRENT TIME ═══════
   function updateTime() {
     const now = new Date();
     const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
@@ -552,7 +544,6 @@
   updateTime();
   setInterval(updateTime, 60000);
 
-  // ═══════ TOAST ═══════
   window.showToast = function(text, icon = '✓') {
     const toast = document.getElementById('toast');
     document.getElementById('toastText').textContent = text;
@@ -561,7 +552,6 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
-  // ═══════ MODALS ═══════
   window.openModal = function(id) {
     document.getElementById(id).classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -599,7 +589,6 @@
     });
   });
 
-  // ═══════ FILTERS ═══════
   document.querySelectorAll('[data-filter]').forEach(btn => {
     btn.addEventListener('click', function() {
       document.querySelectorAll('[data-filter]').forEach(b => {
@@ -612,7 +601,6 @@
     });
   });
 
-  // ═══════ SEX SELECTOR ═══════
   let selectedSex = 'female';
   window.selectSex = function(sex) {
     selectedSex = sex;
@@ -628,7 +616,6 @@
     
     const chatWrap = document.getElementById('chatWrap');
     
-    // Добавляем сообщение пользователя
     const userMsg = document.createElement('div');
     userMsg.className = 'chat-bubble user';
     userMsg.innerHTML = `${text}<div class="chat-time">сейчас</div>`;
@@ -636,12 +623,10 @@
     
     input.value = '';
     
-    // Прокрутка вниз
     setTimeout(() => {
       chatWrap.scrollTop = chatWrap.scrollHeight;
     }, 100);
     
-    // Показываем typing indicator
     const typing = document.createElement('div');
     typing.className = 'typing-indicator';
     typing.id = 'chatTyping';
@@ -652,7 +637,6 @@
       chatWrap.scrollTop = chatWrap.scrollHeight;
     }, 200);
     
-    // Открываем модалку симптомов для детального анализа
     setTimeout(() => {
       typing.remove();
       document.getElementById('symptomsText').value = text;
@@ -660,7 +644,6 @@
     }, 1200);
   };
 
-  // ═══════ ЛОКАЛЬНЫЙ АНАЛИЗ СИМПТОМОВ ═══════
   window.analyzeSymptomsLocal = function() {
     const text = document.getElementById('symptomsText').value.trim();
     if (!text) {
@@ -742,7 +725,6 @@
     }, 800);
   };
 
-  // ═══════ SUPABASE AUTH ═══════
   async function refreshAccountModal() {
     const user = window.SupabaseDB ? await window.SupabaseDB.getCurrentUser() : null;
     const body = document.getElementById('accountModalBody');
@@ -958,7 +940,38 @@
       .then(reg => console.log('SW:', reg.scope))
       .catch(err => console.error('SW error:', err));
   }
+  // ═══════ СПЕЦРЕЖИМЫ ═══════
+  window.setMode = function(mode) {
+    localStorage.setItem('app_mode_v1', mode);
+    ['modeNormal', 'modePediatric', 'modePregnancy', 'modeElderly'].forEach(id => {
+      document.getElementById(id).className = 'pill pill-outline ripple-element click-scale';
+    });
+    const btnId = 'mode' + mode.charAt(0).toUpperCase() + mode.slice(1);
+    const btn = document.getElementById(btnId);
+    if (btn) btn.className = 'pill pill-green ripple-element click-scale';
+    
+    const modeNames = {
+      normal: 'Обычный режим',
+      pediatric: '👶 Педиатрический режим',
+      pregnancy: '🤰 Режим беременности',
+      elderly: '👴 Режим для пожилых'
+    };
+    
+    showToast(modeNames[mode] + ' активирован', '✓');
+    
+    // Показываем уведомление о доступности
+    if (mode !== 'normal') {
+      setTimeout(() => {
+        showToast('Специализированные функции в разработке 🚧', '🔜');
+      }, 2000);
+    }
+  };
 
+  // Восстановление режима
+  (function() {
+    const savedMode = localStorage.getItem('app_mode_v1') || 'normal';
+    setMode(savedMode);
+  })();
 })();
 </script>
 

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <base href="./">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8BAF8B">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🥗</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="animations.css">
+  <title>План питания</title>
+</head>
+<body>
+
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastText">Готово</span>
+</div>
+
+<div class="app">
+  
+  <!-- Header -->
+  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
+    <div class="pc-top" style="margin-bottom: 0;">
+      <div class="pc-identity">
+        <a href="index.html" class="circle-btn ripple-element">←</a>
+        <div>
+          <div class="pc-name">🥗 План питания</div>
+          <div class="pc-id">Персональный калькулятор</div>
+        </div>
+      </div>
+      <button class="circle-btn dark-btn ripple-element" onclick="savePlan()">💾</button>
+    </div>
+  </div>
+
+  <!-- Ввод данных -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Ваши данные</h2>
+  </div>
+
+  <div class="doctor-card animate-on-scroll animate-fade-up tilt-card">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+      <div>
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Пол</label>
+        <div class="pc-pills" style="gap: 6px;">
+          <button class="pill pill-green ripple-element click-scale" id="sexFemale" onclick="selectSex('female')">👩 Жен</button>
+          <button class="pill pill-outline ripple-element click-scale" id="sexMale" onclick="selectSex('male')">👨 Муж</button>
+        </div>
+      </div>
+      <div>
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Возраст</label>
+        <input type="number" id="ageInput" value="35" min="10" max="120" 
+               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+      <div>
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Рост (см)</label>
+        <input type="number" id="heightInput" value="175" min="100" max="250" 
+               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      </div>
+      <div>
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Вес (кг)</label>
+        <input type="number" id="weightInput" value="70" min="30" max="300" step="0.1"
+               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      </div>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Уровень активности</label>
+      <select id="activityLevel" 
+              style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+        <option value="1.2">🛋 Минимальная (сидячий образ жизни)</option>
+        <option value="1.375">🚶 Лёгкая (1-3 тренировки/нед)</option>
+        <option value="1.55" selected>🏃 Средняя (3-5 тренировок/нед)</option>
+        <option value="1.725">💪 Высокая (6-7 тренировок/нед)</option>
+        <option value="1.9">🔥 Очень высокая (2 тренировки/день)</option>
+      </select>
+    </div>
+
+    <div>
+      <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Цель</label>
+      <div class="pc-pills" style="gap: 6px;">
+        <button class="pill pill-outline ripple-element click-scale" id="goalLoss" onclick="setGoal('loss')">⬇ Похудение</button>
+        <button class="pill pill-green ripple-element click-scale" id="goalMaintain" onclick="setGoal('maintain')">⚖ Поддержка</button>
+        <button class="pill pill-outline ripple-element click-scale" id="goalGain" onclick="setGoal('gain')">⬆ Набор</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Расчёт кнопка -->
+  <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" onclick="calculate()" style="margin: 16px 0;">
+    🧮 Рассчитать план
+  </button>
+
+  <!-- Результаты -->
+  <div id="resultsSection" style="display: none;">
+    
+    <!-- Калории и БЖУ -->
+    <div class="sec-hd animate-on-scroll animate-slide-left">
+      <h2>Ваша норма</h2>
+    </div>
+
+    <div class="dark-card animate-on-scroll animate-fade-up animated-gradient">
+      <div class="dc-metric">
+        <div class="dc-value"><span id="bmrValue">0</span></div>
+        <div class="dc-name">BMR (базовый)</div>
+      </div>
+      <div class="dc-avatar float-slow">🔥</div>
+      <div class="dc-metric">
+        <div class="dc-value"><span id="tdeeValue">0</span></div>
+        <div class="dc-name">TDEE (с активностью)</div>
+      </div>
+    </div>
+
+    <div class="vitals-grid stagger">
+      <div class="v-card tilt-card ripple-element">
+        <div class="v-icon amber breathe">🔥</div>
+        <div class="v-label">Калории</div>
+        <div class="v-value"><span id="caloriesValue">0</span><span class="v-unit">ккал</span></div>
+        <div style="font-size: 11px; color: var(--text-3); margin-top: 8px;" id="caloriesNote">Цель с учётом активности</div>
+      </div>
+      
+      <div class="v-card tilt-card ripple-element">
+        <div class="v-icon green breathe">📊</div>
+        <div class="v-label">ИМТ</div>
+        <div class="v-value"><span id="bmiValue">0</span></div>
+        <div style="font-size: 11px; color: var(--text-3); margin-top: 8px;" id="bmiCategory">—</div>
+      </div>
+    </div>
+
+    <!-- БЖУ -->
+    <div class="sec-hd animate-on-scroll animate-slide-left">
+      <h2>БЖУ (макронутриенты)</h2>
+    </div>
+
+    <div class="sleep-card animate-on-scroll animate-fade-up">
+      <div class="sc-stats" style="gap: 16px;">
+        <div class="sc-stat" style="flex: 1; text-align: center;">
+          <label>🥩 Белки</label>
+          <div class="big"><span id="proteinValue">0</span><span style="font-size:14px;color:var(--text-3)">г</span></div>
+          <div style="font-size: 11px; color: var(--text-3); margin-top: 4px;" id="proteinCal"></div>
+        </div>
+        <div class="sc-stat" style="flex: 1; text-align: center;">
+          <label>🥑 Жиры</label>
+          <div class="big"><span id="fatValue">0</span><span style="font-size:14px;color:var(--text-3)">г</span></div>
+          <div style="font-size: 11px; color: var(--text-3); margin-top: 4px;" id="fatCal"></div>
+        </div>
+        <div class="sc-stat" style="flex: 1; text-align: center;">
+          <label>🍚 Углеводы</label>
+          <div class="big"><span id="carbsValue">0</span><span style="font-size:14px;color:var(--text-3)">г</span></div>
+          <div style="font-size: 11px; color: var(--text-3); margin-top: 4px;" id="carbsCal"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- План питания на день -->
+    <div class="sec-hd animate-on-scroll animate-slide-left">
+      <h2>План на день</h2>
+    </div>
+
+    <div class="other-card animate-on-scroll animate-fade-up" id="mealPlan"></div>
+
+    <!-- Вода -->
+    <div class="sec-hd animate-on-scroll animate-slide-left">
+      <h2>💧 Вода</h2>
+    </div>
+
+    <div class="doctor-card animate-on-scroll animate-fade-up">
+      <div class="doc-row">
+        <div class="doc-avatar float-slow">💧</div>
+        <div style="flex: 1;">
+          <div class="doc-name">Дневная норма воды</div>
+          <div class="doc-spec" id="waterNorm">— литров</div>
+        </div>
+      </div>
+      <div style="padding: 12px; background: var(--surface-2); border-radius: var(--r-sm); font-size: 13px; color: var(--text-2); line-height: 1.5;">
+        💡 Расчёт: 30 мл на 1 кг веса + 500 мл за каждую тренировку
+      </div>
+    </div>
+
+    <!-- Рекомендации -->
+    <div class="sec-hd animate-on-scroll animate-slide-left">
+      <h2>💡 Рекомендации</h2>
+    </div>
+
+    <div class="notif-card animate-on-scroll animate-fade-up" style="border-left: 4px solid var(--green);" id="recommendations"></div>
+
+    <!-- Сохранить -->
+    <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" onclick="savePlan()" style="margin: 16px 0;">
+      💾 Сохранить план
+    </button>
+
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a href="index.html" class="nav-item">
+      <div class="nav-icon">🏠</div>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a href="upload.html" class="nav-item">
+      <div class="nav-icon">📄</div>
+      <span class="nav-label">Анализы</span>
+    </a>
+    <a href="index.html" class="nav-fab" aria-label="Чат">💬</a>
+    <a href="calendar.html" class="nav-item">
+      <div class="nav-icon">📅</div>
+      <span class="nav-label">Календарь</span>
+    </a>
+    <a href="nutrition.html" class="nav-item active">
+      <div class="nav-icon">🥗</div>
+      <span class="nav-label">Питание</span>
+    </a>
+  </div>
+</div>
+
+<script src="animations.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  let selectedSex = 'female';
+  let selectedGoal = 'maintain';
+
+  window.showToast = function(text, icon = '✓') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = text;
+    toast.querySelector('.toast-icon').textContent = icon;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  };
+
+  window.selectSex = function(sex) {
+    selectedSex = sex;
+    document.getElementById('sexFemale').className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+    document.getElementById('sexMale').className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+  };
+
+  window.setGoal = function(goal) {
+    selectedGoal = goal;
+    document.getElementById('goalLoss').className = goal === 'loss' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+    document.getElementById('goalMaintain').className = goal === 'maintain' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+    document.getElementById('goalGain').className = goal === 'gain' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+  };
+
+  window.calculate = function() {
+    const age = parseInt(document.getElementById('ageInput').value) || 35;
+    const height = parseFloat(document.getElementById('heightInput').value) || 175;
+    const weight = parseFloat(document.getElementById('weightInput').value) || 70;
+    const activity = parseFloat(document.getElementById('activityLevel').value) || 1.55;
+
+    // BMR по формуле Миффлина-Сан Жеора
+    let bmr;
+    if (selectedSex === 'male') {
+      bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+    } else {
+      bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+    }
+
+    // TDEE
+    const tdee = bmr * activity;
+
+    // Калории с учётом цели
+    let calories = tdee;
+    let caloriesNote = '';
+    if (selectedGoal === 'loss') {
+      calories = tdee * 0.8; // дефицит 20%
+      caloriesNote = 'Дефицит 20% для похудения';
+    } else if (selectedGoal === 'gain') {
+      calories = tdee * 1.15; // профицит 15%
+      caloriesNote = 'Профицит 15% для набора';
+    } else {
+      caloriesNote = 'Поддержание веса';
+    }
+
+    // БЖУ
+    const proteinPerKg = selectedGoal === 'gain' ? 2.0 : selectedGoal === 'loss' ? 1.8 : 1.5;
+    const protein = Math.round(weight * proteinPerKg);
+    const fat = Math.round(weight * 1.0); // 1 г/кг
+    const proteinCal = protein * 4;
+    const fatCal = fat * 9;
+    const carbsCal = Math.max(0, calories - proteinCal - fatCal);
+    const carbs = Math.round(carbsCal / 4);
+
+    // ИМТ
+    const bmi = weight / Math.pow(height / 100, 2);
+    let bmiCategory = '';
+    if (bmi < 18.5) bmiCategory = '⚠ Недостаток веса';
+    else if (bmi < 25) bmiCategory = '✓ Норма';
+    else if (bmi < 30) bmiCategory = '⚠ Избыточный вес';
+    else bmiCategory = '🚨 Ожирение';
+
+    // Вода
+    const water = ((weight * 30) / 1000).toFixed(1);
+
+    // Отображение
+    document.getElementById('bmrValue').textContent = Math.round(bmr);
+    document.getElementById('tdeeValue').textContent = Math.round(tdee);
+    document.getElementById('caloriesValue').textContent = Math.round(calories);
+    document.getElementById('caloriesNote').textContent = caloriesNote;
+    document.getElementById('bmiValue').textContent = bmi.toFixed(1);
+    document.getElementById('bmiCategory').textContent = bmiCategory;
+    document.getElementById('proteinValue').textContent = protein;
+    document.getElementById('fatValue').textContent = fat;
+    document.getElementById('carbsValue').textContent = carbs;
+    document.getElementById('proteinCal').textContent = `${proteinCal} ккал`;
+    document.getElementById('fatCal').textContent = `${fatCal} ккал`;
+    document.getElementById('carbsCal').textContent = `${Math.round(carbsCal)} ккал`;
+    document.getElementById('waterNorm').textContent = `${water} литров в день`;
+
+    // План приёмов пищи
+    renderMealPlan(calories, protein, fat, carbs);
+    renderRecommendations(bmi, selectedGoal, age);
+
+    document.getElementById('resultsSection').style.display = 'block';
+    
+    setTimeout(() => {
+      document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+
+    showToast('План рассчитан!', '🎯');
+  };
+
+  function renderMealPlan(calories, protein, fat, carbs) {
+    const meals = [
+      { 
+        name: '🌅 Завтрак', 
+        time: '7:00-9:00', 
+        percent: 0.25,
+        examples: ['Овсянка с ягодами и орехами', 'Омлет с овощами', 'Творог с фруктами']
+      },
+      { 
+        name: '🍎 Перекус', 
+        time: '11:00', 
+        percent: 0.10,
+        examples: ['Яблоко + миндаль', 'Йогурт', 'Протеиновый батончик']
+      },
+      { 
+        name: '☀ Обед', 
+        time: '13:00-14:00', 
+        percent: 0.35,
+        examples: ['Курица + гречка + салат', 'Рыба + рис + овощи', 'Говядина + киноа']
+      },
+      { 
+        name: '🥤 Полдник', 
+        time: '16:00-17:00', 
+        percent: 0.10,
+        examples: ['Творог', 'Фрукты', 'Протеиновый коктейль']
+      },
+      { 
+        name: '🌙 Ужин', 
+        time: '19:00-20:00', 
+        percent: 0.20,
+        examples: ['Рыба + овощи на пару', 'Куриная грудка + салат', 'Творог с зеленью']
+      }
+    ];
+
+    let html = '';
+    meals.forEach((meal, idx) => {
+      const mealCal = Math.round(calories * meal.percent);
+      const mealP = Math.round(protein * meal.percent);
+      const mealF = Math.round(fat * meal.percent);
+      const mealC = Math.round(carbs * meal.percent);
+      
+      html += `
+        <div class="metric-row ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.05}s backwards;">
+          <div style="flex: 1;">
+            <div style="font-weight: 700; color: var(--dark); font-size: 15px; margin-bottom: 2px;">
+              ${meal.name}
+            </div>
+            <div style="font-size: 12px; color: var(--text-3); margin-bottom: 6px;">${meal.time}</div>
+            <div style="font-size: 13px; color: var(--text-2); font-style: italic;">
+              ${meal.examples[Math.floor(Math.random() * meal.examples.length)]}
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 18px; font-weight: 800; color: var(--green);">${mealCal}</div>
+            <div style="font-size: 11px; color: var(--text-3);">ккал</div>
+            <div style="font-size: 10px; color: var(--text-3); margin-top: 2px;">
+              Б:${mealP} Ж:${mealF} У:${mealC}
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    document.getElementById('mealPlan').innerHTML = html;
+  }
+
+  function renderRecommendations(bmi, goal, age) {
+    const recs = [];
+
+    if (bmi > 30) {
+      recs.push({ icon: '🚨', text: 'Рекомендуется консультация эндокринолога для исключения гормональных причин ожирения' });
+    }
+    if (bmi < 18.5) {
+      recs.push({ icon: '⚠', text: 'Недостаток веса — проверьте ферритин, витамин D, гормоны щитовидной железы' });
+    }
+    if (goal === 'loss') {
+      recs.push({ icon: '💡', text: 'Безопасное похудение: 0.5-1 кг в неделю. Не снижайте калории ниже BMR!' });
+      recs.push({ icon: '🏃', text: 'Добавьте кардио 3-4 раза в неделю по 30-40 минут' });
+    }
+    if (goal === 'gain') {
+      recs.push({ icon: '💪', text: 'Для набора массы нужны силовые тренировки 3-4 раза в неделю' });
+      recs.push({ icon: '😴', text: 'Спите 7-9 часов — гормон роста вырабатывается во сне' });
+    }
+    if (age > 50) {
+      recs.push({ icon: '🦴', text: 'Проверьте витамин D и кальций для профилактики остеопороза' });
+    }
+
+    recs.push({ icon: '💧', text: 'Пейте воду равномерно в течение дня, не только когда хочется' });
+    recs.push({ icon: '🥗', text: 'Ешьте 5 порций овощей и фруктов в день (разных цветов)' });
+
+    let html = '';
+    recs.forEach((rec, idx) => {
+      html += `
+        <div class="notif-item ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.05}s backwards;">
+          <div class="notif-icon-wrap green-bg">${rec.icon}</div>
+          <div class="notif-body">
+            <div class="notif-desc" style="font-size: 14px; color: var(--text-1);">${rec.text}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    document.getElementById('recommendations').innerHTML = html;
+  }
+
+  window.savePlan = function() {
+    const plan = {
+      date: new Date().toISOString(),
+      sex: selectedSex,
+      age: parseInt(document.getElementById('ageInput').value),
+      height: parseFloat(document.getElementById('heightInput').value),
+      weight: parseFloat(document.getElementById('weightInput').value),
+      activity: parseFloat(document.getElementById('activityLevel').value),
+      goal: selectedGoal,
+      bmr: parseInt(document.getElementById('bmrValue').textContent),
+      tdee: parseInt(document.getElementById('tdeeValue').textContent),
+      calories: parseInt(document.getElementById('caloriesValue').textContent),
+      protein: parseInt(document.getElementById('proteinValue').textContent),
+      fat: parseInt(document.getElementById('fatValue').textContent),
+      carbs: parseInt(document.getElementById('carbsValue').textContent),
+      water: parseFloat(document.getElementById('waterNorm').textContent),
+      bmi: parseFloat(document.getElementById('bmiValue').textContent)
+    };
+
+    // Сохраняем в localStorage
+    const history = JSON.parse(localStorage.getItem('nutrition_history_v1') || '[]');
+    history.push(plan);
+    localStorage.setItem('nutrition_history_v1', JSON.stringify(history));
+    localStorage.setItem('nutrition_plan_current_v1', JSON.stringify(plan));
+
+    // Если есть Supabase — сохраняем туда
+    if (window.SupabaseDB) {
+      window.SupabaseDB.saveDiaryEntry({
+        metricType: 'nutrition_plan',
+        value: plan
+      }).then(() => {
+        showToast('План сохранён в облако', '☁️');
+      }).catch(() => {
+        showToast('План сохранён локально', '💾');
+      });
+    } else {
+      showToast('План сохранён', '💾');
+    }
+  };
+
+  // Восстановление данных
+  function loadSavedData() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('nutrition_plan_current_v1') || 'null');
+      if (saved) {
+        document.getElementById('ageInput').value = saved.age || 35;
+        document.getElementById('heightInput').value = saved.height || 175;
+        document.getElementById('weightInput').value = saved.weight || 70;
+        document.getElementById('activityLevel').value = saved.activity || 1.55;
+        selectSex(saved.sex || 'female');
+        setGoal(saved.goal || 'maintain');
+      }
+    } catch(e) {}
+  }
+
+  loadSavedData();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
+  }
+})();
+</script>
+
+</body>
+</html>

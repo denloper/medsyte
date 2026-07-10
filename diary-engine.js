@@ -1,6 +1,6 @@
 /**
- * Diary Engine v1.0
- * Дневники состояния: давление, сахар, вес, сон, температура
+ * Diary Engine v1.1
+ * Дневники состояния: давление, сахар, вес, сон, температура, вода, настроение, активность, цикл
  * Хранение в localStorage, расчёты, интерпретация, экспорт
  */
 ;(function() {
@@ -53,7 +53,6 @@
           if (v < 7.0) return { label: 'Преддиабет', status: 'warn', color: '#D97706', advice: 'Нарушенная гликемия натощак. Проверьте HbA1c.' };
           return { label: 'Диабет', status: 'danger', color: '#B91C1C', advice: 'Диабетический диапазон. Консультация эндокринолога.' };
         }
-        // После еды
         if (v < 3.9) return { label: 'Гипогликемия', status: 'danger', color: '#B91C1C', advice: 'Низкий сахар.' };
         if (v < 7.8) return { label: 'Норма', status: 'normal', color: '#059669' };
         if (v < 11.1) return { label: 'Преддиабет', status: 'warn', color: '#D97706', advice: 'Нарушенная толерантность к глюкозе.' };
@@ -131,6 +130,207 @@
         if (v < 40.0) return { label: 'Очень высокая', status: 'danger', color: '#B91C1C', advice: 'Требуется медицинская помощь.' };
         return { label: 'Критическая', status: 'danger', color: '#B91C1C', advice: 'Срочно вызывайте скорую!' };
       }
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    //  💧 НОВЫЕ МЕТРИКИ
+    // ═══════════════════════════════════════════════════════════
+
+    // 💧 ВОДА
+    water: {
+      id: 'water',
+      title: 'Вода',
+      icon: '💧',
+      category: 'Питание',
+      fields: [
+        { id: 'value', label: 'Объём', unit: 'мл', type: 'number', min: 50, max: 5000, required: true, placeholder: '250', step: 50 },
+        { id: 'timing', label: 'Когда', type: 'select', options: ['Утро', 'День', 'Вечер', 'После тренировки', 'Перед едой'], required: false }
+      ],
+      primaryValue: 'value',
+      interpret: function(entry, profile) {
+        var v = entry.value;
+        var weight = profile && profile.weight ? profile.weight : 70;
+        var dailyNorm = Math.round(weight * 30); // 30 мл/кг
+        
+        if (v >= 500) {
+          return { 
+            label: 'Большая порция', 
+            status: 'normal', 
+            color: '#059669',
+            advice: 'Ваша дневная норма: ~' + dailyNorm + ' мл'
+          };
+        }
+        if (v >= 200) {
+          return { 
+            label: 'Нормальная порция', 
+            status: 'normal', 
+            color: '#059669',
+            advice: 'Дневная норма: ~' + dailyNorm + ' мл'
+          };
+        }
+        return { 
+          label: 'Маленькая порция', 
+          status: 'warn', 
+          color: '#D97706', 
+          advice: 'Ваша дневная норма: ~' + dailyNorm + ' мл. Пейте больше!' 
+        };
+      }
+    },
+
+    // 😊 НАСТРОЕНИЕ
+    mood: {
+      id: 'mood',
+      title: 'Настроение',
+      icon: '😊',
+      category: 'Ментальное',
+      fields: [
+        { id: 'value', label: 'Оценка', type: 'rating', min: 1, max: 5, required: true },
+        { id: 'note', label: 'Заметка', type: 'select', options: [
+          'Отличный день', 'Хорошо', 'Нормально', 'Плохо', 'Очень плохо',
+          'Стресс', 'Тревога', 'Радость', 'Грусть', 'Усталость',
+          'Энергия', 'Спокойствие'
+        ], required: false }
+      ],
+      primaryValue: 'value',
+      interpret: function(entry) {
+        var v = entry.value;
+        if (v >= 4) return { 
+          label: 'Отличное настроение', 
+          status: 'normal', 
+          color: '#059669',
+          advice: 'Продолжайте в том же духе! 💚'
+        };
+        if (v >= 3) return { 
+          label: 'Нормальное', 
+          status: 'normal', 
+          color: '#059669'
+        };
+        if (v >= 2) return { 
+          label: 'Пониженное', 
+          status: 'warn', 
+          color: '#D97706', 
+          advice: 'Попробуйте прогулку, общение с близкими, любимое дело.'
+        };
+        return { 
+          label: 'Плохое настроение', 
+          status: 'danger', 
+          color: '#B91C1C', 
+          advice: 'Если сохраняется > 2 недель — обратитесь к психотерапевту.'
+        };
+      }
+    },
+
+    // 🏃 ФИЗИЧЕСКАЯ АКТИВНОСТЬ
+    activity: {
+      id: 'activity',
+      title: 'Активность',
+      icon: '🏃',
+      category: 'Фитнес',
+      fields: [
+        { id: 'type', label: 'Тип активности', type: 'select', options: [
+          'Ходьба', 'Бег', 'Велосипед', 'Плавание', 
+          'Силовая тренировка', 'Йога', 'Танцы', 'Футбол/баскетбол',
+          'Лыжи/коньки', 'Другое'
+        ], required: true },
+        { id: 'duration', label: 'Длительность', unit: 'мин', type: 'number', min: 1, max: 600, required: true, placeholder: '30' },
+        { id: 'intensity', label: 'Интенсивность', type: 'select', options: ['Лёгкая', 'Средняя', 'Высокая'], required: false }
+      ],
+      primaryValue: 'duration',
+      interpret: function(entry) {
+        var d = entry.duration;
+        if (d >= 60) return { 
+          label: 'Отличная тренировка (' + d + ' мин)', 
+          status: 'normal', 
+          color: '#059669',
+          advice: 'Превышает дневную норму WHO (30 мин)! 💪'
+        };
+        if (d >= 30) return { 
+          label: 'Хорошая активность', 
+          status: 'normal', 
+          color: '#059669',
+          advice: 'Достигли дневной нормы WHO (30 мин)'
+        };
+        if (d >= 15) return { 
+          label: 'Лёгкая активность', 
+          status: 'normal', 
+          color: '#059669'
+        };
+        return { 
+          label: 'Короткая активность', 
+          status: 'warn', 
+          color: '#D97706', 
+          advice: 'Рекомендуется минимум 30 минут в день.'
+        };
+      }
+    },
+
+    // 🌸 МЕНСТРУАЛЬНЫЙ ЦИКЛ
+    menstrual_cycle: {
+      id: 'menstrual_cycle',
+      title: 'Цикл',
+      icon: '🌸',
+      category: 'Женское здоровье',
+      fields: [
+        { id: 'phase', label: 'Фаза цикла', type: 'select', options: [
+          'Менструация', 'Фолликулярная', 'Овуляция', 'Лютеиновая', 'ПМС'
+        ], required: true },
+        { id: 'day', label: 'День цикла', type: 'number', min: 1, max: 45, required: true, placeholder: '1' },
+        { id: 'symptoms', label: 'Симптомы', type: 'select', options: [
+          'Без симптомов', 'Боли внизу живота', 'Слабость', 
+          'Раздражительность', 'Вздутие живота', 'Головная боль',
+          'Боли в пояснице', 'Перепады настроения', 'Акне'
+        ], required: false }
+      ],
+      primaryValue: 'day',
+      interpret: function(entry) {
+        var day = entry.day;
+        var phase = entry.phase;
+        
+        if (phase === 'Менструация') {
+          return { 
+            label: 'Менструация, день ' + day, 
+            status: 'normal', 
+            color: '#D97706', 
+            advice: 'Отдых, тепло, продукты богатые железом (говядина, гречка).'
+          };
+        }
+        if (phase === 'Фолликулярная') {
+          return { 
+            label: 'Фолликулярная фаза (день ' + day + ')', 
+            status: 'normal', 
+            color: '#059669',
+            advice: 'Пик энергии, хорошее время для тренировок.'
+          };
+        }
+        if (phase === 'Овуляция') {
+          return { 
+            label: 'Овуляция (день ' + day + ')', 
+            status: 'normal', 
+            color: '#059669', 
+            advice: 'Пик фертильности и энергии.'
+          };
+        }
+        if (phase === 'Лютеиновая') {
+          return { 
+            label: 'Лютеиновая фаза (день ' + day + ')', 
+            status: 'normal', 
+            color: '#059669'
+          };
+        }
+        if (phase === 'ПМС') {
+          return { 
+            label: 'ПМС (день ' + day + ')', 
+            status: 'warn', 
+            color: '#D97706', 
+            advice: 'Магний, витамин B6, меньше кофеина и соли.'
+          };
+        }
+        return { 
+          label: 'День ' + day + ' цикла', 
+          status: 'normal', 
+          color: '#059669' 
+        };
+      }
     }
   };
 
@@ -157,9 +357,9 @@
   function getProfile() {
     try {
       var data = localStorage.getItem(PROFILE_KEY);
-      return data ? JSON.parse(data) : { height: 175 };
+      return data ? JSON.parse(data) : { height: 175, weight: 70 };
     } catch (e) {
-      return { height: 175 };
+      return { height: 175, weight: 70 };
     }
   }
 
@@ -183,6 +383,15 @@
     entry.date = entry.date || Date.now();
     data[metricId].push(entry);
     saveAll(data);
+
+    // Обновляем вес в профиле если это запись о весе
+    if (metricId === 'weight' && entry.value) {
+      var profile = getProfile();
+      profile.weight = entry.value;
+      if (entry.height) profile.height = entry.height;
+      saveProfile(profile);
+    }
+
     return entry;
   }
 
@@ -229,7 +438,6 @@
     var min = Math.min.apply(null, values);
     var max = Math.max.apply(null, values);
 
-    // Тренд: сравниваем первую и вторую половины
     var trend = 'none', change = 0;
     if (values.length >= 4) {
       var half = Math.floor(values.length / 2);
@@ -262,7 +470,6 @@
     var cutoff = now - daysBack * 24 * 60 * 60 * 1000;
     var filtered = entries.filter(function(e) { return e.date >= cutoff; });
 
-    // Сортируем по дате
     filtered.sort(function(a, b) { return a.date - b.date; });
 
     var metric = metrics[metricId];
@@ -321,7 +528,7 @@
       }).join(',');
     }).join('\n');
 
-    return '\uFEFF' + csv; // BOM для UTF-8
+    return '\uFEFF' + csv;
   }
 
   function exportAllForDoctor() {
@@ -387,7 +594,6 @@
       }
     });
 
-    // Расчёт streak (дней подряд с записями)
     if (allDates.length > 0) {
       var uniqueDays = new Set(allDates.map(function(d) {
         var dt = new Date(d);
@@ -414,7 +620,7 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  ЭКСПОРТ
+  //  ЭКСПОРТ API
   // ═══════════════════════════════════════════════════════════
   window.DiaryEngine = {
     metrics: metrics,
@@ -429,6 +635,6 @@
     exportToCSV: exportToCSV,
     exportAllForDoctor: exportAllForDoctor,
     getOverallStats: getOverallStats,
-    version: '1.0.0'
+    version: '1.1.0'
   };
 })();
