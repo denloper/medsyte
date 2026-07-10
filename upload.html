@@ -5,7 +5,6 @@
   <base href="./">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#8BAF8B">
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
   <link rel="stylesheet" href="styles.css">
@@ -23,15 +22,6 @@
 
 <div class="app">
   
-  <div class="status-bar animate-on-scroll animate-fade-in">
-    <span id="currentTime">9:41</span>
-    <div class="status-icons">
-      <span>📶</span>
-      <span>📡</span>
-      <span class="pulse-dot">🔋</span>
-    </div>
-  </div>
-
   <!-- Header -->
   <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
     <div class="pc-top" style="margin-bottom: 0;">
@@ -91,14 +81,19 @@
     <input type="file" id="fileInput" accept="application/pdf,image/*" style="display: none;">
   </div>
 
-  <!-- Analyze Button -->
-  <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" 
-          id="analyzeBtn" onclick="analyzePDF()" disabled style="opacity: 0.5;">
-    🔍 Анализировать
-  </button>
+  <!-- Action Buttons -->
+  <div style="display: flex; gap: 10px; margin-top: 16px;" class="animate-on-scroll animate-fade-up">
+    <button class="next-btn magnetic-btn ripple-element" id="analyzeBtn" onclick="analyzePDF()" disabled style="flex: 2;">
+      🔍 Анализировать
+    </button>
+    <a href="compare.html" class="next-btn ripple-element magnetic-btn" 
+       style="flex: 1; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 16px rgba(61, 139, 78, 0.3);">
+      📈 Сравнить
+    </a>
+  </div>
 
   <!-- Progress -->
-  <div id="progressSection" style="display: none;" class="animate-on-scroll animate-fade-in">
+  <div id="progressSection" style="display: none;">
     <div class="doctor-card">
       <div class="doc-row">
         <div class="doc-avatar"><span class="spin" style="display: inline-block;">⏳</span></div>
@@ -173,14 +168,14 @@
       <div class="nav-icon">📄</div>
       <span class="nav-label">Анализы</span>
     </a>
-    <a href="index.html" class="nav-fab" aria-label="Симптомы">🩺</a>
+    <a href="index.html" class="nav-fab" aria-label="Чат">💬</a>
     <a href="calendar.html" class="nav-item">
       <div class="nav-icon">📅</div>
       <span class="nav-label">Календарь</span>
     </a>
-    <a href="diary.html" class="nav-item">
-      <div class="nav-icon">📓</div>
-      <span class="nav-label">Дневник</span>
+    <a href="nutrition.html" class="nav-item">
+      <div class="nav-icon">🥗</div>
+      <span class="nav-label">Питание</span>
     </a>
   </div>
 </div>
@@ -199,15 +194,6 @@
   let parsedResults = {};
   let selectedSex = 'female';
 
-  function updateTime() {
-    const now = new Date();
-    const h = now.getHours().toString().padStart(2, '0');
-    const m = now.getMinutes().toString().padStart(2, '0');
-    document.getElementById('currentTime').textContent = `${h}:${m}`;
-  }
-  updateTime();
-  setInterval(updateTime, 60000);
-
   window.showToast = function(text, icon = '✓') {
     const toast = document.getElementById('toast');
     document.getElementById('toastText').textContent = text;
@@ -224,7 +210,6 @@
     mBtn.className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
   };
 
-  // Drop zone
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
   const fileInfo = document.getElementById('fileInfo');
@@ -262,7 +247,6 @@
     fileInfo.style.display = 'block';
     fileName.textContent = `${file.name} (${(file.size/1024/1024).toFixed(2)} МБ)`;
     analyzeBtn.disabled = false;
-    analyzeBtn.style.opacity = '1';
     showToast('Файл загружен', '📄');
   }
 
@@ -310,7 +294,6 @@
     if (!selectedFile) return;
     
     analyzeBtn.disabled = true;
-    analyzeBtn.style.opacity = '0.5';
     document.getElementById('progressSection').style.display = 'block';
     updateProgress(5, 'Начинаем обработку...');
 
@@ -319,7 +302,6 @@
       if (!text) {
         showToast('Не удалось прочитать файл', '❌');
         analyzeBtn.disabled = false;
-        analyzeBtn.style.opacity = '1';
         document.getElementById('progressSection').style.display = 'none';
         return;
       }
@@ -338,7 +320,6 @@
       console.error(err);
       showToast('Ошибка: ' + err.message, '❌');
       analyzeBtn.disabled = false;
-      analyzeBtn.style.opacity = '1';
       document.getElementById('progressSection').style.display = 'none';
     }
   };
@@ -350,7 +331,6 @@
     if (keys.length === 0) {
       showToast('Не распознано ни одного показателя', '⚠️');
       analyzeBtn.disabled = false;
-      analyzeBtn.style.opacity = '1';
       return;
     }
 
@@ -384,13 +364,11 @@
   }
 
   window.confirmResults = function() {
-    // Собираем обновлённые значения
     document.querySelectorAll('#parsedList input[data-test]').forEach(input => {
       const testName = input.dataset.test;
       const newValue = parseFloat(input.value);
       if (!isNaN(newValue) && parsedResults[testName]) {
         parsedResults[testName].value = newValue;
-        // Пересчитываем статус
         const test = window.labTests.find(t => t.canonicalName === testName);
         if (test) {
           const age = parseInt(document.getElementById('ageInput').value) || 35;
@@ -414,7 +392,6 @@
 
     sessionStorage.setItem('analysisResults', JSON.stringify(data));
     
-    // Сохраняем в историю
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       history.push({

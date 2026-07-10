@@ -7,10 +7,6 @@
   <meta name="theme-color" content="#8BAF8B">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <meta name="app-version" content="5.5.0">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
   <link rel="stylesheet" href="styles.css">
@@ -27,29 +23,16 @@
 
 <div class="app">
   
-  <!-- ═══════ STATUS BAR ═══════ -->
-  <div class="status-bar animate-on-scroll animate-fade-in">
-    <span id="currentTime">9:41</span>
-    <div class="status-icons">
-      <span>📶</span>
-      <span>📡</span>
-      <span class="pulse-dot">🔋</span>
-    </div>
-  </div>
-
   <!-- ═══════ PATIENT HEADER CARD ═══════ -->
   <div class="patient-card fade-in">
     <div class="pc-top">
-      <div class="pc-identity">
-        <div class="avatar" id="userAvatar">СК</div>
+      <div class="pc-identity" id="accountBtn" style="cursor: pointer;">
+        <div class="avatar ripple-element" id="userAvatar">СК</div>
         <div>
           <div class="pc-name" id="userName">Гость</div>
           <div class="pc-id" id="activeMemberInfo">Войдите для полного доступа</div>
         </div>
       </div>
-      <button class="circle-btn dark-btn ripple-element" id="accountBtn" aria-label="Аккаунт">
-        👤
-      </button>
     </div>
 
     <div class="pc-meta">
@@ -86,21 +69,21 @@
       <div class="qi-icon float">📄</div>
       <span class="qi-label">Загрузить<br>анализ</span>
     </a>
-    <a href="compare.html" class="qi magnetic-btn ripple-element">
-      <div class="qi-icon float-slow">📈</div>
-      <span class="qi-label">Сравнить<br>анализы</span>
+    <a href="nutrition.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon float-slow">🥗</div>
+      <span class="qi-label">План<br>питания</span>
     </a>
     <a href="calendar.html" class="qi magnetic-btn ripple-element">
       <div class="qi-icon qi-dark float">📅</div>
       <span class="qi-label">Календарь<br>здоровья</span>
     </a>
-    <a href="family.html" class="qi magnetic-btn ripple-element">
-      <div class="qi-icon float-slow">👨‍👩‍👧</div>
-      <span class="qi-label">Семейные<br>профили</span>
+    <a href="#" class="qi magnetic-btn ripple-element" onclick="openModal('emergencyModal'); return false;">
+      <div class="qi-icon float-slow" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">🚨</div>
+      <span class="qi-label">Быстрая<br>помощь</span>
     </a>
   </div>
 
-  <!-- ═══════ VITALS 2x2 (SVG иконки — без подчёркиваний) ═══════ -->
+  <!-- ═══════ VITALS 2x2 ═══════ -->
   <div class="sec-hd animate-on-scroll animate-slide-left">
     <h2>Витальные показатели</h2>
     <a href="diary.html" class="see-all">Все →</a>
@@ -201,7 +184,7 @@
     </a>
   </div>
 
-  <!-- ═══════ DARK CARD (Body Metrics) ═══════ -->
+  <!-- ═══════ DARK CARD ═══════ -->
   <div class="dark-card fade-in animated-gradient">
     <div class="dc-metric">
       <div class="dc-value"><span data-counter="82">0</span><span class="dc-unit"> кг</span></div>
@@ -308,12 +291,33 @@
     </div>
   </div>
 
-  <!-- ═══════ SYMPTOM CHECKER (локальный) ═══════ -->
+  <!-- ═══════ ЧАТ С ПОМОЩНИКОМ ═══════ -->
   <div class="sec-hd animate-on-scroll animate-slide-left">
-    <h2>Проверка симптомов</h2>
+    <h2>Чат с помощником</h2>
   </div>
 
-  <div class="doctor-card fade-in tilt-card">
+  <div class="chat-wrap animate-on-scroll animate-fade-up" id="chatWrap">
+    <div class="chat-bubble ai">
+      <div class="bubble-name">🩺 Медицинский помощник</div>
+      Здравствуйте! Опишите ваши симптомы или задайте вопрос — помогу разобраться.
+      <div class="chat-time" id="chatTime">сейчас</div>
+    </div>
+  </div>
+
+  <div class="chat-input-bar animate-on-scroll animate-fade-up">
+    <button class="chat-attach ripple-element" onclick="openModal('symptomsModal')" aria-label="Голосовой ввод">
+      🎤
+    </button>
+    <input type="text" class="chat-input" id="chatInputField" 
+           placeholder="Опишите симптомы или задайте вопрос..."
+           onkeydown="if(event.key==='Enter') sendChatMessage()">
+    <button class="chat-send ripple-element" onclick="sendChatMessage()" aria-label="Отправить">
+      ➤
+    </button>
+  </div>
+
+  <!-- ═══════ SYMPTOM CHECKER (скрытая модалка) ═══════ -->
+  <div class="doctor-card fade-in tilt-card" style="display:none;">
     <div class="doc-row">
       <div class="doc-avatar float-slow">🩺</div>
       <div>
@@ -343,8 +347,8 @@
       <div class="nav-icon">📄</div>
       <span class="nav-label">Анализы</span>
     </a>
-    <button class="nav-fab" onclick="openModal('symptomsModal')" aria-label="Проверить симптомы">
-      🩺
+    <button class="nav-fab" onclick="document.getElementById('chatInputField').focus()" aria-label="Чат">
+      💬
     </button>
     <a href="calendar.html" class="nav-item">
       <div class="nav-icon">
@@ -353,9 +357,9 @@
       </div>
       <span class="nav-label">Календарь</span>
     </a>
-    <a href="family.html" class="nav-item">
-      <div class="nav-icon">👨‍👩‍👧</div>
-      <span class="nav-label">Семья</span>
+    <a href="nutrition.html" class="nav-item">
+      <div class="nav-icon">🥗</div>
+      <span class="nav-label">Питание</span>
     </a>
   </div>
 </div>
@@ -448,7 +452,7 @@
   </div>
 </div>
 
-<!-- ═══════ MODAL: ВХОД (email + пароль через Supabase) ═══════ -->
+<!-- ═══════ MODAL: ВХОД ═══════ -->
 <div class="modal-overlay" id="loginModal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -479,7 +483,7 @@
   </div>
 </div>
 
-<!-- ═══════ MODAL: РЕГИСТРАЦИЯ (через Supabase) ═══════ -->
+<!-- ═══════ MODAL: РЕГИСТРАЦИЯ ═══════ -->
 <div class="modal-overlay" id="registerModal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -542,10 +546,6 @@
   // ═══════ CURRENT TIME ═══════
   function updateTime() {
     const now = new Date();
-    const h = now.getHours().toString().padStart(2, '0');
-    const m = now.getMinutes().toString().padStart(2, '0');
-    document.getElementById('currentTime').textContent = `${h}:${m}`;
-
     const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
     document.getElementById('currentDate').textContent = `${now.getDate()} ${months[now.getMonth()]}`;
   }
@@ -618,6 +618,46 @@
     selectedSex = sex;
     document.getElementById('sexFemale').className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
     document.getElementById('sexMale').className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+  };
+
+  // ═══════ ЧАТ ФУНКЦИОНАЛЬНОСТЬ ═══════
+  window.sendChatMessage = function() {
+    const input = document.getElementById('chatInputField');
+    const text = input.value.trim();
+    if (!text) return;
+    
+    const chatWrap = document.getElementById('chatWrap');
+    
+    // Добавляем сообщение пользователя
+    const userMsg = document.createElement('div');
+    userMsg.className = 'chat-bubble user';
+    userMsg.innerHTML = `${text}<div class="chat-time">сейчас</div>`;
+    chatWrap.appendChild(userMsg);
+    
+    input.value = '';
+    
+    // Прокрутка вниз
+    setTimeout(() => {
+      chatWrap.scrollTop = chatWrap.scrollHeight;
+    }, 100);
+    
+    // Показываем typing indicator
+    const typing = document.createElement('div');
+    typing.className = 'typing-indicator';
+    typing.id = 'chatTyping';
+    typing.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+    chatWrap.appendChild(typing);
+    
+    setTimeout(() => {
+      chatWrap.scrollTop = chatWrap.scrollHeight;
+    }, 200);
+    
+    // Открываем модалку симптомов для детального анализа
+    setTimeout(() => {
+      typing.remove();
+      document.getElementById('symptomsText').value = text;
+      openModal('symptomsModal');
+    }, 1200);
   };
 
   // ═══════ ЛОКАЛЬНЫЙ АНАЛИЗ СИМПТОМОВ ═══════
@@ -702,10 +742,7 @@
     }, 800);
   };
 
-  // ═══════════════════════════════════════
-  //  SUPABASE АВТОРИЗАЦИЯ
-  // ═══════════════════════════════════════
-  
+  // ═══════ SUPABASE AUTH ═══════
   async function refreshAccountModal() {
     const user = window.SupabaseDB ? await window.SupabaseDB.getCurrentUser() : null;
     const body = document.getElementById('accountModalBody');
@@ -882,7 +919,6 @@
     }
   };
   
-  // ═══════ ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ═══════
   async function loadUserData() {
     if (!window.SupabaseDB) return;
     try {
@@ -907,20 +943,16 @@
     }
   }
   
-  // ═══════ АККАУНТ BUTTON ═══════
   document.getElementById('accountBtn').addEventListener('click', () => {
     openModal('accountModal');
   });
   
-  // ═══════ АВТОЗАГРУЗКА ПРИ СТАРТЕ ═══════
   (async () => {
     await loadUserData();
   })();
 
-  // Initial toast
   setTimeout(() => showToast('Добро пожаловать!', '👋'), 800);
 
-  // ═══════ PWA ═══════
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js')
       .then(reg => console.log('SW:', reg.scope))
