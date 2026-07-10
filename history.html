@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <base href="./">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8BAF8B">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>📊</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="animations.css">
+  <title>История анализов</title>
+</head>
+<body>
+
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastText">Готово</span>
+</div>
+
+<div class="app">
+  
+  <!-- Header -->
+  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
+    <div class="pc-top" style="margin-bottom: 0;">
+      <div class="pc-identity">
+        <a href="index.html" class="circle-btn ripple-element">←</a>
+        <div>
+          <div class="pc-name">📊 История анализов</div>
+          <div class="pc-id" id="historyCount">0 анализов</div>
+        </div>
+      </div>
+      <a href="upload.html" class="circle-btn dark-btn ripple-element">+</a>
+    </div>
+  </div>
+
+  <!-- Статистика -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Общая статистика</h2>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon green breathe">📊</div>
+      <div class="v-label">Всего</div>
+      <div class="v-value"><span id="statTotal">0</span></div>
+    </div>
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon amber breathe">📅</div>
+      <div class="v-label">Последний</div>
+      <div class="v-value" style="font-size: 16px;" id="statLastDate">—</div>
+    </div>
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon blue breathe">⚠️</div>
+      <div class="v-label">Отклонения</div>
+      <div class="v-value"><span id="statAbnormal">0</span></div>
+    </div>
+  </div>
+
+  <!-- Фильтры -->
+  <div class="filter-row animate-on-scroll animate-fade-in">
+    <button class="filter-chip active ripple-element click-scale" data-period="all">Все</button>
+    <button class="filter-chip ripple-element click-scale" data-period="30">30 дней</button>
+    <button class="filter-chip ripple-element click-scale" data-period="90">3 месяца</button>
+    <button class="filter-chip ripple-element click-scale" data-period="365">Год</button>
+  </div>
+
+  <!-- Список анализов -->
+  <div id="historyList" class="animate-on-scroll animate-fade-up"></div>
+
+  <!-- Пустое состояние -->
+  <div id="emptyState" class="empty-state" style="display: none;">
+    <div class="empty-icon">📊</div>
+    <div class="empty-title">История пуста</div>
+    <div class="empty-sub">Загрузите первый анализ, чтобы начать отслеживать здоровье</div>
+    <a href="upload.html" class="empty-btn ripple-element magnetic-btn">📄 Загрузить анализ</a>
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a href="index.html" class="nav-item">
+      <div class="nav-icon">🏠</div>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a href="upload.html" class="nav-item active">
+      <div class="nav-icon">📄</div>
+      <span class="nav-label">Анализы</span>
+    </a>
+    <a href="index.html" class="nav-fab" aria-label="Чат">💬</a>
+    <a href="calendar.html" class="nav-item">
+      <div class="nav-icon">📅</div>
+      <span class="nav-label">Календарь</span>
+    </a>
+    <a href="nutrition.html" class="nav-item">
+      <div class="nav-icon">🥗</div>
+      <span class="nav-label">Питание</span>
+    </a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
+<script src="animations.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  let allAnalyses = [];
+  let currentPeriod = 'all';
+
+  window.showToast = function(text, icon = '✓') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = text;
+    toast.querySelector('.toast-icon').textContent = icon;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  };
+
+  // Загрузка истории
+  async function loadHistory() {
+    try {
+      // Пробуем загрузить из Supabase
+      if (window.SupabaseDB) {
+        const user = await window.SupabaseDB.getCurrentUser();
+        if (user) {
+          allAnalyses = await window.SupabaseDB.getAnalyses();
+        }
+      }
+      
+      // Fallback на localStorage
+      if (allAnalyses.length === 0) {
+        const localHistory = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
+        allAnalyses = localHistory;
+      }
+      
+      renderHistory();
+    } catch (e) {
+      console.error('Ошибка загрузки истории:', e);
+      showToast('Ошибка загрузки', '❌');
+    }
+  }
+
+  // Рендер истории
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    const empty = document.getElementById('emptyState');
+    
+    // Фильтрация по периоду
+    let filtered = allAnalyses;
+    if (currentPeriod !== 'all') {
+      const days = parseInt(currentPeriod);
+      const cutoff = Date.now() - (days * 24 * 60 * 60 * 1000);
+      filtered = allAnalyses.filter(a => a.date >= cutoff);
+    }
+    
+    // Сортировка по дате (новые первые)
+    filtered.sort((a, b) => b.date - a.date);
+    
+    // Обновляем статистику
+    document.getElementById('historyCount').textContent = `${filtered.length} анализов`;
+    document.getElementById('statTotal').textContent = allAnalyses.length;
+    
+    if (allAnalyses.length > 0) {
+      const lastDate = new Date(allAnalyses[0].date);
+      document.getElementById('statLastDate').textContent = lastDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+      
+      // Подсчёт отклонений
+      let abnormalCount = 0;
+      allAnalyses.forEach(a => {
+        if (a.results) {
+          Object.values(a.results).forEach(r => {
+            if (r.status === 'high' || r.status === 'low') abnormalCount++;
+          });
+        }
+      });
+      document.getElementById('statAbnormal').textContent = abnormalCount;
+    }
+    
+    if (filtered.length === 0) {
+      list.style.display = 'none';
+      empty.style.display = 'flex';
+      return;
+    }
+    
+    list.style.display = 'block';
+    empty.style.display = 'none';
+    
+    list.innerHTML = filtered.map((analysis, idx) => {
+      const date = new Date(analysis.date);
+      const dateStr = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const timeStr = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      
+      // Подсчёт показателей
+      let totalTests = 0;
+      let normalCount = 0;
+      let abnormalCount = 0;
+      
+      if (analysis.results) {
+        totalTests = Object.keys(analysis.results).length;
+        Object.values(analysis.results).forEach(r => {
+          if (r.status === 'normal') normalCount++;
+          else abnormalCount++;
+        });
+      }
+      
+      return `
+        <div class="other-card animate-on-scroll animate-fade-up" style="margin-bottom: 12px; animation-delay: ${idx * 0.05}s;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <div style="flex: 1;">
+              <div style="font-size: 16px; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
+                ${analysis.fileName || 'Анализ'}
+              </div>
+              <div style="font-size: 13px; color: var(--text-3);">
+                ${dateStr} в ${timeStr}
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button class="circle-btn ripple-element" onclick="viewAnalysis('${analysis.id}')" style="width: 36px; height: 36px; font-size: 16px;">👁</button>
+              <button class="circle-btn ripple-element" onclick="deleteAnalysis('${analysis.id}')" style="width: 36px; height: 36px; font-size: 16px; color: var(--red);">🗑</button>
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; background: var(--surface-2); border-radius: var(--r-sm);">
+            <div style="text-align: center;">
+              <div style="font-size: 20px; font-weight: 800; color: var(--dark);">${totalTests}</div>
+              <div style="font-size: 11px; color: var(--text-3);">Показателей</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 20px; font-weight: 800; color: var(--green);">${normalCount}</div>
+              <div style="font-size: 11px; color: var(--text-3);">В норме</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 20px; font-weight: 800; color: ${abnormalCount > 0 ? 'var(--red)' : 'var(--text-3)'};">${abnormalCount}</div>
+              <div style="font-size: 11px; color: var(--text-3);">Отклонения</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Просмотр анализа
+  window.viewAnalysis = function(id) {
+    const analysis = allAnalyses.find(a => a.id === id);
+    if (!analysis) {
+      showToast('Анализ не найден', '❌');
+      return;
+    }
+    
+    // Сохраняем в sessionStorage для results.html
+    sessionStorage.setItem('analysisResults', JSON.stringify({
+      results: analysis.results,
+      patient: analysis.patient || { sex: 'female', age: 35 },
+      date: analysis.date,
+      fileName: analysis.fileName
+    }));
+    
+    window.location.href = 'results.html';
+  };
+
+  // Удаление анализа
+  window.deleteAnalysis = async function(id) {
+    if (!confirm('Удалить этот анализ?')) return;
+    
+    try {
+      // Удаляем из Supabase
+      if (window.SupabaseDB) {
+        await window.SupabaseDB.deleteAnalysis(id);
+      }
+      
+      // Удаляем из localStorage
+      allAnalyses = allAnalyses.filter(a => a.id !== id);
+      localStorage.setItem('analysis_history_v1', JSON.stringify(allAnalyses));
+      
+      renderHistory();
+      showToast('Анализ удалён', '🗑');
+    } catch (e) {
+      showToast('Ошибка удаления', '❌');
+    }
+  };
+
+  // Фильтры
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      currentPeriod = this.dataset.period;
+      renderHistory();
+    });
+  });
+
+  // Инициализация
+  loadHistory();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
+  }
+})();
+</script>
+
+</body>
+</html>

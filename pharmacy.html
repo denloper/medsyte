@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <base href="./">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8BAF8B">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>💊</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="animations.css">
+  <title>Домашняя аптечка</title>
+</head>
+<body>
+
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastText">Готово</span>
+</div>
+
+<div class="app">
+  
+  <!-- Header -->
+  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
+    <div class="pc-top" style="margin-bottom: 0;">
+      <div class="pc-identity">
+        <a href="index.html" class="circle-btn ripple-element">←</a>
+        <div>
+          <div class="pc-name">💊 Домашняя аптечка</div>
+          <div class="pc-id" id="pharmacyCount">0 препаратов</div>
+        </div>
+      </div>
+      <button class="circle-btn dark-btn ripple-element" onclick="openModal('addMedModal')">+</button>
+    </div>
+  </div>
+
+  <!-- Статистика -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Обзор</h2>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon amber breathe">💊</div>
+      <div class="v-label">Всего</div>
+      <div class="v-value"><span id="statTotal">0</span></div>
+    </div>
+    <div class="v-card tilt-card ripple-element">
+      <div class="v-icon red breathe">⚠️</div>
+      <div class="v-label">Просрочено</div>
+      <div class="v-value"><span id="statExpired">0</span></div>
+    </div>
+  </div>
+
+  <!-- Категории -->
+  <div class="filter-row animate-on-scroll animate-fade-in">
+    <button class="filter-chip active ripple-element click-scale" data-category="all">Все</button>
+    <button class="filter-chip ripple-element click-scale" data-category="pain">Обезболивающие</button>
+    <button class="filter-chip ripple-element click-scale" data-category="cold">Простуда</button>
+    <button class="filter-chip ripple-element click-scale" data-category="stomach">ЖКТ</button>
+    <button class="filter-chip ripple-element click-scale" data-category="other">Другое</button>
+  </div>
+
+  <!-- Список препаратов -->
+  <div id="medList" class="animate-on-scroll animate-fade-up"></div>
+
+  <!-- Пустое состояние -->
+  <div id="emptyState" class="empty-state" style="display: none;">
+    <div class="empty-icon">💊</div>
+    <div class="empty-title">Аптечка пуста</div>
+    <div class="empty-sub">Добавьте препараты для отслеживания сроков годности</div>
+    <button class="empty-btn ripple-element magnetic-btn" onclick="openModal('addMedModal')">+ Добавить препарат</button>
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a href="index.html" class="nav-item">
+      <div class="nav-icon">🏠</div>
+      <span class="nav-label">Главная</span>
+    </a>
+    <a href="upload.html" class="nav-item">
+      <div class="nav-icon">📄</div>
+      <span class="nav-label">Анализы</span>
+    </a>
+    <a href="index.html" class="nav-fab" aria-label="Чат">💬</a>
+    <a href="calendar.html" class="nav-item">
+      <div class="nav-icon">📅</div>
+      <span class="nav-label">Календарь</span>
+    </a>
+    <a href="nutrition.html" class="nav-item">
+      <div class="nav-icon">🥗</div>
+      <span class="nav-label">Питание</span>
+    </a>
+  </div>
+</div>
+
+<!-- Модалка добавления препарата -->
+<div class="modal-overlay" id="addMedModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">💊 Добавить препарат</div>
+      <button class="modal-close ripple-element" onclick="closeModal('addMedModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Название *</label>
+        <input type="text" id="medName" placeholder="Например: Парацетамол"
+               style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      </div>
+      
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Категория</label>
+        <select id="medCategory"
+                style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+          <option value="pain">Обезболивающее</option>
+          <option value="cold">От простуды</option>
+          <option value="stomach">Для ЖКТ</option>
+          <option value="other">Другое</option>
+        </select>
+      </div>
+      
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Срок годности *</label>
+        <input type="date" id="medExpiry"
+               style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      </div>
+      
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Заметка</label>
+        <textarea id="medNote" rows="3" placeholder="Дозировка, показания..."
+                  style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-md); font-family: inherit; font-size: 15px; resize: none; background: var(--surface-2);"></textarea>
+      </div>
+      
+      <button class="next-btn magnetic-btn ripple-element" onclick="addMedication()">✅ Добавить</button>
+    </div>
+  </div>
+</div>
+
+<script src="animations.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  const STORAGE_KEY = 'pharmacy_medications_v1';
+  let medications = [];
+  let currentCategory = 'all';
+
+  window.showToast = function(text, icon = '✓') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = text;
+    toast.querySelector('.toast-icon').textContent = icon;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  };
+
+  window.openModal = function(id) {
+    document.getElementById(id).classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeModal = function(id) {
+    document.getElementById(id).classList.remove('open');
+    document.body.style.overflow = '';
+  };
+
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+    });
+  });
+
+  // Загрузка препаратов
+  function loadMedications() {
+    try {
+      medications = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      renderMedications();
+    } catch (e) {
+      console.error('Ошибка загрузки:', e);
+      medications = [];
+    }
+  }
+
+  // Сохранение
+  function saveMedications() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(medications));
+  }
+
+  // Добавление препарата
+  window.addMedication = function() {
+    const name = document.getElementById('medName').value.trim();
+    const category = document.getElementById('medCategory').value;
+    const expiry = document.getElementById('medExpiry').value;
+    const note = document.getElementById('medNote').value.trim();
+    
+    if (!name || !expiry) {
+      showToast('Заполните название и срок годности', '⚠️');
+      return;
+    }
+    
+    const med = {
+      id: 'med_' + Date.now(),
+      name,
+      category,
+      expiry: new Date(expiry).getTime(),
+      note,
+      addedAt: Date.now()
+    };
+    
+    medications.push(med);
+    saveMedications();
+    
+    // Очистка формы
+    document.getElementById('medName').value = '';
+    document.getElementById('medExpiry').value = '';
+    document.getElementById('medNote').value = '';
+    
+    closeModal('addMedModal');
+    renderMedications();
+    showToast('Препарат добавлен', '✅');
+  };
+
+  // Удаление препарата
+  window.deleteMedication = function(id) {
+    if (!confirm('Удалить этот препарат?')) return;
+    
+    medications = medications.filter(m => m.id !== id);
+    saveMedications();
+    renderMedications();
+    showToast('Препарат удалён', '🗑');
+  };
+
+  // Рендер списка
+  function renderMedications() {
+    const list = document.getElementById('medList');
+    const empty = document.getElementById('emptyState');
+    
+    // Фильтрация по категории
+    let filtered = medications;
+    if (currentCategory !== 'all') {
+      filtered = medications.filter(m => m.category === currentCategory);
+    }
+    
+    // Сортировка по сроку годности (ближайшие первые)
+    filtered.sort((a, b) => a.expiry - b.expiry);
+    
+    // Обновляем статистику
+    document.getElementById('pharmacyCount').textContent = `${medications.length} препаратов`;
+    document.getElementById('statTotal').textContent = medications.length;
+    
+    const now = Date.now();
+    const expired = medications.filter(m => m.expiry < now).length;
+    document.getElementById('statExpired').textContent = expired;
+    
+    if (filtered.length === 0) {
+      list.style.display = 'none';
+      empty.style.display = 'flex';
+      return;
+    }
+    
+    list.style.display = 'block';
+    empty.style.display = 'none';
+    
+    const categoryIcons = {
+      pain: '💊',
+      cold: '🤧',
+      stomach: '🫁',
+      other: '💊'
+    };
+    
+    list.innerHTML = filtered.map((med, idx) => {
+      const now = Date.now();
+      const daysLeft = Math.ceil((med.expiry - now) / (1000 * 60 * 60 * 24));
+      const isExpired = daysLeft < 0;
+      const isExpiringSoon = daysLeft >= 0 && daysLeft <= 30;
+      
+      let statusColor = 'var(--green)';
+      let statusText = `${daysLeft} дн.`;
+      let statusIcon = '✓';
+      
+      if (isExpired) {
+        statusColor = 'var(--red)';
+        statusText = 'Просрочен';
+        statusIcon = '⚠️';
+      } else if (isExpiringSoon) {
+        statusColor = 'var(--orange)';
+        statusText = `${daysLeft} дн.`;
+        statusIcon = '⚠️';
+      }
+      
+      const expiryDate = new Date(med.expiry);
+      const expiryStr = expiryDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      
+      return `
+        <div class="other-card animate-on-scroll animate-fade-up" style="margin-bottom: 12px; animation-delay: ${idx * 0.05}s; border-left: 4px solid ${statusColor};">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+            <div style="flex: 1;">
+              <div style="font-size: 16px; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
+                ${categoryIcons[med.category] || '💊'} ${med.name}
+              </div>
+              <div style="font-size: 13px; color: var(--text-3);">
+                Годен до: ${expiryStr}
+              </div>
+            </div>
+            <button class="circle-btn ripple-element" onclick="deleteMedication('${med.id}')" style="width: 36px; height: 36px; font-size: 16px; color: var(--red);">🗑</button>
+          </div>
+          
+          ${med.note ? `<div style="font-size: 13px; color: var(--text-2); margin-bottom: 8px; padding: 8px; background: var(--surface-2); border-radius: var(--r-sm);">${med.note}</div>` : ''}
+          
+          <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: ${statusColor}15; border-radius: var(--r-sm);">
+            <span style="font-size: 18px;">${statusIcon}</span>
+            <span style="font-size: 14px; font-weight: 600; color: ${statusColor};">${statusText}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Фильтры
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', function() {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      currentCategory = this.dataset.category;
+      renderMedications();
+    });
+  });
+
+  // Инициализация
+  loadMedications();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
+  }
+})();
+</script>
+
+</body>
+</html>
