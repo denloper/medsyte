@@ -1,43 +1,81 @@
 /**
- * SUPABASE CLIENT v1.0
+ * SUPABASE CLIENT v1.1
  * Онлайн SQL-база данных (PostgreSQL)
  */
 (function() {
   'use strict';
 
-  // ═══════ КОНФИГУРАЦИЯ (ЗАМЕНИТЕ НА СВОИ) ═══════
-  const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
-  const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+  // ═══════ КОНФИГУРАЦИЯ ═══════
+  // ⚠️ ЗАМЕНИТЕ на свои значения из Supabase Dashboard → Settings → API
+  const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';   // ← ваш URL
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';            // ← ваш anon key
 
   let supabase = null;
+  let initPromise = null;  // ← защита от множественной инициализации
 
-  // ═══════ ЗАГРУЗКА SDK ═══════
-  async function loadSDK() {
+  // ═══════ ЗАГРУЗКА SDK (один раз) ═══════
+  function loadSDK() {
     return new Promise((resolve, reject) => {
       if (window.supabase) return resolve(window.supabase);
+      
+      // Проверяем, не грузится ли уже
+      const existing = document.querySelector('script[data-supabase-sdk]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(window.supabase));
+        existing.addEventListener('error', reject);
+        return;
+      }
+      
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      script.dataset.supabaseSdk = 'true';
       script.onload = () => resolve(window.supabase);
       script.onerror = reject;
       document.head.appendChild(script);
     });
   }
 
+  // ═══════ ИНИЦИАЛИЗАЦИЯ (ленивая, один раз) ═══════
   async function init() {
-    try {
-      const sdk = await loadSDK();
-      supabase = sdk.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('[DB] ✅ Supabase инициализирован');
-      return supabase;
-    } catch (err) {
-      console.error('[DB] ❌ Ошибка инициализации:', err);
-      throw err;
-    }
+    // Если уже инициализирован — возвращаем существующий
+    if (supabase) return supabase;
+    
+    // Если идёт процесс инициализации — ждём его
+    if (initPromise) return initPromise;
+    
+    initPromise = (async () => {
+      try {
+        // Проверка конфигурации
+        if (SUPABASE_URL.includes('YOUR-PROJECT') || SUPABASE_ANON_KEY.includes('YOUR-ANON-KEY')) {
+          console.warn('[DB] ⚠️ Supabase не настроен! Замените YOUR-PROJECT и YOUR-ANON-KEY в supabase-client.js');
+          return null;
+        }
+        
+        const sdk = await loadSDK();
+        supabase = sdk.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true,
+            storageKey: 'family-doctor-auth'  // ← уникальный ключ, чтобы не конфликтовать
+          }
+        });
+        console.log('[DB] ✅ Supabase инициализирован');
+        return supabase;
+      } catch (err) {
+        console.error('[DB] ❌ Ошибка инициализации:', err);
+        initPromise = null;
+        throw err;
+      }
+    })();
+    
+    return initPromise;
   }
 
   async function ensureInit() {
-    if (!supabase) await init();
-    return supabase;
+    const sb = await init();
+    if (!sb) throw new Error('Supabase не настроен. Проверьте console warnings.');
+    return sb;
   }
 
   // ═══════════════════════════════════════
@@ -74,18 +112,23 @@
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return null;
     
-    const { data: profile } = await sb
+    const { data: profile, error } = await sb
       .from('profiles')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
+    
+    if (error) {
+      console.warn('[DB] Profile fetch error:', error.message);
+      return { ...user, profile: null };
+    }
     
     return { ...user, profile };
   }
 
   async function onAuthChange(callback) {
     const sb = await ensureInit();
-    sb.auth.onAuthStateChange((event, session) => {
+    return sb.auth.onAuthStateChange((event, session) => {
       callback(event, session);
     });
   }
@@ -106,6 +149,8 @@
   async function addFamilyMember({ name, relation, sex, age, birthDate }) {
     const sb = await ensureInit();
     const { data: { user } } = await sb.auth.getUser();
+    if (!user) throw new Error('Не авторизован');
+    
     const { data, error } = await sb
       .from('family_members')
       .insert({
@@ -131,7 +176,13 @@
 
   async function deleteFamilyMember(id) {
     const sb = await ensureInit();
-    const member = (await sb.from('family_members').select('*').eq('id', id).single()).data;
+    const { data: member, error: fetchErr } = await sb
+      .from('family_members')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (fetchErr) throw new Error(fetchErr.message);
     if (member?.relation === 'self') throw new Error('Нельзя удалить основной профиль');
     
     const { error } = await sb.from('family_members').delete().eq('id', id);
@@ -141,6 +192,7 @@
   async function setActiveMember(id) {
     const sb = await ensureInit();
     const { data: { user } } = await sb.auth.getUser();
+    if (!user) throw new Error('Не авторизован');
     
     // Снимаем isActive со всех
     await sb.from('family_members')
@@ -148,18 +200,28 @@
       .eq('user_id', user.id);
     
     // Активируем выбранный
-    await sb.from('family_members')
+    const { error } = await sb.from('family_members')
       .update({ is_active: true })
       .eq('id', id);
+    if (error) throw new Error(error.message);
   }
 
   async function getActiveMember() {
     const sb = await ensureInit();
-    const { data } = await sb
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return null;
+    
+    const { data, error } = await sb
       .from('family_members')
       .select('*')
+      .eq('user_id', user.id)
       .eq('is_active', true)
       .maybeSingle();
+    
+    if (error) {
+      console.warn('[DB] Active member error:', error.message);
+      return null;
+    }
     return data;
   }
 
@@ -271,19 +333,24 @@
   //  СТАТИСТИКА
   // ═══════════════════════════════════════
   async function getUserStats() {
-    const sb = await ensureInit();
-    const [fm, an, de, he] = await Promise.all([
-      sb.from('family_members').select('*', { count: 'exact', head: true }),
-      sb.from('analyses').select('*', { count: 'exact', head: true }),
-      sb.from('diary_entries').select('*', { count: 'exact', head: true }),
-      sb.from('health_events').select('*', { count: 'exact', head: true })
-    ]);
-    return {
-      familyMembers: fm.count || 0,
-      analyses: an.count || 0,
-      diaryEntries: de.count || 0,
-      healthEvents: he.count || 0
-    };
+    try {
+      const sb = await ensureInit();
+      const [fm, an, de, he] = await Promise.all([
+        sb.from('family_members').select('*', { count: 'exact', head: true }),
+        sb.from('analyses').select('*', { count: 'exact', head: true }),
+        sb.from('diary_entries').select('*', { count: 'exact', head: true }),
+        sb.from('health_events').select('*', { count: 'exact', head: true })
+      ]);
+      return {
+        familyMembers: fm.count || 0,
+        analyses: an.count || 0,
+        diaryEntries: de.count || 0,
+        healthEvents: he.count || 0
+      };
+    } catch (e) {
+      console.warn('[DB] Stats error:', e.message);
+      return { familyMembers: 0, analyses: 0, diaryEntries: 0, healthEvents: 0 };
+    }
   }
 
   // ═══════════════════════════════════════
@@ -292,7 +359,7 @@
   async function exportUserData() {
     const sb = await ensureInit();
     const user = await getCurrentUser();
-    const [familyMembers, analyses, diaryEntries, healthEvents] = await Promise.all([
+    const [familyMembers, analyses, diaryEntriesRes, healthEvents] = await Promise.all([
       getFamilyMembers(),
       getAnalyses(),
       sb.from('diary_entries').select('*'),
@@ -302,10 +369,10 @@
     return JSON.stringify({
       version: '2.0',
       exportDate: new Date().toISOString(),
-      user: { email: user.email, name: user.profile?.name },
+      user: { email: user?.email, name: user?.profile?.name },
       familyMembers,
-      analyses: analyses.data || [],
-      diaryEntries: diaryEntries.data || [],
+      analyses: analyses || [],
+      diaryEntries: diaryEntriesRes.data || [],
       healthEvents
     }, null, 2);
   }
@@ -322,12 +389,8 @@
     saveDiaryEntry, getDiaryEntries,
     saveHealthEvent, getHealthEvents, markEventCompleted,
     getUserStats, exportUserData,
-    version: '1.0.0'
+    version: '1.1.0'
   };
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  // НЕ вызываем init() автоматически — он будет вызван лениво при первом запросе
 })();

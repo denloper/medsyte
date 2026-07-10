@@ -106,6 +106,12 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
+  // ═══════ SUPABASE API — НЕ кешируем, пропускаем напрямую ═══════
+  if (url.hostname.endsWith('.supabase.co') || url.hostname.includes('supabase')) {
+    // Пропускаем без вмешательства — пусть идёт напрямую
+    return;
+  }
+
   // ═══════ CDN — cache-first ═══════
   if (url.origin !== self.location.origin) {
     event.respondWith(
