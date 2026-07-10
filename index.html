@@ -93,32 +93,31 @@
     </button>
   </div>
 
-  <!-- ═══════ QUICK ACTIONS ═══════ -->
-  <div class="sec-hd animate-on-scroll animate-slide-left">
+  <!-- ═══════ QUICK ACTIONS (без анимаций) ═══════ -->
+  <div class="sec-hd">
     <h2>Быстрые действия</h2>
     <a href="#" class="see-all" onclick="showToast('Скоро будет', '🔜'); return false;">Все →</a>
   </div>
 
-  <div class="quick-grid stagger">
+  <div class="quick-grid">
     <a href="upload.html" class="qi magnetic-btn ripple-element">
-      <div class="qi-icon float">📄</div>
+      <div class="qi-icon">📄</div>
       <span class="qi-label">Загрузить<br>анализ</span>
     </a>
-    <a href="#" class="qi magnetic-btn ripple-element" 
-       onclick="showToast('Раздел \'План питания\' в разработке', '🚧'); return false;">
-      <div class="qi-icon float-slow">🥗</div>
+    <a href="nutrition.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon">🥗</div>
       <span class="qi-label">План<br>питания</span>
     </a>
     <a href="calendar.html" class="qi magnetic-btn ripple-element">
-      <div class="qi-icon qi-dark float">📅</div>
+      <div class="qi-icon qi-dark">📅</div>
       <span class="qi-label">Календарь<br>здоровья</span>
     </a>
     <a href="#" class="qi magnetic-btn ripple-element" 
-       onclick="openModal('emergencyModal'); return false;">
-      <div class="qi-icon float-slow" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">🚨</div>
+      onclick="openModal('emergencyModal'); return false;">
+      <div class="qi-icon" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">🚨</div>
       <span class="qi-label">Быстрая<br>помощь</span>
     </a>
-  </div>
+</div>
 
   <!-- ═══════ VITALS 2x2 ═══════ -->
   <div class="sec-hd animate-on-scroll animate-slide-left">
