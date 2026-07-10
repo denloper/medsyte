@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <base href="./">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#8BAF8B">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="animations.css">
+  <title>Семейные профили</title>
+</head>
+<body>
+
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toastText">Готово</span>
+</div>
+
+<div class="app">
+  
+  <div class="status-bar animate-on-scroll animate-fade-in">
+    <span id="currentTime">9:41</span>
+    <div class="status-icons">
+      <span>📶</span><span>📡</span><span class="pulse-dot">🔋</span>
+    </div>
+  </div>
+
+  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
+    <div class="pc-top" style="margin-bottom: 0;">
+      <div class="pc-identity">
+        <a href="index.html" class="circle-btn ripple-element">←</a>
+        <div>
+          <div class="pc-name">Семейные профили</div>
+          <div class="pc-id" id="familyCount">0 профилей</div>
+        </div>
+      </div>
+      <button class="circle-btn dark-btn ripple-element" onclick="openAddModal()">+</button>
+    </div>
+  </div>
+
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Активный профиль</h2>
+  </div>
+
+  <div id="activeProfileCard"></div>
+
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Все профили</h2>
+    <span class="see-all" id="totalCount">0</span>
+  </div>
+
+  <div id="profilesList"></div>
+
+  <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" onclick="openAddModal()" style="margin-top: 20px;">
+    + Добавить профиль
+  </button>
+
+  <div class="sec-hd animate-on-scroll animate-slide-left" style="margin-top: 30px;">
+    <h2>Данные</h2>
+  </div>
+
+  <div class="other-card animate-on-scroll animate-fade-up">
+    <div class="metric-row ripple-element" onclick="exportData()">
+      <div class="mr-circle green-bg">📤</div>
+      <div class="mr-info">
+        <div class="mr-label">Экспортировать данные</div>
+        <div style="font-size: 13px; color: var(--text-3);">Сохранить все данные в файл</div>
+      </div>
+      <div class="arrow-btn">→</div>
+    </div>
+    <div class="metric-row ripple-element" onclick="document.getElementById('importFile').click()">
+      <div class="mr-circle blue-bg">📥</div>
+      <div class="mr-info">
+        <div class="mr-label">Импортировать данные</div>
+        <div style="font-size: 13px; color: var(--text-3);">Загрузить из файла</div>
+      </div>
+      <div class="arrow-btn">→</div>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+    <div class="metric-row ripple-element" onclick="deleteAll()" style="border-bottom: none;">
+      <div class="mr-circle red-bg">🗑</div>
+      <div class="mr-info">
+        <div class="mr-label" style="color: var(--red);">Удалить все данные</div>
+        <div style="font-size: 13px; color: var(--text-3);">Необратимое действие</div>
+      </div>
+      <div class="arrow-btn">→</div>
+    </div>
+  </div>
+
+  <div style="height: 100px;"></div>
+</div>
+
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <a href="index.html" class="nav-item"><div class="nav-icon">🏠</div><span class="nav-label">Главная</span></a>
+    <a href="upload.html" class="nav-item"><div class="nav-icon">📄</div><span class="nav-label">Анализы</span></a>
+    <a href="index.html" class="nav-fab">🩺</a>
+    <a href="calendar.html" class="nav-item"><div class="nav-icon">📅</div><span class="nav-label">Календарь</span></a>
+    <a href="family.html" class="nav-item active"><div class="nav-icon">👨‍👩‍👧</div><span class="nav-label">Семья</span></a>
+  </div>
+</div>
+
+<!-- Модалка добавления/редактирования профиля -->
+<div class="modal-overlay" id="memberModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Новый профиль</div>
+      <button class="modal-close ripple-element" onclick="closeMemberModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editMemberId">
+      
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Имя *</label>
+        <input type="text" id="memberName" placeholder="Например: Мама, Сын, Иван"
+               style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      </div>
+      
+      <div style="margin-bottom: 14px;">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Родственная связь</label>
+        <select id="memberRelation"
+                style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+          <option value="self">Я</option>
+          <option value="spouse">Супруг(а)</option>
+          <option value="child">Ребёнок</option>
+          <option value="parent">Родитель</option>
+          <option value="sibling">Брат/сестра</option>
+          <option value="other">Другое</option>
+        </select>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+        <div>
+          <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Пол</label>
+          <select id="memberSex"
+                  style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+            <option value="female">Женский</option>
+            <option value="male">Мужской</option>
+            <option value="unknown">Не указан</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Возраст</label>
+          <input type="number" id="memberAge" min="0" max="120" placeholder="35"
+                 style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+        </div>
+      </div>
+      
+      <button class="next-btn magnetic-btn ripple-element" onclick="saveMember()">✓ Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script src="local-db.js"></script>
+<script src="animations.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  let currentMembers = [];
+
+  function updateTime() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, '0');
+    const m = now.getMinutes().toString().padStart(2, '0');
+    document.getElementById('currentTime').textContent = `${h}:${m}`;
+  }
+  updateTime();
+  setInterval(updateTime, 60000);
+
+  window.showToast = function(text, icon = '✓') {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastText').textContent = text;
+    toast.querySelector('.toast-icon').textContent = icon;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  };
+
+  const relationLabels = {
+    self: '👤 Я', spouse: '💑 Супруг(а)', child: '👶 Ребёнок',
+    parent: '👨‍🦳 Родитель', sibling: '👫 Брат/сестра', other: '👥 Другое'
+  };
+
+  const sexIcons = { female: '👩', male: '👨', unknown: '👤' };
+
+  async function checkAuth() {
+    const user = await window.LocalDB.getCurrentUser();
+    if (!user) {
+      showToast('Необходима авторизация', '⚠️');
+      setTimeout(() => window.location.href = 'index.html', 1000);
+      return false;
+    }
+    return true;
+  }
+
+  async function renderProfiles() {
+    if (!await checkAuth()) return;
+    
+    currentMembers = await window.LocalDB.getFamilyMembers();
+    const activeMember = await window.LocalDB.getActiveMember();
+    
+    document.getElementById('familyCount').textContent = `${currentMembers.length} профилей`;
+    document.getElementById('totalCount').textContent = currentMembers.length;
+    
+    // Активный профиль
+    if (activeMember) {
+      const sexIcon = sexIcons[activeMember.sex] || '👤';
+      document.getElementById('activeProfileCard').innerHTML = `
+        <div class="dark-card animate-on-scroll animate-fade-up animated-gradient">
+          <div class="dc-metric">
+            <div class="dc-value" style="font-size: 48px;">${sexIcon}</div>
+          </div>
+          <div style="flex: 2; text-align: left;">
+            <div style="font-size: 20px; font-weight: 800; color: white; margin-bottom: 4px;">${activeMember.name}</div>
+            <div style="font-size: 13px; color: rgba(255,255,255,0.7);">
+              ${relationLabels[activeMember.relation] || activeMember.relation}
+              ${activeMember.age ? ` · ${activeMember.age} лет` : ''}
+            </div>
+            <div style="margin-top: 8px; padding: 4px 10px; background: rgba(61, 139, 78, 0.8); color: white; border-radius: var(--r-full); font-size: 11px; font-weight: 700; display: inline-block;">
+              ✓ Активный
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Список всех профилей
+    const list = document.getElementById('profilesList');
+    if (currentMembers.length === 0) {
+      list.innerHTML = `
+        <div class="empty-state animate-on-scroll animate-fade-up">
+          <div class="empty-icon">👨‍👩‍👧</div>
+          <div class="empty-title">Профилей пока нет</div>
+          <div class="empty-sub">Добавьте членов семьи для персонализации</div>
+        </div>
+      `;
+      return;
+    }
+    
+    list.innerHTML = `
+      <div class="other-card animate-on-scroll animate-fade-up">
+        ${currentMembers.map((m, idx) => {
+          const sexIcon = sexIcons[m.sex] || '👤';
+          const isActive = activeMember && activeMember.id === m.id;
+          const isSelf = m.relation === 'self';
+          return `
+            <div class="metric-row ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.05}s backwards;">
+              <div class="mr-circle ${isActive ? 'green-bg' : 'dark-bg'}" style="font-size: 22px;">
+                ${sexIcon}
+              </div>
+              <div class="mr-info" onclick="setActive(${m.id})" style="cursor: pointer;">
+                <div class="mr-label">${m.name}</div>
+                <div class="mr-value" style="font-size: 13px; color: var(--text-3);">
+                  ${relationLabels[m.relation] || m.relation}
+                  ${m.age ? ` · ${m.age} лет` : ''}
+                </div>
+              </div>
+              ${isActive ? 
+                '<span style="padding: 4px 10px; background: var(--green); color: white; border-radius: var(--r-full); font-size: 11px; font-weight: 700;">✓</span>' :
+                `<button class="circle-btn ripple-element" onclick="setActive(${m.id})" style="width: 32px; height: 32px; font-size: 14px;">✓</button>`
+              }
+              ${!isSelf ? `
+                <button class="circle-btn ripple-element" onclick="editMember(${m.id})" style="width: 32px; height: 32px; font-size: 14px;">✎</button>
+                <button class="circle-btn ripple-element" onclick="deleteMember(${m.id})" style="width: 32px; height: 32px; font-size: 14px;">🗑</button>
+              ` : `
+                <button class="circle-btn ripple-element" onclick="editMember(${m.id})" style="width: 32px; height: 32px; font-size: 14px;">✎</button>
+              `}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  window.setActive = async function(id) {
+    try {
+      await window.LocalDB.setActiveMember(id);
+      showToast('Профиль активирован', '✓');
+      renderProfiles();
+    } catch (e) {
+      showToast('Ошибка: ' + e.message, '❌');
+    }
+  };
+
+  window.openAddModal = function() {
+    document.getElementById('modalTitle').textContent = 'Новый профиль';
+    document.getElementById('editMemberId').value = '';
+    document.getElementById('memberName').value = '';
+    document.getElementById('memberRelation').value = 'other';
+    document.getElementById('memberSex').value = 'female';
+    document.getElementById('memberAge').value = '';
+    document.getElementById('memberModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.editMember = async function(id) {
+    const member = currentMembers.find(m => m.id === id);
+    if (!member) return;
+    document.getElementById('modalTitle').textContent = 'Редактировать';
+    document.getElementById('editMemberId').value = id;
+    document.getElementById('memberName').value = member.name;
+    document.getElementById('memberRelation').value = member.relation;
+    document.getElementById('memberSex').value = member.sex;
+    document.getElementById('memberAge').value = member.age || '';
+    document.getElementById('memberModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeMemberModal = function() {
+    document.getElementById('memberModal').classList.remove('open');
+    document.body.style.overflow = '';
+  };
+
+  window.saveMember = async function() {
+    const id = document.getElementById('editMemberId').value;
+    const name = document.getElementById('memberName').value.trim();
+    const relation = document.getElementById('memberRelation').value;
+    const sex = document.getElementById('memberSex').value;
+    const age = parseInt(document.getElementById('memberAge').value) || 0;
+    
+    if (!name) {
+      showToast('Введите имя', '⚠️');
+      return;
+    }
+    
+    try {
+      if (id) {
+        await window.LocalDB.updateFamilyMember(parseInt(id), { name, relation, sex, age });
+        showToast('Профиль обновлён', '✓');
+      } else {
+        await window.LocalDB.addFamilyMember({ name, relation, sex, age });
+        showToast('Профиль добавлен', '✓');
+      }
+      closeMemberModal();
+      renderProfiles();
+    } catch (e) {
+      showToast('Ошибка: ' + e.message, '❌');
+    }
+  };
+
+  window.deleteMember = async function(id) {
+    const member = currentMembers.find(m => m.id === id);
+    if (!member) return;
+    if (!confirm(`Удалить профиль "${member.name}"?\nВсе связанные данные также будут удалены.`)) return;
+    
+    try {
+      await window.LocalDB.deleteFamilyMember(id);
+      showToast('Профиль удалён', '🗑');
+      renderProfiles();
+    } catch (e) {
+      showToast('Ошибка: ' + e.message, '❌');
+    }
+  };
+
+  window.exportData = async function() {
+    try {
+      const json = await window.LocalDB.exportUserData();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `family-doctor-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Данные экспортированы', '📤');
+    } catch (e) {
+      showToast('Ошибка экспорта: ' + e.message, '❌');
+    }
+  };
+
+  window.importData = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const stats = await window.LocalDB.importUserData(text);
+      showToast(`Импортировано: ${stats.familyMembers} профилей, ${stats.analyses} анализов`, '📥');
+      renderProfiles();
+    } catch (e) {
+      showToast('Ошибка импорта: ' + e.message, '❌');
+    }
+    event.target.value = '';
+  };
+
+  window.deleteAll = async function() {
+    if (!confirm('Удалить ВСЕ данные аккаунта?\nЭто действие необратимо!')) return;
+    if (!confirm('Вы точно уверены? Все профили, анализы и записи будут удалены.')) return;
+    
+    try {
+      await window.LocalDB.deleteAllUserData();
+      showToast('Все данные удалены', '🗑');
+      setTimeout(() => window.location.href = 'index.html', 1000);
+    } catch (e) {
+      showToast('Ошибка: ' + e.message, '❌');
+    }
+  };
+
+  document.getElementById('memberModal').addEventListener('click', (e) => {
+    if (e.target.id === 'memberModal') closeMemberModal();
+  });
+
+  // Запуск с миграцией
+  (async () => {
+    if (!await checkAuth()) return;
+    
+    // Пробуем мигрировать данные из localStorage
+    const migrationResult = await window.LocalDB.migrateFromLocalStorage();
+    if (migrationResult.migrated) {
+      const s = migrationResult.stats;
+      showToast(`Миграция: +${s.familyMembers} профилей, +${s.analyses} анализов`, '🚀');
+    }
+    
+    renderProfiles();
+  })();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
+  }
+})();
+</script>
+
+</body>
+</html>

@@ -1,14 +1,10 @@
 /**
- * LOCAL DATABASE v1.0
- * IndexedDB через Dexie.js + шифрование AES-GCM
- * Локальное хранение с семейными профилями
+ * LOCAL DATABASE v1.1
+ * IndexedDB через Dexie.js + шифрование + миграция из localStorage
  */
 (function() {
   'use strict';
 
-  // ═══════════════════════════════════════
-  //  ЗАГРУЗКА DEXIE.JS (CDN)
-  // ═══════════════════════════════════════
   function loadDexie() {
     return new Promise((resolve, reject) => {
       if (window.Dexie) return resolve(window.Dexie);
@@ -22,39 +18,19 @@
 
   let db = null;
 
-  // ═══════════════════════════════════════
-  //  ИНИЦИАЛИЗАЦИЯ БД
-  // ═══════════════════════════════════════
   async function init() {
     try {
       const Dexie = await loadDexie();
-      
       db = new Dexie('FamilyDoctorDB');
       
-      // Схема базы данных
       db.version(1).stores({
-        // Пользователи (аккаунты)
         users: '++id, email, &username, createdAt',
-        
-        // Члены семьи (профили)
         familyMembers: '++id, userId, relation, name, createdAt',
-        
-        // История анализов
         analyses: '++id, userId, familyMemberId, fileName, date, createdAt',
-        
-        // Дневники здоровья
         diaryEntries: '++id, userId, familyMemberId, metricType, date, createdAt',
-        
-        // Календарь здоровья
         healthEvents: '++id, userId, familyMemberId, eventType, scheduledDate, createdAt',
-        
-        // Лекарства
         medications: '++id, userId, familyMemberId, name, createdAt',
-        
-        // Настройки
         settings: '++id, userId, key, value',
-        
-        // Активная сессия
         sessions: '++id, userId, token, createdAt, expiresAt'
       });
       
@@ -67,7 +43,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  КРИПТОГРАФИЯ (SHA-256 для паролей)
+  //  КРИПТОГРАФИЯ
   // ═══════════════════════════════════════
   async function hashPassword(password, salt) {
     const encoder = new TextEncoder();
@@ -95,24 +71,17 @@
   async function register({ email, username, password, name, sex, age }) {
     await ensureDB();
     
-    // Проверяем, что username свободен
     const existing = await db.users.where('username').equals(username).first();
-    if (existing) {
-      throw new Error('Пользователь с таким именем уже существует');
-    }
+    if (existing) throw new Error('Пользователь с таким именем уже существует');
     
     if (email) {
       const existingEmail = await db.users.where('email').equals(email).first();
-      if (existingEmail) {
-        throw new Error('Email уже используется');
-      }
+      if (existingEmail) throw new Error('Email уже используется');
     }
     
-    // Хешируем пароль
     const salt = generateSalt();
     const passwordHash = await hashPassword(password, salt);
     
-    // Создаём пользователя
     const userId = await db.users.add({
       email: email || null,
       username,
@@ -124,30 +93,31 @@
       createdAt: Date.now()
     });
     
-    // Создаём профиль "Я" как первый член семьи
-    await db.familyMembers.add({
+    // Создаём профиль "Я"
+    const memberId = await db.familyMembers.add({
       userId,
       relation: 'self',
       name: name || username,
       sex: sex || 'unknown',
       age: age || 0,
+      isActive: true,
       createdAt: Date.now()
     });
     
-    // Создаём сессию
     const token = generateToken();
     await db.sessions.add({
       userId,
       token,
+      activeMemberId: memberId,
       createdAt: Date.now(),
-      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000 // 30 дней
+      expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000
     });
     
-    // Сохраняем токен
     localStorage.setItem('session_token', token);
     localStorage.setItem('current_user_id', userId);
+    localStorage.setItem('active_member_id', memberId);
     
-    return { userId, token };
+    return { userId, memberId, token };
   }
 
   // ═══════════════════════════════════════
@@ -157,28 +127,37 @@
     await ensureDB();
     
     const user = await db.users.where('username').equals(username).first();
-    if (!user) {
-      throw new Error('Пользователь не найден');
-    }
+    if (!user) throw new Error('Пользователь не найден');
     
     const passwordHash = await hashPassword(password, user.salt);
-    if (passwordHash !== user.passwordHash) {
-      throw new Error('Неверный пароль');
+    if (passwordHash !== user.passwordHash) throw new Error('Неверный пароль');
+    
+    // Находим активный профиль
+    let activeMember = await db.familyMembers
+      .where('userId').equals(user.id)
+      .and(m => m.isActive === true)
+      .first();
+    
+    if (!activeMember) {
+      activeMember = await db.familyMembers
+        .where('userId').equals(user.id)
+        .first();
     }
     
-    // Создаём новую сессию
     const token = generateToken();
     await db.sessions.add({
       userId: user.id,
       token,
+      activeMemberId: activeMember ? activeMember.id : null,
       createdAt: Date.now(),
       expiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000
     });
     
     localStorage.setItem('session_token', token);
     localStorage.setItem('current_user_id', user.id);
+    if (activeMember) localStorage.setItem('active_member_id', activeMember.id);
     
-    return { userId: user.id, token, user };
+    return { userId: user.id, memberId: activeMember?.id, token, user };
   }
 
   // ═══════════════════════════════════════
@@ -191,33 +170,59 @@
     }
     localStorage.removeItem('session_token');
     localStorage.removeItem('current_user_id');
+    localStorage.removeItem('active_member_id');
   }
 
   // ═══════════════════════════════════════
-  //  ПОЛУЧЕНИЕ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ
+  //  ТЕКУЩИЙ ПОЛЬЗОВАТЕЛЬ
   // ═══════════════════════════════════════
   async function getCurrentUser() {
     await ensureDB();
-    
     const token = localStorage.getItem('session_token');
     const userId = localStorage.getItem('current_user_id');
-    
     if (!token || !userId) return null;
     
-    // Проверяем сессию
     const session = await db.sessions
       .where('token').equals(token)
       .and(s => s.userId == userId && s.expiresAt > Date.now())
       .first();
     
     if (!session) {
-      // Сессия истекла — выходим
       await logout();
       return null;
     }
     
-    const user = await db.users.get(parseInt(userId));
-    return user;
+    return await db.users.get(parseInt(userId));
+  }
+
+  async function getActiveMember() {
+    await ensureDB();
+    const memberId = localStorage.getItem('active_member_id');
+    if (!memberId) return null;
+    return await db.familyMembers.get(parseInt(memberId));
+  }
+
+  async function setActiveMember(memberId) {
+    await ensureDB();
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Не авторизован');
+    
+    const member = await db.familyMembers.get(memberId);
+    if (!member || member.userId !== user.id) {
+      throw new Error('Профиль не найден');
+    }
+    
+    // Снимаем isActive со всех профилей
+    const members = await db.familyMembers.where('userId').equals(user.id).toArray();
+    for (const m of members) {
+      await db.familyMembers.update(m.id, { isActive: false });
+    }
+    
+    // Активируем выбранный
+    await db.familyMembers.update(memberId, { isActive: true });
+    localStorage.setItem('active_member_id', memberId);
+    
+    return member;
   }
 
   // ═══════════════════════════════════════
@@ -227,10 +232,7 @@
     await ensureDB();
     const user = await getCurrentUser();
     if (!user) return [];
-    
-    return await db.familyMembers
-      .where('userId').equals(user.id)
-      .sortBy('createdAt');
+    return await db.familyMembers.where('userId').equals(user.id).sortBy('createdAt');
   }
 
   async function addFamilyMember({ name, relation, sex, age, birthDate }) {
@@ -245,6 +247,7 @@
       sex: sex || 'unknown',
       age: age || 0,
       birthDate: birthDate || null,
+      isActive: false,
       createdAt: Date.now()
     });
     
@@ -258,15 +261,26 @@
 
   async function deleteFamilyMember(memberId) {
     await ensureDB();
+    const member = await db.familyMembers.get(memberId);
+    if (!member) return;
+    if (member.relation === 'self') throw new Error('Нельзя удалить основной профиль');
     
-    // Удаляем все связанные данные
     await db.analyses.where('familyMemberId').equals(memberId).delete();
     await db.diaryEntries.where('familyMemberId').equals(memberId).delete();
     await db.healthEvents.where('familyMemberId').equals(memberId).delete();
     await db.medications.where('familyMemberId').equals(memberId).delete();
-    
-    // Удаляем сам профиль
     await db.familyMembers.delete(memberId);
+    
+    // Если удалили активный — переключаем на self
+    const activeId = localStorage.getItem('active_member_id');
+    if (activeId == memberId) {
+      const user = await getCurrentUser();
+      const selfProfile = await db.familyMembers
+        .where('userId').equals(user.id)
+        .and(m => m.relation === 'self')
+        .first();
+      if (selfProfile) await setActiveMember(selfProfile.id);
+    }
   }
 
   // ═══════════════════════════════════════
@@ -277,7 +291,7 @@
     const user = await getCurrentUser();
     if (!user) throw new Error('Не авторизован');
     
-    const id = await db.analyses.add({
+    return await db.analyses.add({
       userId: user.id,
       familyMemberId: familyMemberId || null,
       fileName,
@@ -285,8 +299,6 @@
       date: Date.now(),
       createdAt: Date.now()
     });
-    
-    return id;
   }
 
   async function getAnalyses(familyMemberId = null) {
@@ -295,15 +307,10 @@
     if (!user) return [];
     
     let query = db.analyses.where('userId').equals(user.id);
-    if (familyMemberId) {
-      query = query.and(a => a.familyMemberId == familyMemberId);
-    }
+    if (familyMemberId) query = query.and(a => a.familyMemberId == familyMemberId);
     
     const analyses = await query.sortBy('date');
-    return analyses.map(a => ({
-      ...a,
-      results: JSON.parse(a.results)
-    }));
+    return analyses.map(a => ({ ...a, results: JSON.parse(a.results) }));
   }
 
   async function deleteAnalysis(analysisId) {
@@ -335,20 +342,14 @@
     if (!user) return [];
     
     const cutoff = Date.now() - daysBack * 24 * 60 * 60 * 1000;
-    
     let query = db.diaryEntries
       .where('userId').equals(user.id)
       .and(e => e.metricType === metricType && e.date >= cutoff);
     
-    if (familyMemberId) {
-      query = query.and(e => e.familyMemberId == familyMemberId);
-    }
+    if (familyMemberId) query = query.and(e => e.familyMemberId == familyMemberId);
     
     const entries = await query.sortBy('date');
-    return entries.map(e => ({
-      ...e,
-      value: JSON.parse(e.value)
-    }));
+    return entries.map(e => ({ ...e, value: JSON.parse(e.value) }));
   }
 
   // ═══════════════════════════════════════
@@ -376,9 +377,7 @@
     if (!user) return [];
     
     let query = db.healthEvents.where('userId').equals(user.id);
-    if (familyMemberId) {
-      query = query.and(e => e.familyMemberId == familyMemberId);
-    }
+    if (familyMemberId) query = query.and(e => e.familyMemberId == familyMemberId);
     
     return await query.sortBy('scheduledDate');
   }
@@ -392,6 +391,147 @@
   }
 
   // ═══════════════════════════════════════
+  //  МИГРАЦИЯ ИЗ LOCALSTORAGE
+  // ═══════════════════════════════════════
+  async function migrateFromLocalStorage() {
+    await ensureDB();
+    const user = await getCurrentUser();
+    if (!user) return { migrated: false, reason: 'no_user' };
+    
+    const migrationKey = `migrated_for_user_${user.id}`;
+    if (localStorage.getItem(migrationKey)) {
+      return { migrated: false, reason: 'already_migrated' };
+    }
+    
+    const stats = {
+      familyMembers: 0,
+      analyses: 0,
+      diaryEntries: 0,
+      healthEvents: 0
+    };
+    
+    try {
+      // 1. Миграция family_profiles_v4
+      const profilesData = localStorage.getItem('family_profiles_v4');
+      if (profilesData) {
+        const profiles = JSON.parse(profilesData);
+        const selfProfile = await db.familyMembers
+          .where('userId').equals(user.id)
+          .and(m => m.relation === 'self')
+          .first();
+        
+        for (const p of profiles) {
+          if (p.id === 'self') {
+            // Обновляем существующий self-профиль
+            if (selfProfile && p.name) {
+              await db.familyMembers.update(selfProfile.id, { name: p.name });
+            }
+            continue;
+          }
+          // Создаём новый профиль
+          await db.familyMembers.add({
+            userId: user.id,
+            relation: 'other',
+            name: p.name,
+            sex: 'unknown',
+            age: 0,
+            isActive: false,
+            legacyId: p.id,
+            createdAt: Date.now()
+          });
+          stats.familyMembers++;
+        }
+      }
+      
+      // 2. Миграция analysis_history_v4
+      const historyData = localStorage.getItem('analysis_history_v4');
+      if (historyData) {
+        const history = JSON.parse(historyData);
+        for (const memberId in history) {
+          const entries = history[memberId] || [];
+          for (const entry of entries) {
+            await db.analyses.add({
+              userId: user.id,
+              familyMemberId: null,
+              fileName: entry.label || 'Анализ',
+              results: JSON.stringify({ count: entry.count }),
+              date: entry.date,
+              createdAt: entry.date,
+              legacyMemberId: memberId
+            });
+            stats.analyses++;
+          }
+        }
+      }
+      
+      // 3. Миграция health_diary_v1
+      const diaryData = localStorage.getItem('health_diary_v1');
+      if (diaryData) {
+        const diary = JSON.parse(diaryData);
+        for (const metricType in diary) {
+          const entries = diary[metricType] || [];
+          for (const entry of entries) {
+            await db.diaryEntries.add({
+              userId: user.id,
+              familyMemberId: null,
+              metricType,
+              value: JSON.stringify(entry),
+              date: entry.date || Date.now(),
+              createdAt: entry.date || Date.now(),
+              legacyId: entry.id
+            });
+            stats.diaryEntries++;
+          }
+        }
+      }
+      
+      // 4. Миграция health_calendar_v1
+      const calendarData = localStorage.getItem('health_calendar_v1');
+      if (calendarData) {
+        const calendar = JSON.parse(calendarData);
+        const completed = calendar.completed || [];
+        const planned = calendar.planned || [];
+        
+        for (const c of completed) {
+          await db.healthEvents.add({
+            userId: user.id,
+            familyMemberId: null,
+            eventType: c.id,
+            title: c.id,
+            scheduledDate: c.date,
+            completed: true,
+            completedAt: c.date,
+            createdAt: c.date
+          });
+          stats.healthEvents++;
+        }
+        
+        for (const p of planned) {
+          await db.healthEvents.add({
+            userId: user.id,
+            familyMemberId: null,
+            eventType: p.id,
+            title: p.id,
+            scheduledDate: p.date,
+            completed: false,
+            createdAt: p.createdAt || Date.now()
+          });
+          stats.healthEvents++;
+        }
+      }
+      
+      // Помечаем миграцию как выполненную
+      localStorage.setItem(migrationKey, Date.now().toString());
+      
+      console.log('[DB] ✅ Миграция завершена:', stats);
+      return { migrated: true, stats };
+    } catch (err) {
+      console.error('[DB] ❌ Ошибка миграции:', err);
+      return { migrated: false, reason: 'error', error: err.message };
+    }
+  }
+
+  // ═══════════════════════════════════════
   //  ЭКСПОРТ/ИМПОРТ
   // ═══════════════════════════════════════
   async function exportUserData() {
@@ -399,10 +539,12 @@
     const user = await getCurrentUser();
     if (!user) throw new Error('Не авторизован');
     
+    const { passwordHash, salt, ...safeUser } = user;
+    
     const data = {
-      version: '1.0',
+      version: '1.1',
       exportDate: new Date().toISOString(),
-      user: { ...user, passwordHash: undefined, salt: undefined },
+      user: safeUser,
       familyMembers: await db.familyMembers.where('userId').equals(user.id).toArray(),
       analyses: await db.analyses.where('userId').equals(user.id).toArray(),
       diaryEntries: await db.diaryEntries.where('userId').equals(user.id).toArray(),
@@ -425,40 +567,36 @@
       throw new Error('Неверный формат файла');
     }
     
-    if (data.version !== '1.0') {
-      throw new Error('Несовместимая версия экспорта');
-    }
+    if (!data.version) throw new Error('Несовместимая версия');
     
-    // Импортируем семейные профили
+    const stats = { familyMembers: 0, analyses: 0, diaryEntries: 0, healthEvents: 0 };
+    
     for (const member of data.familyMembers || []) {
-      const { id, userId, ...rest } = member;
-      await db.familyMembers.add({ ...rest, userId: user.id });
+      if (member.relation === 'self') continue;
+      const { id, userId, isActive, legacyId, ...rest } = member;
+      await db.familyMembers.add({ ...rest, userId: user.id, isActive: false });
+      stats.familyMembers++;
     }
     
-    // Импортируем анализы
     for (const analysis of data.analyses || []) {
-      const { id, userId, familyMemberId, ...rest } = analysis;
+      const { id, userId, familyMemberId, legacyMemberId, ...rest } = analysis;
       await db.analyses.add({ ...rest, userId: user.id, familyMemberId: null });
+      stats.analyses++;
     }
     
-    // Импортируем дневник
     for (const entry of data.diaryEntries || []) {
-      const { id, userId, familyMemberId, ...rest } = entry;
+      const { id, userId, familyMemberId, legacyId, ...rest } = entry;
       await db.diaryEntries.add({ ...rest, userId: user.id, familyMemberId: null });
+      stats.diaryEntries++;
     }
     
-    // Импортируем календарь
     for (const event of data.healthEvents || []) {
       const { id, userId, familyMemberId, ...rest } = event;
       await db.healthEvents.add({ ...rest, userId: user.id, familyMemberId: null });
+      stats.healthEvents++;
     }
     
-    return {
-      familyMembers: data.familyMembers?.length || 0,
-      analyses: data.analyses?.length || 0,
-      diaryEntries: data.diaryEntries?.length || 0,
-      healthEvents: data.healthEvents?.length || 0
-    };
+    return stats;
   }
 
   // ═══════════════════════════════════════
@@ -479,9 +617,6 @@
     return { familyMembers, analyses, diaryEntries, healthEvents };
   }
 
-  // ═══════════════════════════════════════
-  //  УДАЛЕНИЕ ВСЕХ ДАННЫХ
-  // ═══════════════════════════════════════
   async function deleteAllUserData() {
     await ensureDB();
     const user = await getCurrentUser();
@@ -495,66 +630,34 @@
     await db.sessions.where('userId').equals(user.id).delete();
     await db.users.delete(user.id);
     
+    // Очищаем все migration-ключи
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith('migrated_for_user_')) localStorage.removeItem(k);
+    });
+    
     await logout();
   }
 
-  // ═══════════════════════════════════════
-  //  ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
-  // ═══════════════════════════════════════
   async function ensureDB() {
-    if (!db) {
-      await init();
-    }
+    if (!db) await init();
   }
 
-  // ═══════════════════════════════════════
-  //  ЭКСПОРТ API
-  // ═══════════════════════════════════════
   window.LocalDB = {
     init,
-    
-    // Аутентификация
-    register,
-    login,
-    logout,
-    getCurrentUser,
-    
-    // Семейные профили
-    getFamilyMembers,
-    addFamilyMember,
-    updateFamilyMember,
-    deleteFamilyMember,
-    
-    // Анализы
-    saveAnalysis,
-    getAnalyses,
-    deleteAnalysis,
-    
-    // Дневник
-    saveDiaryEntry,
-    getDiaryEntries,
-    
-    // Календарь
-    saveHealthEvent,
-    getHealthEvents,
-    markEventCompleted,
-    
-    // Экспорт/импорт
-    exportUserData,
-    importUserData,
-    
-    // Утилиты
-    getUserStats,
-    deleteAllUserData,
-    
-    version: '1.0.0'
+    register, login, logout, getCurrentUser, getActiveMember, setActiveMember,
+    getFamilyMembers, addFamilyMember, updateFamilyMember, deleteFamilyMember,
+    saveAnalysis, getAnalyses, deleteAnalysis,
+    saveDiaryEntry, getDiaryEntries,
+    saveHealthEvent, getHealthEvents, markEventCompleted,
+    exportUserData, importUserData,
+    getUserStats, deleteAllUserData,
+    migrateFromLocalStorage,
+    version: '1.1.0'
   };
 
-  // Автоматическая инициализация
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
-
 })();

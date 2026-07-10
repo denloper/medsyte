@@ -11,7 +11,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="animations.css">
-  <title>Семейный доктор</title>
+  <title>Семейный доктор ИИ</title>
 </head>
 <body>
 
@@ -34,13 +34,13 @@
   </div>
 
   <!-- ═══════ PATIENT HEADER CARD ═══════ -->
-  <div class="patient-card animate-on-scroll animate-fade-up tilt-card">
+  <div class="patient-card fade-in">
     <div class="pc-top">
       <div class="pc-identity">
         <div class="avatar" id="userAvatar">СК</div>
         <div>
           <div class="pc-name" id="userName">Саид Юсупов</div>
-          <div class="pc-id">id: 4432124</div>
+          <div class="pc-id" id="activeMemberInfo">Основной профиль</div>
         </div>
       </div>
       <button class="circle-btn dark-btn ripple-element" id="accountBtn" aria-label="Аккаунт">
@@ -58,7 +58,7 @@
         След. приём
       </div>
       <div class="pc-meta-item">
-        <strong data-counter="3">0</strong>
+        <strong id="remindersCount">3 актив.</strong>
         Напоминания
       </div>
     </div>
@@ -90,121 +90,116 @@
       <div class="qi-icon qi-dark float">📅</div>
       <span class="qi-label">Календарь<br>здоровья</span>
     </a>
-    <a href="diary.html" class="qi magnetic-btn ripple-element">
-      <div class="qi-icon float-slow">📓</div>
-      <span class="qi-label">Дневник<br>состояния</span>
+    <a href="family.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon float-slow">👨‍👩‍👧</div>
+      <span class="qi-label">Семейные<br>профили</span>
     </a>
   </div>
 
   <!-- ═══════ VITALS 2x2 ═══════ -->
-  <!-- ═══════ VITALS 2x2 ═══════ -->
-<div class="sec-hd animate-on-scroll animate-slide-left">
-  <h2>Витальные показатели</h2>
-  <a href="diary.html" class="see-all">Все →</a>
-</div>
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Витальные показатели</h2>
+    <a href="diary.html" class="see-all">Все →</a>
+  </div>
 
-<div class="vitals-grid stagger">
-  <!-- Давление -->
-  <a href="diary.html" class="v-card tilt-card ripple-element">
-    <div class="v-icon red breathe">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-      </svg>
-    </div>
-    <div class="v-label">Давление</div>
-    <div class="v-value">
-      <span data-counter="120">0</span>
-      <span class="v-unit">/</span>
-      <span data-counter="80">0</span>
-    </div>
-    <div class="v-dot ok pulse-dot"></div>
-    <div class="spark">
-      <div class="sp-b" style="height:40%"></div>
-      <div class="sp-b" style="height:55%"></div>
-      <div class="sp-b hi" style="height:70%"></div>
-      <div class="sp-b" style="height:60%"></div>
-      <div class="sp-b hi" style="height:75%"></div>
-      <div class="sp-b" style="height:50%"></div>
-      <div class="sp-b hi" style="height:65%"></div>
-    </div>
-  </a>
+  <div class="vitals-grid stagger">
+    <a href="diary.html" class="v-card tilt-card ripple-element">
+      <div class="v-icon red breathe">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        </svg>
+      </div>
+      <div class="v-label">Давление</div>
+      <div class="v-value">
+        <span data-counter="120">0</span>
+        <span class="v-unit">/</span>
+        <span data-counter="80">0</span>
+      </div>
+      <div class="v-dot ok pulse-dot"></div>
+      <div class="spark">
+        <div class="sp-b" style="height:40%"></div>
+        <div class="sp-b" style="height:55%"></div>
+        <div class="sp-b hi" style="height:70%"></div>
+        <div class="sp-b" style="height:60%"></div>
+        <div class="sp-b hi" style="height:75%"></div>
+        <div class="sp-b" style="height:50%"></div>
+        <div class="sp-b hi" style="height:65%"></div>
+      </div>
+    </a>
 
-  <!-- Пульс -->
-  <a href="diary.html" class="v-card tilt-card ripple-element">
-    <div class="v-icon blue breathe">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-      </svg>
-    </div>
-    <div class="v-label">Пульс</div>
-    <div class="v-value">
-      <span data-counter="72">0</span>
-      <span class="v-unit">уд/м</span>
-    </div>
-    <div class="v-dot ok pulse-dot"></div>
-    <div class="spark">
-      <div class="sp-b" style="height:50%"></div>
-      <div class="sp-b hi" style="height:65%"></div>
-      <div class="sp-b" style="height:55%"></div>
-      <div class="sp-b hi" style="height:70%"></div>
-      <div class="sp-b" style="height:60%"></div>
-      <div class="sp-b hi" style="height:75%"></div>
-      <div class="sp-b" style="height:55%"></div>
-    </div>
-  </a>
+    <a href="diary.html" class="v-card tilt-card ripple-element">
+      <div class="v-icon blue breathe">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+      </div>
+      <div class="v-label">Пульс</div>
+      <div class="v-value">
+        <span data-counter="72">0</span>
+        <span class="v-unit">уд/м</span>
+      </div>
+      <div class="v-dot ok pulse-dot"></div>
+      <div class="spark">
+        <div class="sp-b" style="height:50%"></div>
+        <div class="sp-b hi" style="height:65%"></div>
+        <div class="sp-b" style="height:55%"></div>
+        <div class="sp-b hi" style="height:70%"></div>
+        <div class="sp-b" style="height:60%"></div>
+        <div class="sp-b hi" style="height:75%"></div>
+        <div class="sp-b" style="height:55%"></div>
+      </div>
+    </a>
 
-  <!-- Сахар -->
-  <a href="diary.html" class="v-card tilt-card ripple-element">
-    <div class="v-icon green breathe">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-      </svg>
-    </div>
-    <div class="v-label">Сахар</div>
-    <div class="v-value">
-      <span data-counter="5.4">0</span>
-      <span class="v-unit">ммоль</span>
-    </div>
-    <div class="v-dot ok pulse-dot"></div>
-    <div class="spark">
-      <div class="sp-b hi" style="height:60%"></div>
-      <div class="sp-b" style="height:50%"></div>
-      <div class="sp-b hi" style="height:65%"></div>
-      <div class="sp-b" style="height:55%"></div>
-      <div class="sp-b hi" style="height:70%"></div>
-      <div class="sp-b" style="height:60%"></div>
-      <div class="sp-b hi" style="height:65%"></div>
-    </div>
-  </a>
+    <a href="diary.html" class="v-card tilt-card ripple-element">
+      <div class="v-icon green breathe">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+        </svg>
+      </div>
+      <div class="v-label">Сахар</div>
+      <div class="v-value">
+        <span data-counter="5.4">0</span>
+        <span class="v-unit">ммоль</span>
+      </div>
+      <div class="v-dot ok pulse-dot"></div>
+      <div class="spark">
+        <div class="sp-b hi" style="height:60%"></div>
+        <div class="sp-b" style="height:50%"></div>
+        <div class="sp-b hi" style="height:65%"></div>
+        <div class="sp-b" style="height:55%"></div>
+        <div class="sp-b hi" style="height:70%"></div>
+        <div class="sp-b" style="height:60%"></div>
+        <div class="sp-b hi" style="height:65%"></div>
+      </div>
+    </a>
 
-  <!-- Вес -->
-  <a href="diary.html" class="v-card tilt-card ripple-element">
-    <div class="v-icon amber breathe">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"></circle>
-        <path d="M12 6v6l4 2"></path>
-      </svg>
-    </div>
-    <div class="v-label">Вес</div>
-    <div class="v-value">
-      <span data-counter="82">0</span>
-      <span class="v-unit">кг</span>
-    </div>
-    <div class="v-dot warn pulse-dot"></div>
-    <div class="spark">
-      <div class="sp-b" style="height:80%"></div>
-      <div class="sp-b" style="height:75%"></div>
-      <div class="sp-b" style="height:72%"></div>
-      <div class="sp-b" style="height:70%"></div>
-      <div class="sp-b" style="height:68%"></div>
-      <div class="sp-b" style="height:65%"></div>
-      <div class="sp-b hi" style="height:62%"></div>
-    </div>
-  </a>
-</div>
+    <a href="diary.html" class="v-card tilt-card ripple-element">
+      <div class="v-icon amber breathe">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 6v6l4 2"></path>
+        </svg>
+      </div>
+      <div class="v-label">Вес</div>
+      <div class="v-value">
+        <span data-counter="82">0</span>
+        <span class="v-unit">кг</span>
+      </div>
+      <div class="v-dot warn pulse-dot"></div>
+      <div class="spark">
+        <div class="sp-b" style="height:80%"></div>
+        <div class="sp-b" style="height:75%"></div>
+        <div class="sp-b" style="height:72%"></div>
+        <div class="sp-b" style="height:70%"></div>
+        <div class="sp-b" style="height:68%"></div>
+        <div class="sp-b" style="height:65%"></div>
+        <div class="sp-b hi" style="height:62%"></div>
+      </div>
+    </a>
+  </div>
 
   <!-- ═══════ DARK CARD (Body Metrics) ═══════ -->
-  <div class="dark-card animate-on-scroll animate-fade-up animated-gradient">
+  <div class="dark-card fade-in animated-gradient">
     <div class="dc-metric">
       <div class="dc-value"><span data-counter="82">0</span><span class="dc-unit"> кг</span></div>
       <div class="dc-name">Вес</div>
@@ -217,7 +212,7 @@
   </div>
 
   <!-- ═══════ SLEEP CARD ═══════ -->
-  <div class="sleep-card animate-on-scroll animate-fade-up tilt-card">
+  <div class="sleep-card fade-in">
     <div class="sc-head">
       <div class="sc-left">
         <div class="sc-icon float-slow">😴</div>
@@ -272,7 +267,7 @@
   </div>
 
   <!-- ═══════ OTHER DATA ═══════ -->
-  <div class="other-card animate-on-scroll animate-fade-up tilt-card">
+  <div class="other-card fade-in">
     <div class="other-card-head">
       Другие данные
       <span style="font-size:13px;color:var(--text-3)">→</span>
@@ -321,7 +316,7 @@
   </div>
 
   <!-- ═══════ RED FLAGS ALERT ═══════ -->
-  <div class="notif-card animate-on-scroll animate-fade-up hover-lift" style="border-left: 4px solid var(--red);">
+  <div class="notif-card fade-in hover-lift" style="border-left: 4px solid var(--red);">
     <div class="notif-item unread ripple-element" onclick="openModal('emergencyModal')">
       <div class="notif-icon-wrap red-bg pulse-dot">🚨</div>
       <div class="notif-body">
@@ -333,12 +328,12 @@
     </div>
   </div>
 
-  <!-- ═══════ SYMPTOM CHECKER (локальный, БЕЗ ИИ) ═══════ -->
+  <!-- ═══════ SYMPTOM CHECKER ═══════ -->
   <div class="sec-hd animate-on-scroll animate-slide-left">
     <h2>Проверка симптомов</h2>
   </div>
 
-  <div class="doctor-card animate-on-scroll animate-fade-up tilt-card">
+  <div class="doctor-card fade-in tilt-card">
     <div class="doc-row">
       <div class="doc-avatar float-slow">🩺</div>
       <div>
@@ -354,8 +349,7 @@
     </button>
   </div>
 
-  <!-- spacer for bottom nav -->
-  <div style="height: 80px"></div>
+  <div style="height: 80px;"></div>
 </div>
 
 <!-- ═══════ BOTTOM NAVIGATION ═══════ -->
@@ -375,13 +369,13 @@
     <a href="calendar.html" class="nav-item">
       <div class="nav-icon">
         📅
-        <span class="nav-badge">3</span>
+        <span class="nav-badge" id="calendarBadge">3</span>
       </div>
       <span class="nav-label">Календарь</span>
     </a>
-    <a href="#" class="nav-item" onclick="openModal('accountModal'); return false;">
-      <div class="nav-icon">👤</div>
-      <span class="nav-label">Профиль</span>
+    <a href="family.html" class="nav-item">
+      <div class="nav-icon">👨‍👩‍👧</div>
+      <span class="nav-label">Семья</span>
     </a>
   </div>
 </div>
@@ -419,7 +413,7 @@
   </div>
 </div>
 
-<!-- ═══════ MODAL: СИМПТОМ-ЧЕКЕР (локальный) ═══════ -->
+<!-- ═══════ MODAL: СИМПТОМ-ЧЕКЕР ═══════ -->
 <div class="modal-overlay" id="symptomsModal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -465,77 +459,106 @@
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-header">
-      <div class="modal-title">👤 Мой профиль</div>
+      <div class="modal-title" id="accountModalTitle">👤 Мой аккаунт</div>
       <button class="modal-close ripple-element" onclick="closeModal('accountModal')">✕</button>
     </div>
-    <div class="modal-body">
-      <div class="profile-hero" style="box-shadow:none;padding:0;margin-bottom:20px">
-        <div class="profile-avatar-wrap">
-          <div class="profile-avatar float-slow">👤</div>
-          <div class="profile-edit-btn ripple-element">✎</div>
-        </div>
-        <div class="profile-name" id="profileName">Саид Юсупов</div>
-        <div class="profile-role">Пациент</div>
-        <div class="profile-email">said@example.com</div>
+    <div class="modal-body" id="accountModalBody">
+      <!-- Динамически заполняется -->
+    </div>
+  </div>
+</div>
 
-        <div class="profile-stats" style="margin-top:16px">
-          <div class="ps-item">
-            <div class="ps-val" data-counter="12">0</div>
-            <div class="ps-lbl">Анализов</div>
-          </div>
-          <div class="ps-item">
-            <div class="ps-val" data-counter="3">0</div>
-            <div class="ps-lbl">Визитов</div>
-          </div>
-          <div class="ps-item">
-            <div class="ps-val" data-counter="28">0</div>
-            <div class="ps-lbl">Дней</div>
-          </div>
+<!-- ═══════ MODAL: ВХОД ═══════ -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">🔑 Вход</div>
+      <button class="modal-close ripple-element" onclick="closeModal('loginModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-2);margin-bottom:16px;font-size:14px">
+        Войдите, чтобы синхронизировать данные между устройствами
+      </p>
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Имя пользователя</label>
+        <input type="text" id="loginUsername" placeholder="username"
+               style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Пароль</label>
+        <input type="password" id="loginPassword" placeholder="••••••••"
+               style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+      </div>
+      <button class="next-btn magnetic-btn ripple-element" onclick="doLogin()">Войти</button>
+      <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--text-3)">
+        Нет аккаунта? 
+        <a href="#" onclick="openModal('registerModal'); closeModal('loginModal'); return false;" style="color:var(--green);font-weight:600">Регистрация</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL: РЕГИСТРАЦИЯ ═══════ -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">✨ Регистрация</div>
+      <button class="modal-close ripple-element" onclick="closeModal('registerModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-2);margin-bottom:16px;font-size:14px">
+        Создайте аккаунт для сохранения данных и семейных профилей
+      </p>
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Имя *</label>
+        <input type="text" id="regName" placeholder="Ваше имя"
+               style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Email (необязательно)</label>
+        <input type="email" id="regEmail" placeholder="email@example.com"
+               style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Имя пользователя *</label>
+        <input type="text" id="regUsername" placeholder="username"
+               style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Пароль *</label>
+        <input type="password" id="regPassword" placeholder="Минимум 6 символов"
+               style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+        <div>
+          <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Пол</label>
+          <select id="regSex"
+                  style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+            <option value="female">Женский</option>
+            <option value="male">Мужской</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Возраст</label>
+          <input type="number" id="regAge" value="30" min="0" max="120"
+                 style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
         </div>
       </div>
-
-      <div class="settings-list" style="box-shadow:none">
-        <a href="diary.html" class="setting-item ripple-element">
-          <div class="si-icon green-bg">📓</div>
-          <div>
-            <div class="si-label">Дневник здоровья</div>
-            <div class="si-sub">Давление, сахар, вес</div>
-          </div>
-          <span class="si-arrow">→</span>
-        </a>
-        <a href="calendar.html" class="setting-item ripple-element">
-          <div class="si-icon blue-bg">📅</div>
-          <div>
-            <div class="si-label">Календарь</div>
-            <div class="si-sub">План обследований</div>
-          </div>
-          <span class="si-arrow">→</span>
-        </a>
-        <a href="about.html" class="setting-item ripple-element">
-          <div class="si-icon amber-bg">ℹ️</div>
-          <div>
-            <div class="si-label">О проекте</div>
-            <div class="si-sub">Миссия и команда</div>
-          </div>
-          <span class="si-arrow">→</span>
-        </a>
-        <div class="setting-item ripple-element" onclick="logout()">
-          <div class="si-icon red-bg">🚪</div>
-          <div>
-            <div class="si-label" style="color:var(--red)">Выйти</div>
-            <div class="si-sub">Из аккаунта</div>
-          </div>
-          <span class="si-arrow">→</span>
-        </div>
+      <button class="next-btn magnetic-btn ripple-element" onclick="doRegister()">Создать аккаунт</button>
+      <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--text-3)">
+        Уже есть аккаунт? 
+        <a href="#" onclick="openModal('loginModal'); closeModal('registerModal'); return false;" style="color:var(--green);font-weight:600">Войти</a>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ═══════ SCRIPTS ═══════ -->
-<script src="database.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
 <script src="local-db.js"></script>
+<script src="database.js"></script>
 <script src="animations.js"></script>
 <script>
 (function(){
@@ -567,6 +590,12 @@
   window.openModal = function(id) {
     document.getElementById(id).classList.add('open');
     document.body.style.overflow = 'hidden';
+    
+    // Обновляем содержимое модалки аккаунта
+    if (id === 'accountModal') {
+      refreshAccountModal();
+    }
+    
     // Перезапускаем счётчики в модалке
     setTimeout(() => {
       if (window.AnimationsEngine) {
@@ -618,7 +647,7 @@
     document.getElementById('sexMale').className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
   };
 
-  // ═══════ ЛОКАЛЬНЫЙ АНАЛИЗ СИМПТОМОВ (БЕЗ ИИ) ═══════
+  // ═══════ ЛОКАЛЬНЫЙ АНАЛИЗ СИМПТОМОВ ═══════
   window.analyzeSymptomsLocal = function() {
     const text = document.getElementById('symptomsText').value.trim();
     if (!text) {
@@ -634,11 +663,9 @@
     btn.disabled = true;
 
     setTimeout(() => {
-      // Простой локальный анализ через database.js
       const recommendations = [];
       const lowerText = text.toLowerCase();
 
-      // Эвристики на основе ключевых слов
       if (lowerText.includes('голов') || lowerText.includes('мигрен')) {
         recommendations.push({ test: 'Общий анализ крови', reason: 'Исключение анемии и воспаления' });
         recommendations.push({ test: 'ТТГ', reason: 'Проверка функции щитовидной железы' });
@@ -665,14 +692,12 @@
         recommendations.push({ test: 'Глюкоза натощак', reason: 'Скрининг диабета' });
       }
 
-      // Если ничего не нашли — базовый чек-ап
       if (recommendations.length === 0) {
         recommendations.push({ test: 'Общий анализ крови', reason: 'Базовая оценка здоровья' });
         recommendations.push({ test: 'Биохимия (АЛТ, АСТ, глюкоза)', reason: 'Проверка основных функций' });
         recommendations.push({ test: 'Витамин D', reason: 'Профилактический скрининг' });
       }
 
-      // Рендерим результат
       const resultsDiv = document.getElementById('localResults');
       resultsDiv.style.display = 'block';
       resultsDiv.innerHTML = `
@@ -704,58 +729,247 @@
     }, 800);
   };
 
-  // ═══════ ACCOUNT ═══════
+  // ═══════ АВТОРИЗАЦИЯ И ПРОФИЛЬ ═══════
+  
+  async function refreshAccountModal() {
+    const user = await window.LocalDB.getCurrentUser();
+    const body = document.getElementById('accountModalBody');
+    const title = document.getElementById('accountModalTitle');
+    
+    if (!user) {
+      title.textContent = '👤 Авторизация';
+      body.innerHTML = `
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:64px;margin-bottom:16px">🔐</div>
+          <p style="color:var(--text-2);margin-bottom:20px">
+            Создайте аккаунт для сохранения данных и семейных профилей
+          </p>
+          <button class="next-btn magnetic-btn ripple-element" onclick="closeModal('accountModal'); openModal('registerModal');" style="margin-bottom:10px">
+            ✨ Создать аккаунт
+          </button>
+          <button class="next-btn ripple-element" onclick="closeModal('accountModal'); openModal('loginModal');" style="background:var(--surface-2);color:var(--text-1)">
+            🔑 Войти
+          </button>
+        </div>
+      `;
+      return;
+    }
+    
+    title.textContent = '👤 ' + user.name;
+    const stats = await window.LocalDB.getUserStats();
+    const activeMember = await window.LocalDB.getActiveMember();
+    
+    body.innerHTML = `
+      <div style="text-align:center;padding:10px 0 20px">
+        <div class="profile-avatar-wrap" style="display:inline-block">
+          <div class="profile-avatar float-slow" style="font-size:36px">
+            ${user.name.charAt(0).toUpperCase()}
+          </div>
+        </div>
+        <div style="font-size:20px;font-weight:800;color:var(--dark);margin-top:12px">${user.name}</div>
+        <div style="font-size:13px;color:var(--green);font-weight:600">@${user.username}</div>
+        ${user.email ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">${user.email}</div>` : ''}
+      </div>
+      
+      <div class="profile-stats" style="margin-bottom:20px">
+        <div class="ps-item">
+          <div class="ps-val" data-counter="${stats.familyMembers}">0</div>
+          <div class="ps-lbl">Профилей</div>
+        </div>
+        <div class="ps-item">
+          <div class="ps-val" data-counter="${stats.analyses}">0</div>
+          <div class="ps-lbl">Анализов</div>
+        </div>
+        <div class="ps-item">
+          <div class="ps-val" data-counter="${stats.diaryEntries}">0</div>
+          <div class="ps-lbl">Записей</div>
+        </div>
+      </div>
+      
+      ${activeMember ? `
+        <div style="padding:12px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:16px">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:4px">Активный профиль:</div>
+          <div style="font-size:15px;font-weight:700;color:var(--dark)">${activeMember.name}</div>
+        </div>
+      ` : ''}
+      
+      <div class="settings-list" style="box-shadow:none;margin-bottom:12px">
+        <a href="family.html" class="setting-item ripple-element" onclick="closeModal('accountModal')">
+          <div class="si-icon green-bg">👨‍👩‍👧</div>
+          <div>
+            <div class="si-label">Семейные профили</div>
+            <div class="si-sub">Управление членами семьи</div>
+          </div>
+          <span class="si-arrow">→</span>
+        </a>
+        <div class="setting-item ripple-element" onclick="exportAccountData()">
+          <div class="si-icon blue-bg">📤</div>
+          <div>
+            <div class="si-label">Экспорт данных</div>
+            <div class="si-sub">Сохранить в файл</div>
+          </div>
+          <span class="si-arrow">→</span>
+        </div>
+      </div>
+      
+      <button class="next-btn ripple-element" onclick="doLogout()" style="background:var(--surface-2);color:var(--red)">
+        🚪 Выйти из аккаунта
+      </button>
+    `;
+    
+    // Запускаем счётчики
+    setTimeout(() => {
+      if (window.AnimationsEngine) {
+        body.querySelectorAll('[data-counter]').forEach(el => {
+          const target = parseInt(el.dataset.counter);
+          if (!isNaN(target)) {
+            window.AnimationsEngine.animateCounter(el, target, 800);
+          }
+        });
+      }
+    }, 100);
+  }
+  
+  window.doLogin = async function() {
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    
+    if (!username || !password) {
+      showToast('Заполните все поля', '⚠️');
+      return;
+    }
+    
+    try {
+      await window.LocalDB.login({ username, password });
+      showToast('Добро пожаловать!', '👋');
+      closeModal('loginModal');
+      
+      // Миграция при первом входе
+      const migrationResult = await window.LocalDB.migrateFromLocalStorage();
+      if (migrationResult.migrated) {
+        const s = migrationResult.stats;
+        setTimeout(() => {
+          showToast(`Перенесено: ${s.analyses} анализов, ${s.diaryEntries} записей`, '🚀');
+        }, 500);
+      }
+      
+      loadUserData();
+    } catch (e) {
+      showToast(e.message, '❌');
+    }
+  };
+  
+  window.doRegister = async function() {
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const username = document.getElementById('regUsername').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const sex = document.getElementById('regSex').value;
+    const age = parseInt(document.getElementById('regAge').value) || 0;
+    
+    if (!name || !username || !password) {
+      showToast('Заполните обязательные поля', '⚠️');
+      return;
+    }
+    if (password.length < 6) {
+      showToast('Пароль минимум 6 символов', '⚠️');
+      return;
+    }
+    
+    try {
+      await window.LocalDB.register({ email, username, password, name, sex, age });
+      showToast('Аккаунт создан!', '🎉');
+      closeModal('registerModal');
+      
+      // Миграция старых данных
+      const migrationResult = await window.LocalDB.migrateFromLocalStorage();
+      if (migrationResult.migrated) {
+        const s = migrationResult.stats;
+        setTimeout(() => {
+          showToast(`Перенесено: ${s.analyses} анализов, ${s.diaryEntries} записей`, '🚀');
+        }, 500);
+      }
+      
+      loadUserData();
+    } catch (e) {
+      showToast(e.message, '❌');
+    }
+  };
+  
+  window.doLogout = async function() {
+    if (!confirm('Выйти из аккаунта?')) return;
+    await window.LocalDB.logout();
+    showToast('Вы вышли', '👋');
+    closeModal('accountModal');
+    loadUserData();
+  };
+  
+  window.exportAccountData = async function() {
+    try {
+      const json = await window.LocalDB.exportUserData();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `family-doctor-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Данные экспортированы', '📤');
+    } catch (e) {
+      showToast('Ошибка: ' + e.message, '❌');
+    }
+  };
+  
+  // ═══════ ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ═══════
+  async function loadUserData() {
+    const user = await window.LocalDB.getCurrentUser();
+    const activeMember = await window.LocalDB.getActiveMember();
+    
+    if (user) {
+      document.getElementById('userName').textContent = user.name;
+      const initials = user.name.charAt(0).toUpperCase();
+      document.getElementById('userAvatar').textContent = initials;
+      
+      if (activeMember) {
+        document.getElementById('activeMemberInfo').textContent = 
+          activeMember.relation === 'self' ? 'Основной профиль' : activeMember.name;
+      }
+    } else {
+      document.getElementById('userName').textContent = 'Гость';
+      document.getElementById('userAvatar').textContent = '👤';
+      document.getElementById('activeMemberInfo').textContent = 'Войдите для полного доступа';
+    }
+  }
+  
+  // ═══════ АККАУНТ BUTTON ═══════
   document.getElementById('accountBtn').addEventListener('click', () => {
     openModal('accountModal');
   });
-
-  window.logout = function() {
-    if (confirm('Выйти из аккаунта?')) {
-      localStorage.removeItem('user_account_v1');
-      showToast('Вы вышли', '👋');
-      closeModal('accountModal');
+  
+  // ═══════ АВТОЗАГРУЗКА ПРИ СТАРТЕ ═══════
+  (async () => {
+    await loadUserData();
+    
+    const user = await window.LocalDB.getCurrentUser();
+    if (user) {
+      // Миграция при загрузке если ещё не мигрировали
+      const migrationResult = await window.LocalDB.migrateFromLocalStorage();
+      if (migrationResult.migrated) {
+        const s = migrationResult.stats;
+        const total = s.familyMembers + s.analyses + s.diaryEntries + s.healthEvents;
+        if (total > 0) {
+          setTimeout(() => {
+            showToast(`Перенесены данные: ${total} записей`, '🚀');
+          }, 1500);
+        }
+      }
     }
-  };
+  })();
 
-  // ═══════ USER DATA ═══════
-  function loadUserData() {
-    try {
-      const user = JSON.parse(localStorage.getItem('user_account_v1') || 'null');
-      if (user) {
-        document.getElementById('userName').textContent = user.name || 'Саид Юсупов';
-        document.getElementById('profileName').textContent = user.name || 'Саид Юсупов';
-        const initials = (user.name || 'СК').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-        document.getElementById('userAvatar').textContent = initials;
-      }
-    } catch(e) {}
-  }
-  loadUserData();
-
-  // ═══════ VITALS FROM DIARY ═══════
-  function loadVitals() {
-    try {
-      const diary = JSON.parse(localStorage.getItem('health_diary_v1') || '{}');
-
-      const bp = (diary.blood_pressure || []).slice(-1)[0];
-      if (bp) {
-        const cards = document.querySelectorAll('.v-card');
-        if (cards[0]) {
-          const valueEl = cards[0].querySelector('.v-value');
-          if (valueEl) valueEl.innerHTML = `${bp.systolic}<span class="v-unit">/${bp.diastolic}</span>`;
-        }
-      }
-
-      const weight = (diary.weight || []).slice(-1)[0];
-      if (weight) {
-        const cards = document.querySelectorAll('.v-card');
-        if (cards[3]) {
-          const valueEl = cards[3].querySelector('.v-value');
-          if (valueEl) valueEl.innerHTML = `${weight.value}<span class="v-unit">кг</span>`;
-        }
-      }
-    } catch(e) {}
-  }
-  loadVitals();
+  // Initial toast
+  setTimeout(() => showToast('Добро пожаловать!', '👋'), 800);
 
   // ═══════ PWA ═══════
   if ('serviceWorker' in navigator) {
@@ -763,9 +977,6 @@
       .then(reg => console.log('SW:', reg.scope))
       .catch(err => console.error('SW error:', err));
   }
-
-  // Initial toast
-  setTimeout(() => showToast('Добро пожаловать!', '👋'), 800);
 
 })();
 </script>

@@ -1,31 +1,33 @@
-const CACHE_VERSION = 'sem-dok-v17';
-const APP_VERSION = '5.3.0';
+const CACHE_VERSION = 'sem-dok-v18';
+const APP_VERSION = '5.4.0';
 
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './about.html',         // ← добавьте
+  './about.html',
   './upload.html',
   './results.html',
   './compare.html',
   './calendar.html',
   './diary.html',
-  './styles.css',
-  './animations.css',     // ← добавьте
-  './animations.js',      // ← добавьте
-  './database.js',
-  './calendar-engine.js',
-  './diary-engine.js',
+  './family.html',              // ← новая страница
+  './styles.css?v=' + APP_VERSION,
+  './animations.css?v=' + APP_VERSION,
+  './database.js?v=' + APP_VERSION,
+  './animations.js?v=' + APP_VERSION,
+  './local-db.js?v=' + APP_VERSION,   // ← новый файл
+  './calendar-engine.js?v=' + APP_VERSION,
+  './diary-engine.js?v=' + APP_VERSION,
   './clinical-guidelines.json',
-  './manifest.json',
-  './local-db.js'
+  './manifest.json'
 ];
 
 const CDN_ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
   'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
-  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+  'https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js'  // ← Dexie.js для IndexedDB
 ];
 
 self.addEventListener('install', (event) => {
@@ -56,10 +58,7 @@ self.addEventListener('activate', (event) => {
     ]).then(() => {
       return self.clients.matchAll().then(clients => {
         clients.forEach(client => {
-          client.postMessage({
-            type: 'NEW_VERSION_ACTIVE',
-            version: APP_VERSION
-          });
+          client.postMessage({ type: 'NEW_VERSION_ACTIVE', version: APP_VERSION });
         });
       });
     })
