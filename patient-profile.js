@@ -1,12 +1,20 @@
 /**
- * Patient Profile Manager
- * Единое хранилище профиля пациента с синхронизацией
+ * Patient Profile Manager v2.0
+ * Единое хранилище профиля с защитой от рекурсии и debounce
  */
 (function() {
   'use strict';
 
   const PROFILE_KEY = 'patient_profile_v1';
   const SYNC_EVENT = 'patient_profile_updated';
+  
+  // ═══════════════════════════════════════
+  //  ФЛАГИ ЗАЩИТЫ ОТ РЕКУРСИИ
+  // ═══════════════════════════════════════
+  let _isApplyingProfile = false;   // Флаг: сейчас применяется профиль к UI
+  let _isHandlingSync = false;      // Флаг: сейчас обрабатывается SYNC_EVENT
+  let _syncDebounceTimer = null;    // Таймер debounce для Supabase
+  const SYNC_DEBOUNCE_MS = 1000;    // Задержка перед отправкой в Supabase
 
   // ═══════════════════════════════════════
   //  ПОЛУЧЕНИЕ ПРОФИЛЯ
@@ -14,14 +22,10 @@
   function getProfile() {
     try {
       const data = localStorage.getItem(PROFILE_KEY);
-      if (data) {
-        return JSON.parse(data);
-      }
+      if (data) return JSON.parse(data);
     } catch (e) {
       console.error('[Profile] Ошибка чтения:', e);
     }
-    
-    // Дефолтные значения
     return {
       sex: 'female',
       age: 35,
@@ -33,20 +37,35 @@
   }
 
   // ═══════════════════════════════════════
-  //  СОХРАНЕНИЕ ПРОФИЛЯ
+  //  ПРОВЕРКА: изменились ли данные
   // ═══════════════════════════════════════
-  function saveProfile(profile) {
+  function hasChanged(current, updates) {
+    for (const key in updates) {
+      if (current[key] !== updates[key]) return true;
+    }
+    return false;
+  }
+
+  // ═══════════════════════════════════════
+  //  СОХРАНЕНИЕ ПРОФИЛЯ (с защитой)
+  // ═══════════════════════════════════════
+  function saveProfile(profile, options = {}) {
+    const { skipEvent = false, skipSupabase = false } = options;
+    
     try {
       profile.updatedAt = Date.now();
       localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
       
-      // Уведомляем другие вкладки об изменении
-      window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: profile }));
+      // Диспатчим событие ТОЛЬКО если не в режиме обработки
+      if (!skipEvent && !_isHandlingSync) {
+        window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: profile }));
+      }
       
-      // Синхронизация с Supabase (если доступен)
-      syncToSupabase(profile);
+      // Supabase с debounce
+      if (!skipSupabase) {
+        scheduleSupabaseSync(profile);
+      }
       
-      console.log('[Profile] ✅ Сохранён:', profile);
       return true;
     } catch (e) {
       console.error('[Profile] ❌ Ошибка сохранения:', e);
@@ -55,64 +74,114 @@
   }
 
   // ═══════════════════════════════════════
-  //  ОБНОВЛЕНИЕ ОТДЕЛЬНЫХ ПОЛЕЙ
+  //  ОБНОВЛЕНИЕ ПОЛЕЙ (с проверкой изменений)
   // ═══════════════════════════════════════
   function updateProfile(updates) {
-    const profile = getProfile();
-    Object.assign(profile, updates);
-    return saveProfile(profile);
+    // Защита от рекурсии
+    if (_isApplyingProfile) {
+      return false;
+    }
+    
+    const current = getProfile();
+    
+    // НЕ сохраняем если ничего не изменилось
+    if (!hasChanged(current, updates)) {
+      return false;
+    }
+    
+    const newProfile = { ...current, ...updates };
+    return saveProfile(newProfile);
   }
 
   // ═══════════════════════════════════════
-  //  ПРИМЕНЕНИЕ ПРОФИЛЯ К СТРАНИЦЕ
+  //  DEBOUNCE ДЛЯ SUPABASE
+  // ═══════════════════════════════════════
+  function scheduleSupabaseSync(profile) {
+    if (_syncDebounceTimer) {
+      clearTimeout(_syncDebounceTimer);
+    }
+    _syncDebounceTimer = setTimeout(() => {
+      syncToSupabase(profile);
+    }, SYNC_DEBOUNCE_MS);
+  }
+
+  // ═══════════════════════════════════════
+  //  ПРИМЕНЕНИЕ ПРОФИЛЯ К UI (БЕЗ КЛИКОВ!)
   // ═══════════════════════════════════════
   function applyProfileToPage() {
-    const profile = getProfile();
+    // Защита от рекурсии
+    if (_isApplyingProfile) return;
     
-    // Находим все селекторы пола
-    const sexSelectors = document.querySelectorAll('select[id*="sex"], select[id*="Sex"], select[name*="sex"]');
-    sexSelectors.forEach(select => {
-      if (select.value !== profile.sex) {
-        select.value = profile.sex;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
+    _isApplyingProfile = true;
+    
+    try {
+      const profile = getProfile();
+      
+      // 1. Обновляем select-элементы пола (напрямую, без кликов)
+      document.querySelectorAll('select[id*="sex"], select[id*="Sex"], select[name*="sex"]')
+        .forEach(select => {
+          if (select.value !== profile.sex) {
+            select.value = profile.sex;
+            // Диспатчим change для других слушателей, но без рекурсии
+            select.dispatchEvent(new Event('change', { bubbles: false }));
+          }
+        });
+      
+      // 2. Обновляем поля возраста (напрямую)
+      document.querySelectorAll('input[id*="age"], input[id*="Age"], input[name*="age"]')
+        .forEach(input => {
+          if (input.type === 'number' && input.value !== String(profile.age)) {
+            input.value = profile.age;
+            input.dispatchEvent(new Event('input', { bubbles: false }));
+          }
+        });
+      
+      // 3. Обновляем pill-кнопки пола (НАПРЯМУЮ через CSS, БЕЗ btn.click())
+      const femaleBtn = document.getElementById('sexFemale');
+      const maleBtn = document.getElementById('sexMale');
+      
+      if (femaleBtn && maleBtn) {
+        // Обновляем локальную переменную selectedSex
+        if (typeof window.selectSex === 'function') {
+          // Вместо клика — временно блокируем selectSex от вызова updateProfile
+          const originalUpdate = window.PatientProfile.update;
+          window.PatientProfile.update = () => false; // заглушка
+          
+          try {
+            window.selectSex(profile.sex);
+          } finally {
+            window.PatientProfile.update = originalUpdate; // восстановление
+          }
+        }
       }
-    });
-    
-    // Находим все поля возраста
-    const ageInputs = document.querySelectorAll('input[id*="age"], input[id*="Age"], input[name*="age"]');
-    ageInputs.forEach(input => {
-      if (input.type === 'number' && input.value !== String(profile.age)) {
-        input.value = profile.age;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    });
-    
-    // Находим кнопки пола (pill buttons)
-    const sexButtons = document.querySelectorAll('[onclick*="selectSex"]');
-    sexButtons.forEach(btn => {
-      const onclick = btn.getAttribute('onclick');
-      const match = onclick.match(/selectSex\(['"](\w+)['"]\)/);
-      if (match && match[1] === profile.sex) {
-        btn.click();
-      }
-    });
-    
-    console.log('[Profile] ✅ Применён к странице:', profile);
+      
+    } catch (e) {
+      console.error('[Profile] Ошибка применения:', e);
+    } finally {
+      // Снимаем флаг с задержкой, чтобы избежать race conditions
+      setTimeout(() => {
+        _isApplyingProfile = false;
+      }, 50);
+    }
   }
 
   // ═══════════════════════════════════════
-  //  СЛУШАТЕЛЬ ИЗМЕНЕНИЙ НА СТРАНИЦЕ
+  //  СЛУШАТЕЛИ ИЗМЕНЕНИЙ НА СТРАНИЦЕ
   // ═══════════════════════════════════════
   function setupPageListeners() {
-    // Слушаем изменения селекторов пола
+    // Изменения селекторов пола
     document.addEventListener('change', (e) => {
+      if (_isApplyingProfile) return; // Защита
+      
       if (e.target.matches('select[id*="sex"], select[id*="Sex"], select[name*="sex"]')) {
         updateProfile({ sex: e.target.value });
       }
     });
     
-    // Слушаем изменения полей возраста
+    // Изменения полей возраста
     document.addEventListener('input', (e) => {
+      if (_isApplyingProfile) return; // Защита
+      
       if (e.target.matches('input[id*="age"], input[id*="Age"], input[name*="age"]')) {
         if (e.target.type === 'number') {
           const age = parseInt(e.target.value) || 35;
@@ -121,47 +190,53 @@
       }
     });
     
-    // Слушаем клики по кнопкам пола
+    // Клики по кнопкам пола (только пользовательские)
     document.addEventListener('click', (e) => {
+      if (_isApplyingProfile) return; // Защита от программных кликов
+      
       const btn = e.target.closest('[onclick*="selectSex"]');
       if (btn) {
         const onclick = btn.getAttribute('onclick');
         const match = onclick.match(/selectSex\(['"](\w+)['"]\)/);
         if (match) {
+          // Отложенное обновление, чтобы selectSex успел отработать
           setTimeout(() => {
-            updateProfile({ sex: match[1] });
-          }, 100);
+            if (!_isApplyingProfile) {
+              updateProfile({ sex: match[1] });
+            }
+          }, 50);
         }
       }
     });
   }
 
   // ═══════════════════════════════════════
-  //  СИНХРОНИЗАЦИЯ МЕЖДУ ВКЛАДКАМИ
+  //  КРОСС-ВКЛАДОЧНАЯ СИНХРОНИЗАЦИЯ
   // ═══════════════════════════════════════
   function setupCrossTabSync() {
-    // Слушаем изменения в других вкладках
     window.addEventListener('storage', (e) => {
       if (e.key === PROFILE_KEY && e.newValue) {
         try {
           const profile = JSON.parse(e.newValue);
-          console.log('[Profile] 🔄 Синхронизация из другой вкладки:', profile);
+          _isHandlingSync = true;
           applyProfileToPage();
+          setTimeout(() => { _isHandlingSync = false; }, 100);
         } catch (err) {
           console.error('[Profile] Ошибка парсинга:', err);
         }
       }
     });
     
-    // Слушаем кастомное событие
     window.addEventListener(SYNC_EVENT, (e) => {
-      console.log('[Profile] 🔄 Обновление через событие:', e.detail);
+      if (_isHandlingSync) return;
+      _isHandlingSync = true;
       applyProfileToPage();
+      setTimeout(() => { _isHandlingSync = false; }, 100);
     });
   }
 
   // ═══════════════════════════════════════
-  //  СИНХРОНИЗАЦИЯ С SUPABASE
+  //  SUPABASE СИНХРОНИЗАЦИЯ
   // ═══════════════════════════════════════
   async function syncToSupabase(profile) {
     if (!window.SupabaseDB) return;
@@ -179,7 +254,7 @@
       
       console.log('[Profile] ☁️ Синхронизирован с Supabase');
     } catch (e) {
-      console.warn('[Profile] ⚠️ Ошибка синхронизации с Supabase:', e.message);
+      console.warn('[Profile] ⚠️ Ошибка Supabase:', e.message);
     }
   }
 
@@ -190,28 +265,30 @@
       const user = await window.SupabaseDB.getCurrentUser();
       if (!user || !user.profile) return;
       
-      const profile = getProfile();
+      const current = getProfile();
       const updates = {};
       
-      if (user.profile.sex && user.profile.sex !== 'unknown') {
+      if (user.profile.sex && user.profile.sex !== 'unknown' && user.profile.sex !== current.sex) {
         updates.sex = user.profile.sex;
       }
-      if (user.profile.age && user.profile.age > 0) {
+      if (user.profile.age && user.profile.age > 0 && user.profile.age !== current.age) {
         updates.age = user.profile.age;
       }
-      if (user.profile.height) {
+      if (user.profile.height && user.profile.height !== current.height) {
         updates.height = user.profile.height;
       }
-      if (user.profile.weight) {
+      if (user.profile.weight && user.profile.weight !== current.weight) {
         updates.weight = user.profile.weight;
       }
       
       if (Object.keys(updates).length > 0) {
-        updateProfile(updates);
-        console.log('[Profile] ☁️ Загружен из Supabase:', updates);
+        // Сохраняем без события и без Supabase (чтобы не зациклить)
+        const newProfile = { ...current, ...updates };
+        saveProfile(newProfile, { skipEvent: true, skipSupabase: true });
+        applyProfileToPage();
       }
     } catch (e) {
-      console.warn('[Profile] ⚠️ Ошибка загрузки из Supabase:', e.message);
+      console.warn('[Profile] ⚠️ Ошибка загрузки Supabase:', e.message);
     }
   }
 
@@ -219,19 +296,14 @@
   //  ИНИЦИАЛИЗАЦИЯ
   // ═══════════════════════════════════════
   function init() {
-    console.log('[Profile] 🚀 Инициализация...');
+    console.log('[Profile] 🚀 Инициализация v2.0');
     
-    // Загружаем профиль из Supabase (если есть)
     loadFromSupabase().then(() => {
-      // Применяем профиль к текущей странице
       applyProfileToPage();
     });
     
-    // Настраиваем слушатели
     setupPageListeners();
     setupCrossTabSync();
-    
-    console.log('[Profile] ✅ Готов');
   }
 
   // ═══════════════════════════════════════
@@ -239,14 +311,13 @@
   // ═══════════════════════════════════════
   window.PatientProfile = {
     get: getProfile,
-    save: saveProfile,
+    save: (profile) => saveProfile(profile),
     update: updateProfile,
     apply: applyProfileToPage,
     init,
-    version: '1.0.0'
+    version: '2.0.0'
   };
 
-  // Автоинициализация при загрузке DOM
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
