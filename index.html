@@ -21,231 +21,6 @@
   <span id="toastText">Готово</span>
 </div>
 
-<style>
-/* ═══════ СТИЛИ ДЛЯ НОВЫХ КАРТОЧЕК ═══════ */
-.functions-dashboard {
-  max-width: 600px;
-  margin: 0 auto 20px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.fn-card {
-  background: var(--surface);
-  border-radius: 20px;
-  padding: 18px;
-  box-shadow: 0 4px 16px rgba(28, 43, 28, 0.06);
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  min-height: 140px;
-  text-decoration: none;
-  color: inherit;
-}
-
-.fn-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(28, 43, 28, 0.12);
-}
-
-.fn-card:active {
-  transform: translateY(-2px) scale(0.98);
-}
-
-.fn-card-wide {
-  grid-column: span 2;
-  min-height: 110px;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-}
-
-.fn-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 10px;
-}
-
-.fn-icon-wrap {
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  transition: transform 0.3s ease;
-  flex-shrink: 0;
-}
-
-.fn-card:hover .fn-icon-wrap {
-  transform: scale(1.1) rotate(-5deg);
-}
-
-.fn-arrow {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-3);
-  font-size: 14px;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.fn-card:hover .fn-arrow {
-  background: var(--green);
-  color: white;
-  transform: translateX(2px);
-}
-
-.fn-card-wide .fn-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.fn-card-wide .fn-icon-wrap {
-  margin-right: 0;
-}
-
-.fn-title {
-  font-size: 11px;
-  color: var(--text-3);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-}
-
-.fn-value {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--dark);
-  line-height: 1.2;
-}
-
-.fn-card-wide .fn-value {
-  font-size: 18px;
-}
-
-.fn-indicators {
-  display: flex;
-  gap: 4px;
-  margin-top: auto;
-  height: 6px;
-}
-
-.fn-card-wide .fn-indicators {
-  width: 120px;
-  margin-top: 0;
-  margin-left: auto;
-}
-
-.fn-bar {
-  flex: 1;
-  background: var(--surface-2);
-  border-radius: 3px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.fn-bar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 3px;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-
-.fn-card:hover .fn-bar::after {
-  opacity: 1;
-  animation: fnFill 1.8s ease-in-out infinite;
-}
-
-.fn-bar.active::after {
-  opacity: 1;
-}
-
-@keyframes fnFill {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-
-/* Цвета иконок и индикаторов для каждой карточки */
-.fn-card.history .fn-icon-wrap { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); }
-.fn-card.history .fn-bar::after { background: linear-gradient(90deg, #ef4444, #f87171); }
-.fn-card.history .fn-bar.active::after { background: linear-gradient(90deg, #ef4444, #f87171); }
-
-.fn-card.stats .fn-icon-wrap { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
-.fn-card.stats .fn-bar::after { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-.fn-card.stats .fn-bar.active::after { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-
-.fn-card.recommendations .fn-icon-wrap { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
-.fn-card.recommendations .fn-bar::after { background: linear-gradient(90deg, #10b981, #34d399); }
-.fn-card.recommendations .fn-bar.active::after { background: linear-gradient(90deg, #10b981, #34d399); }
-
-.fn-card.pharmacy .fn-icon-wrap { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
-.fn-card.pharmacy .fn-bar::after { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-.fn-card.pharmacy .fn-bar.active::after { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-
-.fn-card.nutrition .fn-icon-wrap { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); }
-.fn-card.nutrition .fn-bar::after { background: linear-gradient(90deg, #6366f1, #818cf8); }
-.fn-card.nutrition .fn-bar.active::after { background: linear-gradient(90deg, #6366f1, #818cf8); }
-
-/* Пульсация иконки при hover */
-@keyframes fnPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-}
-
-.fn-card:hover .fn-icon-wrap {
-  animation: fnPulse 2s ease-in-out infinite;
-}
-
-/* Свечение от курсора */
-.fn-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 20px;
-  background: radial-gradient(
-    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(61, 139, 78, 0.08),
-    transparent 60%
-  );
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-}
-
-.fn-card:hover::before {
-  opacity: 1;
-}
-
-/* Адаптивность */
-@media (max-width: 380px) {
-  .functions-dashboard {
-    grid-template-columns: 1fr;
-  }
-  .fn-card-wide {
-    grid-column: span 1;
-  }
-}
-</style>
-
 <div class="app">
   
   <!-- ═══════ PATIENT HEADER CARD ═══════ -->
@@ -275,30 +50,24 @@
       </div>
     </div>
 
-    <div class="pc-pills">
-      <!-- Спецрежимы -->
-      <div style="width: 100%; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--surface-2);">
-        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 8px;">Режим:</label>
-        <div class="pc-pills" style="gap: 6px;">
-          <button class="pill pill-green ripple-element click-scale" id="modeNormal" onclick="setMode('normal')">👤 Обычный</button>
-          <button class="pill pill-outline ripple-element click-scale" id="modePediatric" onclick="setMode('pediatric')">👶 Педиатрия</button>
-          <button class="pill pill-outline ripple-element click-scale" id="modePregnancy" onclick="setMode('pregnancy')">🤰 Беременность</button>
-          <button class="pill pill-outline ripple-element click-scale" id="modeElderly" onclick="setMode('elderly')">👴 Пожилые</button>
-        </div>
-      </div>
-      <button class="pill pill-green ripple-element click-scale" data-filter="all">Все</button>
-      <button class="pill pill-outline ripple-element click-scale" data-filter="vitals">Витальные</button>
-      <button class="pill pill-outline ripple-element click-scale" data-filter="tests">Анализы</button>
-      <button class="pill pill-outline ripple-element click-scale" data-filter="meds">Лекарства</button>
+    <div class="pc-pills" style="display: flex; align-items: center; justify-content: flex-end;">
+      <!-- Большая кнопка семьи с "+" -->
+      <button onclick="openModal('addFamilyMemberModal')" 
+              style="position: relative; overflow: visible; width: 60px; height: 60px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--green) 0%, var(--green-light, #5BAD6F) 100%); color: white; font-size: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(61, 139, 78, 0.35);">
+        👨‍👩‍👧
+        <span style="position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: white; color: var(--green); font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.15); border: 2px solid var(--green); line-height: 1;">
+          +
+        </span>
+      </button>
     </div>
   </div>
 
   <!-- ═══════ ЧАТ С ПОМОЩНИКОМ ═══════ -->
-  <div class="sec-hd animate-on-scroll animate-slide-left">
+  <div class="sec-hd">
     <h2>Чат с помощником</h2>
   </div>
 
-  <div class="chat-wrap animate-on-scroll animate-fade-up" id="chatWrap" style="max-height: 300px; overflow-y: auto; margin-bottom: 12px;">
+  <div class="chat-wrap" id="chatWrap" style="max-height: 300px; overflow-y: auto; margin-bottom: 12px;">
     <div class="chat-bubble ai">
       <div class="bubble-name">🩺 Медицинский помощник</div>
       Здравствуйте! Опишите ваши симптомы или задайте вопрос — помогу разобраться.
@@ -306,120 +75,115 @@
     </div>
   </div>
 
-  <div class="chat-input-bar animate-on-scroll animate-fade-up" style="margin-bottom: 20px;">
-    <button class="chat-attach ripple-element" onclick="openModal('symptomsModal')" aria-label="Голосовой ввод">
-      🎤
-    </button>
+  <div class="chat-input-bar" style="margin-bottom: 20px;">
+    <button class="chat-attach ripple-element" onclick="openModal('symptomsModal')" aria-label="Голосовой ввод">🎤</button>
     <input type="text" class="chat-input" id="chatInputField" 
            placeholder="Опишите симптомы или задайте вопрос..."
            onkeydown="if(event.key==='Enter') sendChatMessage()">
-    <button class="chat-send ripple-element" onclick="sendChatMessage()" aria-label="Отправить">
-      ➤
-    </button>
+    <button class="chat-send ripple-element" onclick="sendChatMessage()" aria-label="Отправить">➤</button>
   </div>
 
-  <!-- ═══════ 5 КРАСИВЫХ КАРТОЧЕК (ОБЪЕДИНЁННЫЕ) ═══════ -->
-  <div class="sec-hd animate-on-scroll animate-slide-left">
+  <!-- ═══════ QUICK ACTIONS ═══════ -->
+  <div class="sec-hd">
+    <h2>Быстрые действия</h2>
+    <a href="#" class="see-all" onclick="showToast('Скоро будет', '🔜'); return false;">Все →</a>
+  </div>
+
+  <div class="quick-grid">
+    <a href="upload.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon">📄</div>
+      <span class="qi-label">Загрузить<br>анализ</span>
+    </a>
+    <a href="nutrition.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon">🥗</div>
+      <span class="qi-label">План<br>питания</span>
+    </a>
+    <a href="calendar.html" class="qi magnetic-btn ripple-element">
+      <div class="qi-icon qi-dark">📅</div>
+      <span class="qi-label">Календарь<br>здоровья</span>
+    </a>
+    <a href="#" class="qi magnetic-btn ripple-element" 
+       onclick="openModal('emergencyModal'); return false;">
+      <div class="qi-icon" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">🚨</div>
+      <span class="qi-label">Быстрая<br>помощь</span>
+    </a>
+  </div>
+
+  <!-- ═══════ ОСНОВНЫЕ ФУНКЦИИ (НОВЫЙ ДИЗАЙН) ═══════ -->
+  <div class="sec-hd" style="margin-top: 8px;">
     <h2>Основные функции</h2>
     <a href="#" class="see-all" onclick="showToast('Скоро будет', '🔜'); return false;">Все →</a>
   </div>
 
-  <div class="functions-dashboard">
-    <!-- 1. История анализов -->
-    <a href="upload.html" class="fn-card history ripple-element">
-      <div class="fn-card-top">
-        <div class="fn-icon-wrap">📊</div>
-        <div class="fn-arrow">→</div>
-      </div>
-      <div>
-        <div class="fn-title">История</div>
-        <div class="fn-value">Анализов</div>
-      </div>
-      <div class="fn-indicators">
-        <div class="fn-bar active"></div>
-        <div class="fn-bar"></div>
-        <div class="fn-bar active"></div>
-        <div class="fn-bar"></div>
-        <div class="fn-bar active"></div>
-      </div>
-    </a>
-
-    <!-- 2. Статистика и динамика -->
-    <a href="compare.html" class="fn-card stats ripple-element">
-      <div class="fn-card-top">
-        <div class="fn-icon-wrap">📈</div>
-        <div class="fn-arrow">→</div>
-      </div>
-      <div>
-        <div class="fn-title">Статистика</div>
-        <div class="fn-value">Динамика</div>
-      </div>
-      <div class="fn-indicators">
-        <div class="fn-bar"></div>
-        <div class="fn-bar active"></div>
-        <div class="fn-bar"></div>
-        <div class="fn-bar active"></div>
-        <div class="fn-bar"></div>
-      </div>
-    </a>
-
-    <!-- 3. Персональные рекомендации (широкая) -->
-    <a href="results.html" class="fn-card recommendations fn-card-wide ripple-element">
-      <div class="fn-content">
-        <div class="fn-icon-wrap">💡</div>
-        <div>
-          <div class="fn-title">Персональные</div>
-          <div class="fn-value">Рекомендации</div>
+  <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px;">
+    <!-- История анализов -->
+    <a href="upload.html" style="background: var(--surface); border-radius: 16px; padding: 20px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 8px rgba(28,43,28,0.06);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+          📊
         </div>
+        <span style="font-size: 18px; color: var(--text-3);">→</span>
       </div>
-      <div class="fn-arrow">→</div>
-      <div class="fn-indicators">
-        <div class="fn-bar active"></div>
-        <div class="fn-bar active"></div>
-        <div class="fn-bar active"></div>
-        <div class="fn-bar"></div>
-        <div class="fn-bar active"></div>
+      <div>
+        <div style="font-size: 15px; font-weight: 700; color: var(--dark); margin-bottom: 4px;">История</div>
+        <div style="font-size: 13px; color: var(--text-2);">Ваши анализы</div>
       </div>
     </a>
 
-    <!-- 4. Домашняя аптечка -->
-    <a href="#" class="fn-card pharmacy ripple-element" onclick="showToast('Раздел в разработке 🚧', '💊'); return false;">
-      <div class="fn-card-top">
-        <div class="fn-icon-wrap">💊</div>
-        <div class="fn-arrow">→</div>
+    <!-- Статистика и динамика -->
+    <a href="compare.html" style="background: var(--surface); border-radius: 16px; padding: 20px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 8px rgba(28,43,28,0.06);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+          📈
+        </div>
+        <span style="font-size: 18px; color: var(--text-3);">→</span>
       </div>
       <div>
-        <div class="fn-title">Домашняя</div>
-        <div class="fn-value">Аптечка</div>
-      </div>
-      <div class="fn-indicators">
-        <div class="fn-bar active"></div>
-        <div class="fn-bar active"></div>
-        <div class="fn-bar"></div>
-        <div class="fn-bar"></div>
-        <div class="fn-bar"></div>
+        <div style="font-size: 15px; font-weight: 700; color: var(--dark); margin-bottom: 4px;">Динамика</div>
+        <div style="font-size: 13px; color: var(--text-2);">Сравнение</div>
       </div>
     </a>
 
-    <!-- 5. ИИ питание -->
-    <a href="nutrition.html" class="fn-card nutrition ripple-element">
-      <div class="fn-card-top">
-        <div class="fn-icon-wrap">🥗</div>
-        <div class="fn-arrow">→</div>
+    <!-- Домашняя аптечка -->
+    <a href="#" onclick="showToast('Раздел в разработке 🚧', '💊'); return false;" style="background: var(--surface); border-radius: 16px; padding: 20px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 8px rgba(28,43,28,0.06);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+          💊
+        </div>
+        <span style="font-size: 18px; color: var(--text-3);">→</span>
       </div>
       <div>
-        <div class="fn-title">ИИ</div>
-        <div class="fn-value">Питание</div>
+        <div style="font-size: 15px; font-weight: 700; color: var(--dark); margin-bottom: 4px;">Аптечка</div>
+        <div style="font-size: 13px; color: var(--text-2);">Лекарства</div>
       </div>
-      <div class="fn-indicators">
-        <div class="fn-bar"></div>
-        <div class="fn-bar"></div>
-        <div class="fn-bar active"></div>
-        <div class="fn-bar active"></div>
-        <div class="fn-bar active"></div>
+    </a>
+
+    <!-- ИИ питание -->
+    <a href="nutrition.html" style="background: var(--surface); border-radius: 16px; padding: 20px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 8px rgba(28,43,28,0.06);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); display: flex; align-items: center; justify-content: center; font-size: 20px;">
+          🥗
+        </div>
+        <span style="font-size: 18px; color: var(--text-3);">→</span>
+      </div>
+      <div>
+        <div style="font-size: 15px; font-weight: 700; color: var(--dark); margin-bottom: 4px;">Питание</div>
+        <div style="font-size: 13px; color: var(--text-2);">ИИ-план</div>
       </div>
     </a>
   </div>
+
+  <!-- Персональные рекомендации (широкая карточка) -->
+  <a href="results.html" style="background: linear-gradient(135deg, var(--green) 0%, var(--green-light, #5BAD6F) 100%); border-radius: 16px; padding: 24px; text-decoration: none; color: white; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(61, 139, 78, 0.3); margin-bottom: 20px;">
+    <div style="width: 48px; height: 48px; border-radius: 14px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 24px;">
+      💡
+    </div>
+    <div style="flex: 1;">
+      <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">Персональные рекомендации</div>
+      <div style="font-size: 13px; opacity: 0.9;">На основе ваших анализов</div>
+    </div>
+    <span style="font-size: 20px;">→</span>
+  </a>
 
   <!-- ═══════ SLEEP CARD ═══════ -->
   <div class="sleep-card fade-in">
@@ -428,11 +192,8 @@
         <div class="sc-icon float-slow">😴</div>
         <div class="sc-title">Сон</div>
       </div>
-      <button class="period-btn ripple-element click-scale">
-        Месяц ▾
-      </button>
+      <button class="period-btn ripple-element click-scale">Месяц ▾</button>
     </div>
-
     <div class="sc-stats">
       <div class="sc-stat">
         <label>Средний сон</label>
@@ -443,7 +204,6 @@
         <div class="big"><span data-counter="3.6">0</span><span style="font-size:18px;color:var(--text-3)">ч</span></div>
       </div>
     </div>
-
     <div class="bar-chart">
       <div class="bc-col"><div class="bc-fill dark-bar" style="height:60%"><span class="bc-val">6.5ч</span></div><span class="bc-label">Пн</span></div>
       <div class="bc-col"><div class="bc-fill dark-bar" style="height:75%"><span class="bc-val">7.8ч</span></div><span class="bc-label">Вт</span></div>
@@ -457,10 +217,7 @@
 
   <!-- ═══════ OTHER DATA ═══════ -->
   <div class="other-card fade-in">
-    <div class="other-card-head">
-      Другие данные
-      <span style="font-size:13px;color:var(--text-3)">→</span>
-    </div>
+    <div class="other-card-head">Другие данные <span style="font-size:13px;color:var(--text-3)">→</span></div>
 
     <a href="diary.html" class="metric-row ripple-element" style="text-decoration:none;color:inherit;display:flex">
       <div class="mr-circle red-bg breathe">
@@ -518,32 +275,12 @@
   <div style="height: 100px;"></div>
 </div>
 
-<!-- ═══════ BOTTOM NAVIGATION ═══════ -->
-<div class="bottom-nav">
-  <div class="bottom-nav-inner">
-    <a href="index.html" class="nav-item active">
-      <div class="nav-icon">🏠</div>
-      <span class="nav-label">Главная</span>
-    </a>
-    <a href="upload.html" class="nav-item">
-      <div class="nav-icon">📄</div>
-      <span class="nav-label">Анализы</span>
-    </a>
-    <button class="nav-fab" onclick="document.getElementById('chatInputField')?.focus()" aria-label="Чат">
-      💬
-    </button>
-    <a href="calendar.html" class="nav-item">
-      <div class="nav-icon">
-        📅
-        <span class="nav-badge" id="calendarBadge">3</span>
-      </div>
-      <span class="nav-label">Календарь</span>
-    </a>
-    <a href="nutrition.html" class="nav-item">
-      <div class="nav-icon">🥗</div>
-      <span class="nav-label">Питание</span>
-    </a>
-  </div>
+<!-- ═══════ FLOATING SETTINGS BUTTON ═══════ -->
+<div style="position: fixed; bottom: 24px; right: 24px; z-index: 1000;">
+  <button onclick="openSettings()" 
+          style="width: 56px; height: 56px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--green) 0%, var(--green-light, #5BAD6F) 100%); color: white; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(61, 139, 78, 0.4);">
+    ⚙️
+  </button>
 </div>
 
 <!-- ═══════ MODAL: ЭКСТРЕННАЯ ПОМОЩЬ ═══════ -->
@@ -564,7 +301,6 @@
       <button class="next-btn ripple-element" style="background:var(--surface-2);color:var(--text-1)" onclick="closeModal('emergencyModal')">
         Отмена
       </button>
-
       <div style="margin-top:20px;padding:16px;background:var(--surface-2);border-radius:var(--r-md)">
         <strong style="display:block;margin-bottom:8px">⚠️ Красные флаги:</strong>
         <ul style="list-style:none;padding:0;font-size:14px;color:var(--text-2)">
@@ -591,7 +327,6 @@
       <p style="margin-bottom:16px;color:var(--text-2);font-size:14px;line-height:1.5">
         Опишите симптомы — получите персональный план обследований.
       </p>
-
       <div style="display:flex;gap:10px;margin-bottom:16px">
         <div style="flex:1">
           <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Пол</label>
@@ -606,15 +341,12 @@
                  style="width:100%;padding:10px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
         </div>
       </div>
-
       <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Симптомы</label>
       <textarea id="symptomsText" rows="4" placeholder="Например: третий день болит горло, температура 37.8..."
                 style="width:100%;padding:14px;border:1.5px solid #C8DCC8;border-radius:var(--r-md);font-family:inherit;font-size:15px;resize:none;margin-bottom:16px;background:var(--surface-2)"></textarea>
-
       <button class="next-btn ripple-element magnetic-btn" id="analyzeSymptomsBtn" onclick="analyzeSymptomsLocal()">
         🔍 Показать план анализов
       </button>
-
       <div id="localResults" style="margin-top:20px;display:none"></div>
     </div>
   </div>
@@ -675,8 +407,6 @@
       <p style="color:var(--text-2);margin-bottom:16px;font-size:14px">
         Создайте аккаунт для сохранения данных в облаке
       </p>
-
-      <!-- Загрузка фото -->
       <div style="text-align:center;margin-bottom:20px">
         <div id="regAvatarPreview" style="width:100px;height:100px;border-radius:50%;background:var(--surface-2);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:40px;overflow:hidden;cursor:pointer;position:relative" onclick="document.getElementById('regAvatarInput').click()">
           <span id="regAvatarIcon">📷</span>
@@ -685,8 +415,6 @@
         <div style="font-size:12px;color:var(--text-3)">Нажмите для загрузки фото</div>
         <input type="file" id="regAvatarInput" accept="image/*" style="display:none" onchange="previewRegAvatar(event)">
       </div>
-
-      <!-- ФИО -->
       <div style="margin-bottom:14px">
         <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Фамилия *</label>
         <input type="text" id="regLastName" placeholder="Иванов"
@@ -702,11 +430,9 @@
         <input type="text" id="regPatronymic" placeholder="Иванович"
                style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
       </div>
-
       <div style="padding:10px;background:rgba(244,162,97,0.1);border-radius:var(--r-sm);margin-bottom:14px;font-size:12px;color:#92400E;line-height:1.5">
         ⚠️ <strong>Внимание:</strong> После регистрации изменить ФИО можно будет только через техподдержку
       </div>
-
       <div style="margin-bottom:14px">
         <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Email *</label>
         <input type="email" id="regEmail" placeholder="email@example.com"
@@ -766,7 +492,6 @@
         🔒 <strong>ФИО заблокировано</strong><br>
         В целях безопасности изменение ФИО возможно только через техподдержку с подтверждением личности.
       </div>
-
       <p style="color:var(--text-2);margin-bottom:16px;font-size:14px;line-height:1.5">
         Для смены ФИО напишите нам, указав:
       </p>
@@ -776,19 +501,16 @@
         <li>Новое ФИО</li>
         <li>Причину изменения</li>
       </ul>
-
       <div style="margin-bottom:12px">
         <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Причина смены ФИО</label>
         <textarea id="fioChangeReason" rows="3" placeholder="Например: вступил в брак, ошибка при регистрации..."
                   style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-md);font-family:inherit;font-size:15px;resize:none;background:var(--surface-2)"></textarea>
       </div>
-
       <div style="margin-bottom:12px">
         <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Новое ФИО</label>
         <input type="text" id="fioChangeNew" placeholder="Фамилия Имя Отчество"
                style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
       </div>
-
       <a id="fioEmailLink" href="#" class="next-btn ripple-element" style="background:var(--primary);color:white;text-decoration:none;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px">
         📧 Написать на Email
       </a>
@@ -802,6 +524,72 @@
   </div>
 </div>
 
+<!-- ═══════ MODAL: ДОБАВЛЕНИЕ ЧЛЕНА СЕМЬИ ═══════ -->
+<div class="modal-overlay" id="addFamilyMemberModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">👨‍👩‍👧 Добавить члена семьи</div>
+      <button class="modal-close ripple-element" onclick="closeModal('addFamilyMemberModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--text-2);margin-bottom:16px;font-size:14px">
+        Добавьте информацию о другом члене семьи для совместного использования данных
+      </p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+        <div>
+          <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Фамилия</label>
+          <input type="text" id="familyLastName" placeholder="Иванов"
+                 style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Имя</label>
+          <input type="text" id="familyFirstName" placeholder="Иван"
+                 style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+        <div>
+          <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Отчество</label>
+          <input type="text" id="familyPatronymic" placeholder="Иванович"
+                 style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Возраст</label>
+          <input type="number" id="familyAge" value="35" min="0" max="120"
+                 style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+        </div>
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Пол</label>
+        <div class="pc-pills" style="gap: 6px;">
+          <button class="pill pill-green ripple-element click-scale" id="familySexFemale" onclick="setFamilySex('female')">👩 Женский</button>
+          <button class="pill pill-outline ripple-element click-scale" id="familySexMale" onclick="setFamilySex('male')">👨 Мужской</button>
+        </div>
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Отношение к вам</label>
+        <select id="familyRelation" 
+                style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+          <option value="self">Я сам/сама</option>
+          <option value="spouse">Супруг/Супруга</option>
+          <option value="child">Ребёнок</option>
+          <option value="parent">Родитель</option>
+          <option value="sibling">Брат/Сестра</option>
+          <option value="other">Другое</option>
+        </select>
+      </div>
+      <button class="next-btn ripple-element magnetic-btn" onclick="addFamilyMember()">
+        ✅ Добавить члена семьи
+      </button>
+      <div style="margin-top: 16px; text-align: center; font-size: 14px; color: var(--text-3);">
+        <span style="color: var(--green); font-weight: 600;">💡 Совет:</span> 
+        Для каждого члена семьи создается отдельный профиль
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══════ SCRIPTS ═══════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-client.js"></script>
@@ -811,17 +599,6 @@
 <script>
 (function(){
   'use strict';
-
-  // ═══════ ЭФФЕКТ СВЕЧЕНИЯ НА КАРТОЧКАХ ═══════
-  document.querySelectorAll('.fn-card').forEach(card => {
-    card.addEventListener('mousemove', (e) => {
-      const rect = card.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
-      card.style.setProperty('--mouse-x', `${x}%`);
-      card.style.setProperty('--mouse-y', `${y}%`);
-    });
-  });
 
   // ═══════ ВРЕМЯ И ДАТА ═══════
   function updateTime() {
@@ -841,15 +618,26 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
+  // ═══════ ОТКРЫТИЕ НАСТРОЕК ═══════
+  window.openSettings = function() {
+    if (window.SupabaseDB) {
+      window.SupabaseDB.getCurrentUser().then(user => {
+        if (user && user.profile) {
+          openModal('accountModal');
+        } else {
+          openModal('loginModal');
+        }
+      });
+    } else {
+      openModal('loginModal');
+    }
+  };
+
   // ═══════ МОДАЛКИ ═══════
   window.openModal = function(id) {
     document.getElementById(id).classList.add('open');
     document.body.style.overflow = 'hidden';
-    
-    if (id === 'accountModal') {
-      refreshAccountModal();
-    }
-    
+    if (id === 'accountModal') refreshAccountModal();
     setTimeout(() => {
       if (window.AnimationsEngine) {
         document.querySelectorAll(`#${id} [data-counter]`).forEach(el => {
@@ -879,46 +667,26 @@
     });
   });
 
-  // ═══════ ФИЛЬТРЫ ═══════
-  document.querySelectorAll('[data-filter]').forEach(btn => {
-    btn.addEventListener('click', function() {
-      document.querySelectorAll('[data-filter]').forEach(b => {
-        b.classList.remove('pill-green');
-        b.classList.add('pill-outline');
-      });
-      this.classList.remove('pill-outline');
-      this.classList.add('pill-green');
-      showToast(`Фильтр: ${this.textContent}`, '🔍');
-    });
-  });
-
   // ═══════ ПОЛ ПАЦИЕНТА ═══════
   let selectedSex = 'female';
 
   window.selectSex = function(sex) {
     selectedSex = sex;
-    
     document.getElementById('sexFemale').className = sex === 'female' 
       ? 'pill pill-green ripple-element click-scale' 
       : 'pill pill-outline ripple-element click-scale';
     document.getElementById('sexMale').className = sex === 'male' 
       ? 'pill pill-green ripple-element click-scale' 
       : 'pill pill-outline ripple-element click-scale';
-    
-    if (window.PatientProfile) {
-      window.PatientProfile.update({ sex });
-    }
+    if (window.PatientProfile) window.PatientProfile.update({ sex });
   };
 
   document.addEventListener('DOMContentLoaded', () => {
     if (window.PatientProfile) {
       const profile = window.PatientProfile.get();
       selectSex(profile.sex);
-      
       const ageInput = document.getElementById('ageInput');
-      if (ageInput) {
-        ageInput.value = profile.age;
-      }
+      if (ageInput) ageInput.value = profile.age;
     }
   });
 
@@ -927,30 +695,19 @@
     const input = document.getElementById('chatInputField');
     const text = input.value.trim();
     if (!text) return;
-    
     const chatWrap = document.getElementById('chatWrap');
-    
     const userMsg = document.createElement('div');
     userMsg.className = 'chat-bubble user';
     userMsg.innerHTML = `${text}<div class="chat-time">сейчас</div>`;
     chatWrap.appendChild(userMsg);
-    
     input.value = '';
-    
-    setTimeout(() => {
-      chatWrap.scrollTop = chatWrap.scrollHeight;
-    }, 100);
-    
+    setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 100);
     const typing = document.createElement('div');
     typing.className = 'typing-indicator';
     typing.id = 'chatTyping';
     typing.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
     chatWrap.appendChild(typing);
-    
-    setTimeout(() => {
-      chatWrap.scrollTop = chatWrap.scrollHeight;
-    }, 200);
-    
+    setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 200);
     setTimeout(() => {
       typing.remove();
       document.getElementById('symptomsText').value = text;
@@ -967,16 +724,13 @@
       setTimeout(() => document.getElementById('symptomsText').classList.remove('shake'), 500);
       return;
     }
-
     const age = parseInt(document.getElementById('ageInput').value) || 35;
     const btn = document.getElementById('analyzeSymptomsBtn');
     btn.innerHTML = '<span class="spin" style="display:inline-block">⏳</span> Анализирую...';
     btn.disabled = true;
-
     setTimeout(() => {
       const recommendations = [];
       const lowerText = text.toLowerCase();
-
       if (lowerText.includes('голов') || lowerText.includes('мигрен')) {
         recommendations.push({ test: 'Общий анализ крови', reason: 'Исключение анемии и воспаления' });
         recommendations.push({ test: 'ТТГ', reason: 'Проверка функции щитовидной железы' });
@@ -1002,20 +756,16 @@
         recommendations.push({ test: 'Липидограмма', reason: 'Оценка риска атеросклероза' });
         recommendations.push({ test: 'Глюкоза натощак', reason: 'Скрининг диабета' });
       }
-
       if (recommendations.length === 0) {
         recommendations.push({ test: 'Общий анализ крови', reason: 'Базовая оценка здоровья' });
         recommendations.push({ test: 'Биохимия (АЛТ, АСТ, глюкоза)', reason: 'Проверка основных функций' });
         recommendations.push({ test: 'Витамин D', reason: 'Профилактический скрининг' });
       }
-
       const resultsDiv = document.getElementById('localResults');
       resultsDiv.style.display = 'block';
       resultsDiv.innerHTML = `
         <div style="padding:16px;background:var(--surface-2);border-radius:var(--r-md);border-left:4px solid var(--green)">
-          <strong style="display:block;margin-bottom:12px;color:var(--dark)">
-            📋 Рекомендуемые обследования (${recommendations.length})
-          </strong>
+          <strong style="display:block;margin-bottom:12px;color:var(--dark)">📋 Рекомендуемые обследования (${recommendations.length})</strong>
           <ul style="list-style:none;padding:0;margin:0">
             ${recommendations.map((r, i) => `
               <li style="padding:10px 0;border-bottom:1px solid rgba(0,0,0,0.05);display:flex;gap:10px;align-items:flex-start;animation:fadeInUp 0.4s ease ${i * 0.08}s backwards">
@@ -1032,12 +782,47 @@
           </div>
         </div>
       `;
-
       btn.innerHTML = '🔍 Обновить план';
       btn.disabled = false;
-
       showToast('План составлен!', '✓');
     }, 800);
+  };
+
+  // ═══════ ДОБАВЛЕНИЕ ЧЛЕНА СЕМЬИ ═══════
+  window.setFamilySex = function(sex) {
+    document.getElementById('familySexFemale').className = sex === 'female' 
+      ? 'pill pill-green ripple-element click-scale' 
+      : 'pill pill-outline ripple-element click-scale';
+    document.getElementById('familySexMale').className = sex === 'male' 
+      ? 'pill pill-green ripple-element click-scale' 
+      : 'pill pill-outline ripple-element click-scale';
+  };
+
+  window.addFamilyMember = async function() {
+    const lastName = document.getElementById('familyLastName').value.trim();
+    const firstName = document.getElementById('familyFirstName').value.trim();
+    const patronymic = document.getElementById('familyPatronymic').value.trim();
+    const age = parseInt(document.getElementById('familyAge').value) || 35;
+    const sex = document.getElementById('familySexFemale').classList.contains('pill-green') ? 'female' : 'male';
+    const relation = document.getElementById('familyRelation').value;
+    if (!lastName || !firstName) {
+      showToast('Введите фамилию и имя', '⚠️');
+      return;
+    }
+    try {
+      const member = {
+        name: `${lastName} ${firstName} ${patronymic}`.trim(),
+        sex: sex,
+        age: age,
+        relation: relation
+      };
+      await window.SupabaseDB.addFamilyMember(member);
+      showToast('Член семьи добавлен!', '✅');
+      closeModal('addFamilyMemberModal');
+      await loadUserData();
+    } catch (e) {
+      showToast('Ошибка: ' + e.message, '❌');
+    }
   };
 
   // ═══════ АККАУНТ ═══════
@@ -1045,26 +830,18 @@
     const user = window.SupabaseDB ? await window.SupabaseDB.getCurrentUser() : null;
     const body = document.getElementById('accountModalBody');
     const title = document.getElementById('accountModalTitle');
-    
     if (!user || !user.profile) {
       title.textContent = '👤 Авторизация';
       body.innerHTML = `
         <div style="text-align:center;padding:20px 0">
           <div style="font-size:64px;margin-bottom:16px">🔐</div>
-          <p style="color:var(--text-2);margin-bottom:20px">
-            Создайте аккаунт для синхронизации данных между устройствами
-          </p>
-          <button class="next-btn magnetic-btn ripple-element" onclick="closeModal('accountModal'); openModal('registerModal');" style="margin-bottom:10px">
-            ✨ Создать аккаунт
-          </button>
-          <button class="next-btn ripple-element" onclick="closeModal('accountModal'); openModal('loginModal');" style="background:var(--surface-2);color:var(--text-1)">
-            🔑 Войти
-          </button>
+          <p style="color:var(--text-2);margin-bottom:20px">Создайте аккаунт для синхронизации данных между устройствами</p>
+          <button class="next-btn magnetic-btn ripple-element" onclick="closeModal('accountModal'); openModal('registerModal');" style="margin-bottom:10px">✨ Создать аккаунт</button>
+          <button class="next-btn ripple-element" onclick="closeModal('accountModal'); openModal('loginModal');" style="background:var(--surface-2);color:var(--text-1)">🔑 Войти</button>
         </div>
       `;
       return;
     }
-    
     title.textContent = '👤 ' + user.profile.name;
     let stats = { familyMembers: 0, analyses: 0, diaryEntries: 0, healthEvents: 0 };
     let activeMember = null;
@@ -1072,7 +849,6 @@
       stats = await window.SupabaseDB.getUserStats();
       activeMember = await window.SupabaseDB.getActiveMember();
     } catch(e) { console.warn('Stats load error:', e); }
-    
     body.innerHTML = `
       <div style="text-align:center;padding:10px 0 20px;position:relative">
         <div class="profile-avatar-wrap" style="display:inline-block;position:relative">
@@ -1081,110 +857,51 @@
           </div>
           <button onclick="openEditProfile()" style="position:absolute;bottom:0;right:0;width:32px;height:32px;border-radius:50%;background:var(--green);color:white;border:2px solid white;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15)">✏️</button>
         </div>
-        <div style="font-size:20px;font-weight:800;color:var(--dark);margin-top:12px">
-          ${user.profile.full_name || user.profile.name}
-        </div>
+        <div style="font-size:20px;font-weight:800;color:var(--dark);margin-top:12px">${user.profile.full_name || user.profile.name}</div>
         ${user.profile.fio_locked ? '<div style="font-size:11px;color:var(--text-3);margin-top:2px">🔒 ФИО подтверждено</div>' : ''}
         <div style="font-size:13px;color:var(--green);font-weight:600">${user.email || ''}</div>
       </div>
-      
-      <button class="next-btn ripple-element" onclick="closeModal('accountModal'); openEditProfile();" style="background:var(--surface-2);color:var(--text-1);margin-bottom:20px">
-        ✏️ Редактировать профиль
-      </button>
-      
+      <button class="next-btn ripple-element" onclick="closeModal('accountModal'); openEditProfile();" style="background:var(--surface-2);color:var(--text-1);margin-bottom:20px">✏️ Редактировать профиль</button>
       <div class="profile-stats" style="margin-bottom:20px">
-        <div class="ps-item">
-          <div class="ps-val" data-counter="${stats.familyMembers}">0</div>
-          <div class="ps-lbl">Профилей</div>
-        </div>
-        <div class="ps-item">
-          <div class="ps-val" data-counter="${stats.analyses}">0</div>
-          <div class="ps-lbl">Анализов</div>
-        </div>
-        <div class="ps-item">
-          <div class="ps-val" data-counter="${stats.diaryEntries}">0</div>
-          <div class="ps-lbl">Записей</div>
-        </div>
+        <div class="ps-item"><div class="ps-val" data-counter="${stats.familyMembers}">0</div><div class="ps-lbl">Профилей</div></div>
+        <div class="ps-item"><div class="ps-val" data-counter="${stats.analyses}">0</div><div class="ps-lbl">Анализов</div></div>
+        <div class="ps-item"><div class="ps-val" data-counter="${stats.diaryEntries}">0</div><div class="ps-lbl">Записей</div></div>
       </div>
-      
-      ${activeMember ? `
-        <div style="padding:12px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:16px">
-          <div style="font-size:12px;color:var(--text-3);margin-bottom:4px">Активный профиль:</div>
-          <div style="font-size:15px;font-weight:700;color:var(--dark)">${activeMember.name}</div>
-        </div>
-      ` : ''}
-      
+      ${activeMember ? `<div style="padding:12px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:16px"><div style="font-size:12px;color:var(--text-3);margin-bottom:4px">Активный профиль:</div><div style="font-size:15px;font-weight:700;color:var(--dark)">${activeMember.name}</div></div>` : ''}
       <div class="settings-list" style="box-shadow:none;margin-bottom:12px">
         <a href="family.html" class="setting-item ripple-element" onclick="closeModal('accountModal')">
           <div class="si-icon green-bg">👨‍👩‍👧</div>
-          <div>
-            <div class="si-label">Семейные профили</div>
-            <div class="si-sub">Управление членами семьи</div>
-          </div>
+          <div><div class="si-label">Семейные профили</div><div class="si-sub">Управление членами семьи</div></div>
           <span class="si-arrow">→</span>
         </a>
         <div class="setting-item ripple-element" onclick="exportAccountData()">
           <div class="si-icon blue-bg">📤</div>
-          <div>
-            <div class="si-label">Экспорт данных</div>
-            <div class="si-sub">Сохранить в файл</div>
-          </div>
+          <div><div class="si-label">Экспорт данных</div><div class="si-sub">Сохранить в файл</div></div>
           <span class="si-arrow">→</span>
         </div>
       </div>
-      
-      <button class="next-btn ripple-element" onclick="doLogout()" style="background:var(--surface-2);color:var(--red)">
-        🚪 Выйти из аккаунта
-      </button>
+      <button class="next-btn ripple-element" onclick="doLogout()" style="background:var(--surface-2);color:var(--red)">🚪 Выйти из аккаунта</button>
     `;
-    
-    setTimeout(() => {
-      if (window.AnimationsEngine) {
-        body.querySelectorAll('[data-counter]').forEach(el => {
-          const target = parseInt(el.dataset.counter);
-          if (!isNaN(target)) {
-            window.AnimationsEngine.animateCounter(el, target, 800);
-          }
-        });
-      }
-    }, 100);
   }
-  
+
   window.doLogin = async function() {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
-    
-    if (!email || !password) {
-      showToast('Заполните все поля', '⚠️');
-      return;
-    }
-    
+    if (!email || !password) { showToast('Заполните все поля', '⚠️'); return; }
     try {
       await window.SupabaseDB.login({ email, password });
       showToast('Добро пожаловать!', '👋');
       closeModal('loginModal');
       await loadUserData();
-    } catch (e) {
-      showToast(e.message, '❌');
-    }
+    } catch (e) { showToast(e.message, '❌'); }
   };
-  
-  // ═══════ РЕГИСТРАЦИЯ С ФИО И ФОТО ═══════
-  let regAvatarFile = null;
 
+  let regAvatarFile = null;
   window.previewRegAvatar = function(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
-    if (!file.type.startsWith('image/')) {
-      showToast('Выберите изображение', '⚠️');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('Максимум 2 МБ', '⚠️');
-      return;
-    }
-    
+    if (!file.type.startsWith('image/')) { showToast('Выберите изображение', '⚠️'); return; }
+    if (file.size > 2 * 1024 * 1024) { showToast('Максимум 2 МБ', '⚠️'); return; }
     regAvatarFile = file;
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -1205,62 +922,32 @@
     const password = document.getElementById('regPassword').value;
     const sex = document.getElementById('regSex').value;
     const age = parseInt(document.getElementById('regAge').value) || 0;
-    
-    if (!lastName || !firstName) {
-      showToast('Введите фамилию и имя', '⚠️');
-      return;
-    }
-    if (!email || !password) {
-      showToast('Заполните email и пароль', '⚠️');
-      return;
-    }
-    if (password.length < 6) {
-      showToast('Пароль минимум 6 символов', '⚠️');
-      return;
-    }
-    
+    if (!lastName || !firstName) { showToast('Введите фамилию и имя', '⚠️'); return; }
+    if (!email || !password) { showToast('Заполните email и пароль', '⚠️'); return; }
+    if (password.length < 6) { showToast('Пароль минимум 6 символов', '⚠️'); return; }
     const btn = event.target;
     btn.disabled = true;
     btn.textContent = 'Создаём...';
-    
     try {
-      await window.SupabaseDB.register({ 
-        email, password, 
-        firstName, lastName, patronymic, 
-        sex, age, 
-        avatarFile: regAvatarFile 
-      });
+      await window.SupabaseDB.register({ email, password, firstName, lastName, patronymic, sex, age, avatarFile: regAvatarFile });
       showToast('Аккаунт создан!', '🎉');
       closeModal('registerModal');
       regAvatarFile = null;
       await loadUserData();
-    } catch (e) {
-      showToast(e.message, '❌');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Создать аккаунт';
-    }
+    } catch (e) { showToast(e.message, '❌'); }
+    finally { btn.disabled = false; btn.textContent = 'Создать аккаунт'; }
   };
 
-  // ═══════ РЕДАКТИРОВАНИЕ ПРОФИЛЯ ═══════
   window.openEditProfile = async function() {
     const user = await window.SupabaseDB.getCurrentUser();
-    if (!user || !user.profile) {
-      showToast('Не авторизован', '⚠️');
-      return;
-    }
-    
+    if (!user || !user.profile) { showToast('Не авторизован', '⚠️'); return; }
     const p = user.profile;
     const fioLocked = p.fio_locked !== false;
-    
     const body = document.getElementById('editProfileBody');
     body.innerHTML = `
       <div style="text-align:center;margin-bottom:20px">
         <div style="width:120px;height:120px;border-radius:50%;background:var(--surface-2);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden;cursor:pointer;position:relative" onclick="document.getElementById('editAvatarInput').click()">
-          ${p.avatar_url 
-            ? `<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover" />`
-            : `<span>${(p.first_name || p.name || '?').charAt(0).toUpperCase()}</span>`
-          }
+          ${p.avatar_url ? `<img src="${p.avatar_url}" style="width:100%;height:100%;object-fit:cover" />` : `<span>${(p.first_name || p.name || '?').charAt(0).toUpperCase()}</span>`}
         </div>
         <input type="file" id="editAvatarInput" accept="image/*" style="display:none" onchange="uploadNewAvatar(event)">
         <div style="display:flex;gap:8px;justify-content:center">
@@ -1268,37 +955,19 @@
           ${p.avatar_url ? `<button class="pill pill-outline ripple-element click-scale" onclick="removeAvatar()" style="color:var(--red);border-color:var(--red)">🗑 Удалить</button>` : ''}
         </div>
       </div>
-
       <div style="padding:14px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:14px">
-        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">
-          ФИО ${fioLocked ? '🔒' : ''}
-        </label>
-        <div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:8px">
-          ${p.full_name || p.name || '—'}
-        </div>
-        ${fioLocked 
-          ? `<button class="pill pill-outline ripple-element click-scale" onclick="closeModal('editProfileModal'); openFioChangeModal();" style="font-size:12px">
-               📞 Запросить изменение через поддержку
-             </button>`
-          : `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-               <input type="text" id="editLastName" value="${p.last_name || ''}" placeholder="Фамилия" style="padding:8px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:14px;background:white">
-               <input type="text" id="editFirstName" value="${p.first_name || ''}" placeholder="Имя" style="padding:8px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:14px;background:white">
-               <input type="text" id="editPatronymic" value="${p.patronymic || ''}" placeholder="Отчество" style="padding:8px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:14px;background:white">
-             </div>`
-        }
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">ФИО ${fioLocked ? '🔒' : ''}</label>
+        <div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:8px">${p.full_name || p.name || '—'}</div>
+        ${fioLocked ? `<button class="pill pill-outline ripple-element click-scale" onclick="closeModal('editProfileModal'); openFioChangeModal();" style="font-size:12px">📞 Запросить изменение через поддержку</button>` : `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><input type="text" id="editLastName" value="${p.last_name || ''}" placeholder="Фамилия" style="padding:8px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:14px;background:white"><input type="text" id="editFirstName" value="${p.first_name || ''}" placeholder="Имя" style="padding:8px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:14px;background:white"><input type="text" id="editPatronymic" value="${p.patronymic || ''}" placeholder="Отчество" style="padding:8px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:14px;background:white"></div>`}
       </div>
-
       <div style="margin-bottom:14px">
         <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Email</label>
-        <input type="email" id="editEmail" value="${user.email || ''}" readonly
-               style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2);color:var(--text-3)">
+        <input type="email" id="editEmail" value="${user.email || ''}" readonly style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2);color:var(--text-3)">
       </div>
-
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
         <div>
           <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Пол</label>
-          <select id="editSex"
-                  style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+          <select id="editSex" style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
             <option value="female" ${p.sex === 'female' ? 'selected' : ''}>Женский</option>
             <option value="male" ${p.sex === 'male' ? 'selected' : ''}>Мужской</option>
             <option value="unknown" ${p.sex === 'unknown' ? 'selected' : ''}>Не указан</option>
@@ -1306,30 +975,24 @@
         </div>
         <div>
           <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Возраст</label>
-          <input type="number" id="editAge" value="${p.age || 0}" min="0" max="120"
-                 style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
+          <input type="number" id="editAge" value="${p.age || 0}" min="0" max="120" style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
         </div>
       </div>
-
       <button class="next-btn magnetic-btn ripple-element" onclick="saveProfileChanges()">💾 Сохранить изменения</button>
     `;
-    
     openModal('editProfileModal');
   };
 
   window.uploadNewAvatar = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
     try {
       showToast('Загружаем фото...', '⏳');
       const url = await window.SupabaseDB.uploadAvatar(file);
       showToast('Фото обновлено!', '✅');
       await openEditProfile();
       await loadUserData();
-    } catch (e) {
-      showToast(e.message, '❌');
-    }
+    } catch (e) { showToast(e.message, '❌'); }
   };
 
   window.removeAvatar = async function() {
@@ -1339,9 +1002,7 @@
       showToast('Фото удалено', '🗑');
       await openEditProfile();
       await loadUserData();
-    } catch (e) {
-      showToast(e.message, '❌');
-    }
+    } catch (e) { showToast(e.message, '❌'); }
   };
 
   window.saveProfileChanges = async function() {
@@ -1349,62 +1010,41 @@
       sex: document.getElementById('editSex').value,
       age: parseInt(document.getElementById('editAge').value) || 0
     };
-    
     const lastNameInput = document.getElementById('editLastName');
     if (lastNameInput) {
       updates.first_name = document.getElementById('editFirstName').value.trim();
       updates.last_name = document.getElementById('editLastName').value.trim();
       updates.patronymic = document.getElementById('editPatronymic').value.trim();
-      
-      if (!updates.first_name || !updates.last_name) {
-        showToast('Введите фамилию и имя', '⚠️');
-        return;
-      }
+      if (!updates.first_name || !updates.last_name) { showToast('Введите фамилию и имя', '⚠️'); return; }
     }
-    
     try {
       await window.SupabaseDB.updateProfile(updates);
       showToast('Профиль обновлён!', '✅');
       closeModal('editProfileModal');
       await loadUserData();
-    } catch (e) {
-      showToast(e.message, '❌');
-    }
+    } catch (e) { showToast('Ошибка: ' + e.message, '❌'); }
   };
 
   window.openFioChangeModal = async function() {
     const user = await window.SupabaseDB.getCurrentUser();
     if (!user) return;
-    
     const reqData = window.SupabaseDB.getFioChangeRequestData();
     const currentFio = user.profile?.full_name || user.profile?.name || '—';
-    
     const updateLinks = () => {
       const reason = document.getElementById('fioChangeReason').value.trim() || 'Не указана';
       const newFio = document.getElementById('fioChangeNew').value.trim() || 'Не указано';
-      
-      const msg = reqData.messageTemplate
-        .replace('{email}', user.email)
-        .replace('{currentFio}', currentFio)
-        .replace('{newFio}', newFio)
-        .replace('{reason}', reason);
-      
+      const msg = reqData.messageTemplate.replace('{email}', user.email).replace('{currentFio}', currentFio).replace('{newFio}', newFio).replace('{reason}', reason);
       const encodedMsg = encodeURIComponent(msg);
       const subject = encodeURIComponent('Запрос на изменение ФИО');
-      
-      document.getElementById('fioEmailLink').href = 
-        `mailto:${reqData.supportEmail}?subject=${subject}&body=${encodedMsg}`;
-      document.getElementById('fioTelegramLink').href = 
-        `https://t.me/${reqData.supportTelegram.replace('@', '')}?text=${encodedMsg}`;
+      document.getElementById('fioEmailLink').href = `mailto:${reqData.supportEmail}?subject=${subject}&body=${encodedMsg}`;
+      document.getElementById('fioTelegramLink').href = `https://t.me/${reqData.supportTelegram.replace('@', '')}?text=${encodedMsg}`;
     };
-    
     document.getElementById('fioChangeReason').oninput = updateLinks;
     document.getElementById('fioChangeNew').oninput = updateLinks;
     updateLinks();
-    
     openModal('fioChangeModal');
   };
-  
+
   window.doLogout = async function() {
     if (!confirm('Выйти из аккаунта?')) return;
     try {
@@ -1412,11 +1052,9 @@
       showToast('Вы вышли', '👋');
       closeModal('accountModal');
       await loadUserData();
-    } catch (e) {
-      showToast('Ошибка: ' + e.message, '❌');
-    }
+    } catch (e) { showToast('Ошибка: ' + e.message, '❌'); }
   };
-  
+
   window.exportAccountData = async function() {
     try {
       const json = await window.SupabaseDB.exportUserData();
@@ -1430,91 +1068,42 @@
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       showToast('Данные экспортированы', '📤');
-    } catch (e) {
-      showToast('Ошибка: ' + e.message, '❌');
-    }
+    } catch (e) { showToast('Ошибка: ' + e.message, '❌'); }
   };
-  
+
   async function loadUserData() {
     if (!window.SupabaseDB) return;
     try {
       const user = await window.SupabaseDB.getCurrentUser();
       const activeMember = await window.SupabaseDB.getActiveMember();
-      
       const nameEl = document.getElementById('userName');
       const avatarEl = document.getElementById('userAvatar');
       const infoEl = document.getElementById('activeMemberInfo');
-      
       if (user && user.profile) {
         const displayName = user.profile.full_name || user.profile.name || 'Пользователь';
         nameEl.textContent = displayName;
-        
         if (user.profile.avatar_url) {
           avatarEl.innerHTML = `<img src="${user.profile.avatar_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />`;
         } else {
           const initial = (user.profile.first_name || displayName).charAt(0).toUpperCase();
           avatarEl.textContent = initial;
         }
-        
-        if (activeMember) {
-          infoEl.textContent = activeMember.relation === 'self' ? 'Основной профиль' : activeMember.name;
-        }
+        if (activeMember) infoEl.textContent = activeMember.relation === 'self' ? 'Основной профиль' : activeMember.name;
       } else {
         nameEl.textContent = 'Гость';
         avatarEl.innerHTML = '👤';
         infoEl.textContent = 'Войдите для полного доступа';
       }
-    } catch (e) {
-      console.warn('loadUserData error:', e);
-    }
+    } catch (e) { console.warn('loadUserData error:', e); }
   }
-  
-  document.getElementById('accountBtn').addEventListener('click', () => {
-    openModal('accountModal');
-  });
-  
-  (async () => {
-    await loadUserData();
-  })();
 
+  document.getElementById('accountBtn').addEventListener('click', () => openModal('accountModal'));
+  (async () => { await loadUserData(); })();
   setTimeout(() => showToast('Добро пожаловать!', '👋'), 800);
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('SW:', reg.scope))
-      .catch(err => console.error('SW error:', err));
+    navigator.serviceWorker.register('sw.js').then(reg => console.log('SW:', reg.scope)).catch(err => console.error('SW error:', err));
   }
-
-  // ═══════ СПЕЦРЕЖИМЫ ═══════
-  window.setMode = function(mode) {
-    localStorage.setItem('app_mode_v1', mode);
-    ['modeNormal', 'modePediatric', 'modePregnancy', 'modeElderly'].forEach(id => {
-      document.getElementById(id).className = 'pill pill-outline ripple-element click-scale';
-    });
-    const btnId = 'mode' + mode.charAt(0).toUpperCase() + mode.slice(1);
-    const btn = document.getElementById(btnId);
-    if (btn) btn.className = 'pill pill-green ripple-element click-scale';
-    
-    const modeNames = {
-      normal: 'Обычный режим',
-      pediatric: '👶 Педиатрический режим',
-      pregnancy: '🤰 Режим беременности',
-      elderly: '👴 Режим для пожилых'
-    };
-    
-    showToast(modeNames[mode] + ' активирован', '✓');
-    
-    if (mode !== 'normal') {
-      setTimeout(() => {
-        showToast('Специализированные функции в разработке 🚧', '🔜');
-      }, 2000);
-    }
-  };
-
-  (function() {
-    const savedMode = localStorage.getItem('app_mode_v1') || 'normal';
-    setMode(savedMode);
-  })();
 })();
 </script>
 
