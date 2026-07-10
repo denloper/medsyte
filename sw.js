@@ -12,6 +12,9 @@ const STATIC_ASSETS = [
   './diary.html',
   './family.html',
   './nutrition.html',              // ← новая страница
+  './history.html',
+  './pharmacy.html',
+  './recommendations.html',
   './styles.css?v=' + APP_VERSION,
   './animations.css?v=' + APP_VERSION,
   './database.js?v=' + APP_VERSION,
