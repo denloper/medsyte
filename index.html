@@ -11,9 +11,6 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="animations.css">
-  <script src="database.js"></script>
-  <script src="patient-profile.js"></script>
-  <script src="animations.js"></script>
   <title>Семейный доктор ИИ</title>
 </head>
 <body>
@@ -23,6 +20,231 @@
   <span class="toast-icon">✓</span>
   <span id="toastText">Готово</span>
 </div>
+
+<style>
+/* ═══════ СТИЛИ ДЛЯ НОВЫХ КАРТОЧЕК ═══════ */
+.functions-dashboard {
+  max-width: 600px;
+  margin: 0 auto 20px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.fn-card {
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 4px 16px rgba(28, 43, 28, 0.06);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.fn-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(28, 43, 28, 0.12);
+}
+
+.fn-card:active {
+  transform: translateY(-2px) scale(0.98);
+}
+
+.fn-card-wide {
+  grid-column: span 2;
+  min-height: 110px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+}
+
+.fn-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.fn-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.fn-card:hover .fn-icon-wrap {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+.fn-arrow {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  font-size: 14px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.fn-card:hover .fn-arrow {
+  background: var(--green);
+  color: white;
+  transform: translateX(2px);
+}
+
+.fn-card-wide .fn-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.fn-card-wide .fn-icon-wrap {
+  margin-right: 0;
+}
+
+.fn-title {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.fn-value {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--dark);
+  line-height: 1.2;
+}
+
+.fn-card-wide .fn-value {
+  font-size: 18px;
+}
+
+.fn-indicators {
+  display: flex;
+  gap: 4px;
+  margin-top: auto;
+  height: 6px;
+}
+
+.fn-card-wide .fn-indicators {
+  width: 120px;
+  margin-top: 0;
+  margin-left: auto;
+}
+
+.fn-bar {
+  flex: 1;
+  background: var(--surface-2);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.fn-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.fn-card:hover .fn-bar::after {
+  opacity: 1;
+  animation: fnFill 1.8s ease-in-out infinite;
+}
+
+.fn-bar.active::after {
+  opacity: 1;
+}
+
+@keyframes fnFill {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* Цвета иконок и индикаторов для каждой карточки */
+.fn-card.history .fn-icon-wrap { background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); }
+.fn-card.history .fn-bar::after { background: linear-gradient(90deg, #ef4444, #f87171); }
+.fn-card.history .fn-bar.active::after { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+.fn-card.stats .fn-icon-wrap { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
+.fn-card.stats .fn-bar::after { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.fn-card.stats .fn-bar.active::after { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+
+.fn-card.recommendations .fn-icon-wrap { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
+.fn-card.recommendations .fn-bar::after { background: linear-gradient(90deg, #10b981, #34d399); }
+.fn-card.recommendations .fn-bar.active::after { background: linear-gradient(90deg, #10b981, #34d399); }
+
+.fn-card.pharmacy .fn-icon-wrap { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+.fn-card.pharmacy .fn-bar::after { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.fn-card.pharmacy .fn-bar.active::after { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+.fn-card.nutrition .fn-icon-wrap { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); }
+.fn-card.nutrition .fn-bar::after { background: linear-gradient(90deg, #6366f1, #818cf8); }
+.fn-card.nutrition .fn-bar.active::after { background: linear-gradient(90deg, #6366f1, #818cf8); }
+
+/* Пульсация иконки при hover */
+@keyframes fnPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.fn-card:hover .fn-icon-wrap {
+  animation: fnPulse 2s ease-in-out infinite;
+}
+
+/* Свечение от курсора */
+.fn-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: radial-gradient(
+    circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(61, 139, 78, 0.08),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.fn-card:hover::before {
+  opacity: 1;
+}
+
+/* Адаптивность */
+@media (max-width: 380px) {
+  .functions-dashboard {
+    grid-template-columns: 1fr;
+  }
+  .fn-card-wide {
+    grid-column: span 1;
+  }
+}
+</style>
 
 <div class="app">
   
@@ -53,9 +275,9 @@
       </div>
     </div>
 
-    <div class="pc-pills stagger">
-        <!-- Спецрежимы -->
-      <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--surface-2);">
+    <div class="pc-pills">
+      <!-- Спецрежимы -->
+      <div style="width: 100%; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--surface-2);">
         <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 8px;">Режим:</label>
         <div class="pc-pills" style="gap: 6px;">
           <button class="pill pill-green ripple-element click-scale" id="modeNormal" onclick="setMode('normal')">👤 Обычный</button>
@@ -71,7 +293,7 @@
     </div>
   </div>
 
-  <!-- ═══════ ЧАТ С ПОМОЩНИКОМ (ПЕРЕМЕЩЁН СЮДА) ═══════ -->
+  <!-- ═══════ ЧАТ С ПОМОЩНИКОМ ═══════ -->
   <div class="sec-hd animate-on-scroll animate-slide-left">
     <h2>Чат с помощником</h2>
   </div>
@@ -96,144 +318,107 @@
     </button>
   </div>
 
-  <!-- ═══════ QUICK ACTIONS (без анимаций) ═══════ -->
-  <div class="sec-hd">
-    <h2>Быстрые действия</h2>
+  <!-- ═══════ 5 КРАСИВЫХ КАРТОЧЕК (ОБЪЕДИНЁННЫЕ) ═══════ -->
+  <div class="sec-hd animate-on-scroll animate-slide-left">
+    <h2>Основные функции</h2>
     <a href="#" class="see-all" onclick="showToast('Скоро будет', '🔜'); return false;">Все →</a>
   </div>
 
-  <div class="quick-grid">
-    <a href="upload.html" class="qi magnetic-btn ripple-element">
-      <div class="qi-icon">📄</div>
-      <span class="qi-label">Загрузить<br>анализ</span>
-    </a>
-    <a href="nutrition.html" class="qi magnetic-btn ripple-element">
-      <div class="qi-icon">🥗</div>
-      <span class="qi-label">План<br>питания</span>
-    </a>
-    <a href="calendar.html" class="qi magnetic-btn ripple-element">
-      <div class="qi-icon qi-dark">📅</div>
-      <span class="qi-label">Календарь<br>здоровья</span>
-    </a>
-    <a href="#" class="qi magnetic-btn ripple-element" 
-      onclick="openModal('emergencyModal'); return false;">
-      <div class="qi-icon" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">🚨</div>
-      <span class="qi-label">Быстрая<br>помощь</span>
-    </a>
-</div>
-
-  <!-- ═══════ VITALS 2x2 ═══════ -->
-  <div class="sec-hd animate-on-scroll animate-slide-left">
-    <h2>Витальные показатели</h2>
-    <a href="diary.html" class="see-all">Все →</a>
-  </div>
-
-  <div class="vitals-grid stagger">
-    <!-- Давление -->
-    <a href="diary.html" class="v-card tilt-card ripple-element">
-      <div class="v-icon red breathe">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-        </svg>
+  <div class="functions-dashboard">
+    <!-- 1. История анализов -->
+    <a href="upload.html" class="fn-card history ripple-element">
+      <div class="fn-card-top">
+        <div class="fn-icon-wrap">📊</div>
+        <div class="fn-arrow">→</div>
       </div>
-      <div class="v-label">Давление</div>
-      <div class="v-value">
-        <span data-counter="120">0</span><span class="v-unit">/</span><span data-counter="80">0</span>
+      <div>
+        <div class="fn-title">История</div>
+        <div class="fn-value">Анализов</div>
       </div>
-      <div class="v-dot ok pulse-dot"></div>
-      <div class="spark">
-        <div class="sp-b" style="height:40%"></div>
-        <div class="sp-b" style="height:55%"></div>
-        <div class="sp-b hi" style="height:70%"></div>
-        <div class="sp-b" style="height:60%"></div>
-        <div class="sp-b hi" style="height:75%"></div>
-        <div class="sp-b" style="height:50%"></div>
-        <div class="sp-b hi" style="height:65%"></div>
+      <div class="fn-indicators">
+        <div class="fn-bar active"></div>
+        <div class="fn-bar"></div>
+        <div class="fn-bar active"></div>
+        <div class="fn-bar"></div>
+        <div class="fn-bar active"></div>
       </div>
     </a>
 
-    <!-- Пульс -->
-    <a href="diary.html" class="v-card tilt-card ripple-element">
-      <div class="v-icon blue breathe">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-        </svg>
+    <!-- 2. Статистика и динамика -->
+    <a href="compare.html" class="fn-card stats ripple-element">
+      <div class="fn-card-top">
+        <div class="fn-icon-wrap">📈</div>
+        <div class="fn-arrow">→</div>
       </div>
-      <div class="v-label">Пульс</div>
-      <div class="v-value">
-        <span data-counter="72">0</span><span class="v-unit">уд/м</span>
+      <div>
+        <div class="fn-title">Статистика</div>
+        <div class="fn-value">Динамика</div>
       </div>
-      <div class="v-dot ok pulse-dot"></div>
-      <div class="spark">
-        <div class="sp-b" style="height:50%"></div>
-        <div class="sp-b hi" style="height:65%"></div>
-        <div class="sp-b" style="height:55%"></div>
-        <div class="sp-b hi" style="height:70%"></div>
-        <div class="sp-b" style="height:60%"></div>
-        <div class="sp-b hi" style="height:75%"></div>
-        <div class="sp-b" style="height:55%"></div>
+      <div class="fn-indicators">
+        <div class="fn-bar"></div>
+        <div class="fn-bar active"></div>
+        <div class="fn-bar"></div>
+        <div class="fn-bar active"></div>
+        <div class="fn-bar"></div>
       </div>
     </a>
 
-    <!-- Сахар -->
-    <a href="diary.html" class="v-card tilt-card ripple-element">
-      <div class="v-icon green breathe">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-        </svg>
+    <!-- 3. Персональные рекомендации (широкая) -->
+    <a href="results.html" class="fn-card recommendations fn-card-wide ripple-element">
+      <div class="fn-content">
+        <div class="fn-icon-wrap">💡</div>
+        <div>
+          <div class="fn-title">Персональные</div>
+          <div class="fn-value">Рекомендации</div>
+        </div>
       </div>
-      <div class="v-label">Сахар</div>
-      <div class="v-value">
-        <span data-counter="5.4">0</span><span class="v-unit">ммоль</span>
-      </div>
-      <div class="v-dot ok pulse-dot"></div>
-      <div class="spark">
-        <div class="sp-b hi" style="height:60%"></div>
-        <div class="sp-b" style="height:50%"></div>
-        <div class="sp-b hi" style="height:65%"></div>
-        <div class="sp-b" style="height:55%"></div>
-        <div class="sp-b hi" style="height:70%"></div>
-        <div class="sp-b" style="height:60%"></div>
-        <div class="sp-b hi" style="height:65%"></div>
+      <div class="fn-arrow">→</div>
+      <div class="fn-indicators">
+        <div class="fn-bar active"></div>
+        <div class="fn-bar active"></div>
+        <div class="fn-bar active"></div>
+        <div class="fn-bar"></div>
+        <div class="fn-bar active"></div>
       </div>
     </a>
 
-    <!-- Вес -->
-    <a href="diary.html" class="v-card tilt-card ripple-element">
-      <div class="v-icon amber breathe">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <path d="M12 6v6l4 2"></path>
-        </svg>
+    <!-- 4. Домашняя аптечка -->
+    <a href="#" class="fn-card pharmacy ripple-element" onclick="showToast('Раздел в разработке 🚧', '💊'); return false;">
+      <div class="fn-card-top">
+        <div class="fn-icon-wrap">💊</div>
+        <div class="fn-arrow">→</div>
       </div>
-      <div class="v-label">Вес</div>
-      <div class="v-value">
-        <span data-counter="82">0</span><span class="v-unit">кг</span>
+      <div>
+        <div class="fn-title">Домашняя</div>
+        <div class="fn-value">Аптечка</div>
       </div>
-      <div class="v-dot warn pulse-dot"></div>
-      <div class="spark">
-        <div class="sp-b" style="height:80%"></div>
-        <div class="sp-b" style="height:75%"></div>
-        <div class="sp-b" style="height:72%"></div>
-        <div class="sp-b" style="height:70%"></div>
-        <div class="sp-b" style="height:68%"></div>
-        <div class="sp-b" style="height:65%"></div>
-        <div class="sp-b hi" style="height:62%"></div>
+      <div class="fn-indicators">
+        <div class="fn-bar active"></div>
+        <div class="fn-bar active"></div>
+        <div class="fn-bar"></div>
+        <div class="fn-bar"></div>
+        <div class="fn-bar"></div>
       </div>
     </a>
-  </div>
 
-  <!-- ═══════ DARK CARD ═══════ -->
-  <div class="dark-card fade-in animated-gradient">
-    <div class="dc-metric">
-      <div class="dc-value"><span data-counter="82">0</span><span class="dc-unit"> кг</span></div>
-      <div class="dc-name">Вес</div>
-    </div>
-    <div class="dc-avatar float-slow">👤</div>
-    <div class="dc-metric">
-      <div class="dc-value" data-counter="24.8">0</div>
-      <div class="dc-name">ИМТ</div>
-    </div>
+    <!-- 5. ИИ питание -->
+    <a href="nutrition.html" class="fn-card nutrition ripple-element">
+      <div class="fn-card-top">
+        <div class="fn-icon-wrap">🥗</div>
+        <div class="fn-arrow">→</div>
+      </div>
+      <div>
+        <div class="fn-title">ИИ</div>
+        <div class="fn-value">Питание</div>
+      </div>
+      <div class="fn-indicators">
+        <div class="fn-bar"></div>
+        <div class="fn-bar"></div>
+        <div class="fn-bar active"></div>
+        <div class="fn-bar active"></div>
+        <div class="fn-bar active"></div>
+      </div>
+    </a>
   </div>
 
   <!-- ═══════ SLEEP CARD ═══════ -->
@@ -354,7 +539,7 @@
       </div>
       <span class="nav-label">Календарь</span>
     </a>
-    <a href="#" class="nav-item" onclick="showToast('Раздел питания в разработке', '🥗'); return false;">
+    <a href="nutrition.html" class="nav-item">
       <div class="nav-icon">🥗</div>
       <span class="nav-label">Питание</span>
     </a>
@@ -478,7 +663,6 @@
   </div>
 </div>
 
-<!-- ═══════ MODAL: РЕГИСТРАЦИЯ ═══════ -->
 <!-- ═══════ MODAL: РЕГИСТРАЦИЯ С ФИО И ФОТО ═══════ -->
 <div class="modal-overlay" id="registerModal">
   <div class="modal-sheet">
@@ -565,9 +749,7 @@
       <div class="modal-title">✏️ Редактировать профиль</div>
       <button class="modal-close ripple-element" onclick="closeModal('editProfileModal')">✕</button>
     </div>
-    <div class="modal-body" id="editProfileBody">
-      <!-- Заполняется динамически -->
-    </div>
+    <div class="modal-body" id="editProfileBody"></div>
   </div>
 </div>
 
@@ -624,11 +806,24 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-client.js"></script>
 <script src="database.js"></script>
+<script src="patient-profile.js"></script>
 <script src="animations.js"></script>
 <script>
 (function(){
   'use strict';
 
+  // ═══════ ЭФФЕКТ СВЕЧЕНИЯ НА КАРТОЧКАХ ═══════
+  document.querySelectorAll('.fn-card').forEach(card => {
+    card.addEventListener('mousemove', (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      card.style.setProperty('--mouse-x', `${x}%`);
+      card.style.setProperty('--mouse-y', `${y}%`);
+    });
+  });
+
+  // ═══════ ВРЕМЯ И ДАТА ═══════
   function updateTime() {
     const now = new Date();
     const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
@@ -637,6 +832,7 @@
   updateTime();
   setInterval(updateTime, 60000);
 
+  // ═══════ TOAST ═══════
   window.showToast = function(text, icon = '✓') {
     const toast = document.getElementById('toast');
     document.getElementById('toastText').textContent = text;
@@ -645,6 +841,7 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
+  // ═══════ МОДАЛКИ ═══════
   window.openModal = function(id) {
     document.getElementById(id).classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -682,6 +879,7 @@
     });
   });
 
+  // ═══════ ФИЛЬТРЫ ═══════
   document.querySelectorAll('[data-filter]').forEach(btn => {
     btn.addEventListener('click', function() {
       document.querySelectorAll('[data-filter]').forEach(b => {
@@ -694,12 +892,12 @@
     });
   });
 
+  // ═══════ ПОЛ ПАЦИЕНТА ═══════
   let selectedSex = 'female';
 
   window.selectSex = function(sex) {
     selectedSex = sex;
     
-    // Обновляем UI
     document.getElementById('sexFemale').className = sex === 'female' 
       ? 'pill pill-green ripple-element click-scale' 
       : 'pill pill-outline ripple-element click-scale';
@@ -707,22 +905,24 @@
       ? 'pill pill-green ripple-element click-scale' 
       : 'pill pill-outline ripple-element click-scale';
     
-    // Сохраняем в профиль (автоматически синхронизируется)
-    window.PatientProfile.update({ sex });
+    if (window.PatientProfile) {
+      window.PatientProfile.update({ sex });
+    }
   };
 
-  // При загрузке страницы применяем сохранённый профиль
   document.addEventListener('DOMContentLoaded', () => {
-    const profile = window.PatientProfile.get();
-    selectSex(profile.sex);
-    
-    const ageInput = document.getElementById('ageInput');
-    if (ageInput) {
-      ageInput.value = profile.age;
+    if (window.PatientProfile) {
+      const profile = window.PatientProfile.get();
+      selectSex(profile.sex);
+      
+      const ageInput = document.getElementById('ageInput');
+      if (ageInput) {
+        ageInput.value = profile.age;
+      }
     }
-});
+  });
 
-  // ═══════ ЧАТ ФУНКЦИОНАЛЬНОСТЬ ═══════
+  // ═══════ ЧАТ ═══════
   window.sendChatMessage = function() {
     const input = document.getElementById('chatInputField');
     const text = input.value.trim();
@@ -758,6 +958,7 @@
     }, 1200);
   };
 
+  // ═══════ АНАЛИЗ СИМПТОМОВ ═══════
   window.analyzeSymptomsLocal = function() {
     const text = document.getElementById('symptomsText').value.trim();
     if (!text) {
@@ -839,6 +1040,7 @@
     }, 800);
   };
 
+  // ═══════ АККАУНТ ═══════
   async function refreshAccountModal() {
     const user = window.SupabaseDB ? await window.SupabaseDB.getCurrentUser() : null;
     const body = document.getElementById('accountModalBody');
@@ -886,7 +1088,6 @@
         <div style="font-size:13px;color:var(--green);font-weight:600">${user.email || ''}</div>
       </div>
       
-      <!-- Кнопка редактирования -->
       <button class="next-btn ripple-element" onclick="closeModal('accountModal'); openEditProfile();" style="background:var(--surface-2);color:var(--text-1);margin-bottom:20px">
         ✏️ Редактировать профиль
       </button>
@@ -968,7 +1169,7 @@
     }
   };
   
-    // ═══════ РЕГИСТРАЦИЯ С ФИО И ФОТО ═══════
+  // ═══════ РЕГИСТРАЦИЯ С ФИО И ФОТО ═══════
   let regAvatarFile = null;
 
   window.previewRegAvatar = function(event) {
@@ -1041,7 +1242,7 @@
     }
   };
 
-  // ═══════ ОТКРЫТИЕ МОДАЛКИ РЕДАКТИРОВАНИЯ ═══════
+  // ═══════ РЕДАКТИРОВАНИЕ ПРОФИЛЯ ═══════
   window.openEditProfile = async function() {
     const user = await window.SupabaseDB.getCurrentUser();
     if (!user || !user.profile) {
@@ -1054,7 +1255,6 @@
     
     const body = document.getElementById('editProfileBody');
     body.innerHTML = `
-      <!-- Аватар -->
       <div style="text-align:center;margin-bottom:20px">
         <div style="width:120px;height:120px;border-radius:50%;background:var(--surface-2);margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden;cursor:pointer;position:relative" onclick="document.getElementById('editAvatarInput').click()">
           ${p.avatar_url 
@@ -1069,7 +1269,6 @@
         </div>
       </div>
 
-      <!-- ФИО (readonly если locked) -->
       <div style="padding:14px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:14px">
         <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">
           ФИО ${fioLocked ? '🔒' : ''}
@@ -1089,14 +1288,12 @@
         }
       </div>
 
-      <!-- Email -->
       <div style="margin-bottom:14px">
         <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Email</label>
         <input type="email" id="editEmail" value="${user.email || ''}" readonly
                style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2);color:var(--text-3)">
       </div>
 
-      <!-- Пол и возраст -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
         <div>
           <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Пол</label>
@@ -1120,7 +1317,6 @@
     openModal('editProfileModal');
   };
 
-  // ═══════ ЗАГРУЗКА НОВОГО АВАТАРА ═══════
   window.uploadNewAvatar = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -1129,7 +1325,6 @@
       showToast('Загружаем фото...', '⏳');
       const url = await window.SupabaseDB.uploadAvatar(file);
       showToast('Фото обновлено!', '✅');
-      // Перерисовываем модалку
       await openEditProfile();
       await loadUserData();
     } catch (e) {
@@ -1149,14 +1344,12 @@
     }
   };
 
-  // ═══════ СОХРАНЕНИЕ ИЗМЕНЕНИЙ ПРОФИЛЯ ═══════
   window.saveProfileChanges = async function() {
     const updates = {
       sex: document.getElementById('editSex').value,
       age: parseInt(document.getElementById('editAge').value) || 0
     };
     
-    // Если ФИО не заблокировано — добавляем
     const lastNameInput = document.getElementById('editLastName');
     if (lastNameInput) {
       updates.first_name = document.getElementById('editFirstName').value.trim();
@@ -1179,7 +1372,6 @@
     }
   };
 
-  // ═══════ МОДАЛКА СМЕНЫ ФИО ═══════
   window.openFioChangeModal = async function() {
     const user = await window.SupabaseDB.getCurrentUser();
     if (!user) return;
@@ -1187,7 +1379,6 @@
     const reqData = window.SupabaseDB.getFioChangeRequestData();
     const currentFio = user.profile?.full_name || user.profile?.name || '—';
     
-    // Обновляем ссылки при открытии
     const updateLinks = () => {
       const reason = document.getElementById('fioChangeReason').value.trim() || 'Не указана';
       const newFio = document.getElementById('fioChangeNew').value.trim() || 'Не указано';
@@ -1244,7 +1435,7 @@
     }
   };
   
-    async function loadUserData() {
+  async function loadUserData() {
     if (!window.SupabaseDB) return;
     try {
       const user = await window.SupabaseDB.getCurrentUser();
@@ -1293,6 +1484,7 @@
       .then(reg => console.log('SW:', reg.scope))
       .catch(err => console.error('SW error:', err));
   }
+
   // ═══════ СПЕЦРЕЖИМЫ ═══════
   window.setMode = function(mode) {
     localStorage.setItem('app_mode_v1', mode);
@@ -1312,7 +1504,6 @@
     
     showToast(modeNames[mode] + ' активирован', '✓');
     
-    // Показываем уведомление о доступности
     if (mode !== 'normal') {
       setTimeout(() => {
         showToast('Специализированные функции в разработке 🚧', '🔜');
@@ -1320,7 +1511,6 @@
     }
   };
 
-  // Восстановление режима
   (function() {
     const savedMode = localStorage.getItem('app_mode_v1') || 'normal';
     setMode(savedMode);
