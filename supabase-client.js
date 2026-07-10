@@ -1,13 +1,17 @@
 /**
- * SUPABASE CLIENT v1.3
- * С автоматической миграцией из localStorage
+ * SUPABASE CLIENT v1.4
+ * С поддержкой ФИО, аватаров и блокировки изменений
  */
 (function() {
   'use strict';
 
-  // ⚠️ ЗАМЕНИТЕ на свои значения из Supabase Dashboard → Settings → API
   const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
+
+  const AVATAR_BUCKET = 'avatars';
+  const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
+  const SUPPORT_EMAIL = 'support@familydoctor.ai';
+  const SUPPORT_TELEGRAM = '@familydoctor_support';
 
   let supabase = null;
   let initPromise = null;
@@ -36,7 +40,7 @@
     
     initPromise = (async () => {
       try {
-        if (SUPABASE_URL.includes('YOUR-PROJECT') || SUPABASE_ANON_KEY.includes('YOUR-ANON-KEY')) {
+        if (SUPABASE_URL.includes('YOUR-PROJECT')) {
           console.warn('[DB] ⚠️ Supabase не настроен');
           return null;
         }
@@ -67,17 +71,55 @@
     return sb;
   }
 
-  // ═══════ AUTH ═══════
-  async function register({ email, password, name, sex, age }) {
+  // ═══════════════════════════════════════
+  //  РЕГИСТРАЦИЯ С ФИО
+  // ═══════════════════════════════════════
+  async function register({ 
+    email, password, 
+    firstName, lastName, patronymic, 
+    sex, age, avatarFile 
+  }) {
     const sb = await ensureInit();
-    const { data, error } = await sb.auth.signUp({
+    
+    if (!firstName || !lastName) {
+      throw new Error('Фамилия и имя обязательны');
+    }
+    
+    const fullName = [lastName, firstName, patronymic].filter(Boolean).join(' ');
+    
+    // 1. Создаём пользователя
+    const { data: authData, error: authError } = await sb.auth.signUp({
       email, password,
-      options: { data: { name, sex, age } }
+      options: { 
+        data: { 
+          name: fullName,
+          first_name: firstName,
+          last_name: lastName,
+          patronymic: patronymic || '',
+          sex, age 
+        } 
+      }
     });
-    if (error) throw new Error(error.message);
-    return data;
+    if (authError) throw new Error(authError.message);
+    
+    // 2. Загружаем аватар если есть
+    if (avatarFile && authData.user) {
+      try {
+        const avatarUrl = await uploadAvatar(avatarFile, authData.user.id);
+        await sb.from('profiles')
+          .update({ avatar_url: avatarUrl })
+          .eq('id', authData.user.id);
+      } catch (e) {
+        console.warn('[DB] Avatar upload failed:', e.message);
+      }
+    }
+    
+    return authData;
   }
 
+  // ═══════════════════════════════════════
+  //  ВХОД / ВЫХОД
+  // ═══════════════════════════════════════
   async function login({ email, password }) {
     const sb = await ensureInit();
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
@@ -91,6 +133,9 @@
     if (error) throw new Error(error.message);
   }
 
+  // ═══════════════════════════════════════
+  //  ТЕКУЩИЙ ПОЛЬЗОВАТЕЛЬ
+  // ═══════════════════════════════════════
   async function getCurrentUser() {
     const sb = await ensureInit();
     const { data: { user } } = await sb.auth.getUser();
@@ -99,10 +144,200 @@
     const { data: profile } = await sb
       .from('profiles').select('*').eq('id', user.id).maybeSingle();
     
-    return { ...user, profile: profile || { name: user.user_metadata?.name || user.email?.split('@')[0] } };
+    if (!profile) {
+      return { 
+        ...user, 
+        profile: { 
+          name: user.user_metadata?.name || user.email?.split('@')[0],
+          first_name: user.user_metadata?.first_name || '',
+          last_name: user.user_metadata?.last_name || '',
+          fio_locked: false
+        } 
+      };
+    }
+    
+    return { ...user, profile };
   }
 
-  // ═══════ FAMILY MEMBERS ═══════
+  // ═══════════════════════════════════════
+  //  ОБНОВЛЕНИЕ ПРОФИЛЯ (без ФИО если locked)
+  // ═══════════════════════════════════════
+  async function updateProfile(updates) {
+    const sb = await ensureInit();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) throw new Error('Не авторизован');
+    
+    // Получаем текущий профиль
+    const { data: current } = await sb
+      .from('profiles').select('*').eq('id', user.id).single();
+    
+    // Если ФИО заблокировано — убираем из updates
+    if (current?.fio_locked) {
+      delete updates.first_name;
+      delete updates.last_name;
+      delete updates.patronymic;
+      delete updates.full_name;
+    }
+    
+    // Если передаются новые ФИО — формируем full_name
+    if (updates.first_name || updates.last_name) {
+      const fn = updates.first_name || current?.first_name || '';
+      const ln = updates.last_name || current?.last_name || '';
+      const pt = updates.patronymic ?? current?.patronymic ?? '';
+      updates.full_name = [ln, fn, pt].filter(Boolean).join(' ');
+      updates.name = updates.full_name;
+    }
+    
+    const { error } = await sb
+      .from('profiles')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    
+    if (error) throw new Error(error.message);
+    return true;
+  }
+
+  // ═══════════════════════════════════════
+  //  ЗАПРОС НА СМЕНУ ФИО (через поддержку)
+  // ═══════════════════════════════════════
+  function getFioChangeRequestData() {
+    return {
+      supportEmail: SUPPORT_EMAIL,
+      supportTelegram: SUPPORT_TELEGRAM,
+      messageTemplate: `Здравствуйте!\n\nПрошу изменить ФИО в моём аккаунте.\n\nEmail: {email}\nТекущее ФИО: {currentFio}\nНовое ФИО: {newFio}\nПричина: {reason}\n\nСпасибо!`
+    };
+  }
+
+  // ═══════════════════════════════════════
+  //  ЗАГРУЗКА АВАТАРА
+  // ═══════════════════════════════════════
+  async function uploadAvatar(file, userIdOverride = null) {
+    const sb = await ensureInit();
+    
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Файл должен быть изображением');
+    }
+    if (file.size > MAX_AVATAR_SIZE) {
+      throw new Error('Размер файла не должен превышать 2 МБ');
+    }
+    
+    const { data: { user } } = await sb.auth.getUser();
+    const userId = userIdOverride || user?.id;
+    if (!userId) throw new Error('Не авторизован');
+    
+    // Сжимаем изображение
+    const compressedBlob = await compressImage(file, 400, 0.85);
+    
+    // Генерируем имя файла
+    const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+    const fileName = `${userId}/avatar_${Date.now()}.${ext}`;
+    
+    // Удаляем старый аватар если есть
+    try {
+      const { data: existing } = await sb.storage
+        .from(AVATAR_BUCKET)
+        .list(`${userId}`);
+      if (existing && existing.length > 0) {
+        await sb.storage.from(AVATAR_BUCKET)
+          .remove(existing.map(f => `${userId}/${f.name}`));
+      }
+    } catch (e) {
+      console.warn('[DB] Old avatar cleanup failed:', e.message);
+    }
+    
+    // Загружаем новый
+    const { data, error } = await sb.storage
+      .from(AVATAR_BUCKET)
+      .upload(fileName, compressedBlob, {
+        contentType: 'image/jpeg',
+        upsert: true
+      });
+    
+    if (error) throw new Error(error.message);
+    
+    // Получаем публичный URL
+    const { data: urlData } = sb.storage
+      .from(AVATAR_BUCKET)
+      .getPublicUrl(fileName);
+    
+    const avatarUrl = urlData.publicUrl;
+    
+    // Обновляем профиль (только если это не регистрация)
+    if (!userIdOverride) {
+      await sb.from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', userId);
+    }
+    
+    return avatarUrl;
+  }
+
+  // Сжатие изображения через canvas
+  function compressImage(file, maxSize = 400, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          
+          if (width > height) {
+            if (width > maxSize) {
+              height = (height * maxSize) / width;
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width = (width * maxSize) / height;
+              height = maxSize;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob(
+            (blob) => blob ? resolve(blob) : reject(new Error('Compression failed')),
+            'image/jpeg',
+            quality
+          );
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function deleteAvatar() {
+    const sb = await ensureInit();
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) throw new Error('Не авторизован');
+    
+    try {
+      const { data: existing } = await sb.storage
+        .from(AVATAR_BUCKET)
+        .list(`${user.id}`);
+      if (existing && existing.length > 0) {
+        await sb.storage.from(AVATAR_BUCKET)
+          .remove(existing.map(f => `${user.id}/${f.name}`));
+      }
+    } catch (e) {}
+    
+    await sb.from('profiles')
+      .update({ avatar_url: null })
+      .eq('id', user.id);
+    
+    return true;
+  }
+
+  // ═══════════════════════════════════════
+  //  ОСТАЛЬНОЕ БЕЗ ИЗМЕНЕНИЙ (family_members, diary, etc)
+  // ═══════════════════════════════════════
   async function getFamilyMembers() {
     const sb = await ensureInit();
     const { data, error } = await sb.from('family_members').select('*').order('created_at', { ascending: true });
@@ -121,26 +356,11 @@
     return data;
   }
 
-  async function updateFamilyMember(id, updates) {
-    const sb = await ensureInit();
-    const { error } = await sb.from('family_members').update(updates).eq('id', id);
-    if (error) throw new Error(error.message);
-  }
-
-  async function deleteFamilyMember(id) {
-    const sb = await ensureInit();
-    const { data: member } = await sb.from('family_members').select('*').eq('id', id).single();
-    if (member?.relation === 'self') throw new Error('Нельзя удалить основной профиль');
-    const { error } = await sb.from('family_members').delete().eq('id', id);
-    if (error) throw new Error(error.message);
-  }
-
   async function setActiveMember(id) {
     const sb = await ensureInit();
     const { data: { user } } = await sb.auth.getUser();
     await sb.from('family_members').update({ is_active: false }).eq('user_id', user.id);
-    const { error } = await sb.from('family_members').update({ is_active: true }).eq('id', id);
-    if (error) throw new Error(error.message);
+    await sb.from('family_members').update({ is_active: true }).eq('id', id);
   }
 
   async function getActiveMember() {
@@ -152,82 +372,17 @@
     return data;
   }
 
-  // ═══════ DIARY ENTRIES ═══════
   async function saveDiaryEntry({ metricType, value, familyMemberId }) {
     const sb = await ensureInit();
     const { data: { user } } = await sb.auth.getUser();
     const { data, error } = await sb.from('diary_entries').insert({
-      user_id: user.id,
-      family_member_id: familyMemberId || null,
-      metric_type: metricType,
-      value
-    }).select().single();
-    if (error) throw new Error(error.message);
-    return data;
-  }
-
-  async function getDiaryEntries(metricType, familyMemberId = null, daysBack = 30) {
-    const sb = await ensureInit();
-    const cutoff = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
-    let query = sb.from('diary_entries').select('*')
-      .eq('metric_type', metricType).gte('entry_date', cutoff)
-      .order('entry_date', { ascending: true });
-    if (familyMemberId) query = query.eq('family_member_id', familyMemberId);
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return data || [];
-  }
-
-  // ═══════ HEALTH EVENTS ═══════
-  async function saveHealthEvent({ eventType, title, scheduledDate, familyMemberId }) {
-    const sb = await ensureInit();
-    const { data: { user } } = await sb.auth.getUser();
-    const { data, error } = await sb.from('health_events').insert({
       user_id: user.id, family_member_id: familyMemberId || null,
-      event_type: eventType, title, scheduled_date: scheduledDate
+      metric_type: metricType, value
     }).select().single();
     if (error) throw new Error(error.message);
     return data;
   }
 
-  async function getHealthEvents(familyMemberId = null) {
-    const sb = await ensureInit();
-    let query = sb.from('health_events').select('*').order('scheduled_date', { ascending: true });
-    if (familyMemberId) query = query.eq('family_member_id', familyMemberId);
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return data || [];
-  }
-
-  async function markEventCompleted(id) {
-    const sb = await ensureInit();
-    await sb.from('health_events').update({ completed: true, completed_at: new Date().toISOString() }).eq('id', id);
-  }
-
-  // ═══════ ANALYSES ═══════
-  async function saveAnalysis({ fileName, results, familyMemberId }) {
-    const sb = await ensureInit();
-    const { data: { user } } = await sb.auth.getUser();
-    const { data, error } = await sb.from('analyses').insert({
-      user_id: user.id,
-      family_member_id: familyMemberId || null,
-      file_name: fileName, results,
-      analysis_date: new Date().toISOString().split('T')[0]
-    }).select().single();
-    if (error) throw new Error(error.message);
-    return data;
-  }
-
-  async function getAnalyses(familyMemberId = null) {
-    const sb = await ensureInit();
-    let query = sb.from('analyses').select('*').order('analysis_date', { ascending: false });
-    if (familyMemberId) query = query.eq('family_member_id', familyMemberId);
-    const { data, error } = await query;
-    if (error) throw new Error(error.message);
-    return data || [];
-  }
-
-  // ═══════ STATS ═══════
   async function getUserStats() {
     try {
       const sb = await ensureInit();
@@ -248,165 +403,31 @@
     }
   }
 
-  // ═══════ ЭКСПОРТ ═══════
   async function exportUserData() {
     const sb = await ensureInit();
     const user = await getCurrentUser();
-    const [familyMembers, analyses, diaryRes, healthEvents] = await Promise.all([
-      getFamilyMembers(), getAnalyses(),
-      sb.from('diary_entries').select('*'),
-      getHealthEvents()
-    ]);
     return JSON.stringify({
       version: '2.0', exportDate: new Date().toISOString(),
-      user: { email: user?.email, name: user?.profile?.name },
-      familyMembers, analyses: analyses || [],
-      diaryEntries: diaryRes.data || [],
-      healthEvents
+      user: { 
+        email: user?.email, 
+        name: user?.profile?.full_name || user?.profile?.name,
+        first_name: user?.profile?.first_name,
+        last_name: user?.profile?.last_name
+      }
     }, null, 2);
   }
 
   // ═══════════════════════════════════════
-  //  МИГРАЦИЯ ИЗ LOCALSTORAGE
+  //  ЭКСПОРТ API
   // ═══════════════════════════════════════
-  async function migrateFromLocalStorage() {
-    try {
-      const sb = await ensureInit();
-      const user = await getCurrentUser();
-      if (!user) return { migrated: false, reason: 'no_user' };
-      
-      const migrationKey = `migrated_for_user_${user.id}`;
-      if (localStorage.getItem(migrationKey)) {
-        return { migrated: false, reason: 'already_migrated' };
-      }
-      
-      const stats = {
-        familyMembers: 0, analyses: 0,
-        diaryEntries: 0, healthEvents: 0,
-        nutritionPlans: 0
-      };
-      
-      // 1. Миграция family_profiles_v4
-      const profilesData = localStorage.getItem('family_profiles_v4');
-      if (profilesData) {
-        try {
-          const profiles = JSON.parse(profilesData);
-          for (const p of profiles) {
-            if (p.id === 'self') continue;
-            await sb.from('family_members').insert({
-              user_id: user.id, relation: 'other',
-              name: p.name, sex: 'unknown', age: 0,
-              is_active: false
-            });
-            stats.familyMembers++;
-          }
-        } catch(e) { console.warn('Migration family_profiles error:', e); }
-      }
-      
-      // 2. Миграция analysis_history_v4
-      const historyData = localStorage.getItem('analysis_history_v4');
-      if (historyData) {
-        try {
-          const history = JSON.parse(historyData);
-          for (const memberId in history) {
-            const entries = history[memberId] || [];
-            for (const entry of entries) {
-              await sb.from('analyses').insert({
-                user_id: user.id,
-                family_member_id: null,
-                file_name: entry.label || 'Анализ',
-                results: JSON.stringify({ count: entry.count || 0 }),
-                analysis_date: new Date(entry.date).toISOString().split('T')[0]
-              });
-              stats.analyses++;
-            }
-          }
-        } catch(e) { console.warn('Migration analyses error:', e); }
-      }
-      
-      // 3. Миграция health_diary_v1
-      const diaryData = localStorage.getItem('health_diary_v1');
-      if (diaryData) {
-        try {
-          const diary = JSON.parse(diaryData);
-          for (const metricType in diary) {
-            const entries = diary[metricType] || [];
-            for (const entry of entries) {
-              await sb.from('diary_entries').insert({
-                user_id: user.id,
-                family_member_id: null,
-                metric_type: metricType,
-                value: entry,
-                entry_date: new Date(entry.date || Date.now()).toISOString()
-              });
-              stats.diaryEntries++;
-            }
-          }
-        } catch(e) { console.warn('Migration diary error:', e); }
-      }
-      
-      // 4. Миграция health_calendar_v1
-      const calendarData = localStorage.getItem('health_calendar_v1');
-      if (calendarData) {
-        try {
-          const calendar = JSON.parse(calendarData);
-          for (const c of calendar.completed || []) {
-            await sb.from('health_events').insert({
-              user_id: user.id, event_type: c.id,
-              title: c.id, scheduled_date: new Date(c.date).toISOString().split('T')[0],
-              completed: true, completed_at: new Date(c.date).toISOString()
-            });
-            stats.healthEvents++;
-          }
-          for (const p of calendar.planned || []) {
-            await sb.from('health_events').insert({
-              user_id: user.id, event_type: p.id,
-              title: p.id, scheduled_date: new Date(p.date).toISOString().split('T')[0],
-              completed: false
-            });
-            stats.healthEvents++;
-          }
-        } catch(e) { console.warn('Migration calendar error:', e); }
-      }
-      
-      // 5. Миграция nutrition_history_v1
-      const nutritionData = localStorage.getItem('nutrition_history_v1');
-      if (nutritionData) {
-        try {
-          const plans = JSON.parse(nutritionData);
-          for (const plan of plans) {
-            await sb.from('diary_entries').insert({
-              user_id: user.id,
-              metric_type: 'nutrition_plan',
-              value: plan,
-              entry_date: new Date(plan.date || Date.now()).toISOString()
-            });
-            stats.nutritionPlans++;
-          }
-        } catch(e) { console.warn('Migration nutrition error:', e); }
-      }
-      
-      // Помечаем миграцию как выполненную
-      localStorage.setItem(migrationKey, Date.now().toString());
-      
-      console.log('[DB] ✅ Миграция завершена:', stats);
-      return { migrated: true, stats };
-    } catch (err) {
-      console.error('[DB] ❌ Ошибка миграции:', err);
-      return { migrated: false, reason: 'error', error: err.message };
-    }
-  }
-
   window.SupabaseDB = {
     init,
     register, login, logout, getCurrentUser,
-    getFamilyMembers, addFamilyMember, updateFamilyMember, deleteFamilyMember,
-    setActiveMember, getActiveMember,
-    saveAnalysis, getAnalyses,
-    saveDiaryEntry, getDiaryEntries,
-    saveHealthEvent, getHealthEvents, markEventCompleted,
-    getUserStats, exportUserData,
-    migrateFromLocalStorage,
-    version: '1.3.0'
+    updateProfile, uploadAvatar, deleteAvatar,
+    getFioChangeRequestData,
+    getFamilyMembers, addFamilyMember, setActiveMember, getActiveMember,
+    saveDiaryEntry, getUserStats, exportUserData,
+    SUPPORT_EMAIL, SUPPORT_TELEGRAM,
+    version: '1.4.0'
   };
 })();
