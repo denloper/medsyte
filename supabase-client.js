@@ -1,24 +1,22 @@
 /**
- * SUPABASE CLIENT v1.1
+ * SUPABASE CLIENT v1.2
  * Онлайн SQL-база данных (PostgreSQL)
  */
 (function() {
   'use strict';
 
   // ═══════ КОНФИГУРАЦИЯ ═══════
-  // ⚠️ ЗАМЕНИТЕ на свои значения из Supabase Dashboard → Settings → API
-  const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';   // ← ваш URL
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';            // ← ваш anon key
+  const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
   let supabase = null;
-  let initPromise = null;  // ← защита от множественной инициализации
+  let initPromise = null;
 
   // ═══════ ЗАГРУЗКА SDK (один раз) ═══════
   function loadSDK() {
     return new Promise((resolve, reject) => {
       if (window.supabase) return resolve(window.supabase);
       
-      // Проверяем, не грузится ли уже
       const existing = document.querySelector('script[data-supabase-sdk]');
       if (existing) {
         existing.addEventListener('load', () => resolve(window.supabase));
@@ -37,27 +35,18 @@
 
   // ═══════ ИНИЦИАЛИЗАЦИЯ (ленивая, один раз) ═══════
   async function init() {
-    // Если уже инициализирован — возвращаем существующий
     if (supabase) return supabase;
-    
-    // Если идёт процесс инициализации — ждём его
     if (initPromise) return initPromise;
     
     initPromise = (async () => {
       try {
-        // Проверка конфигурации
-        if (SUPABASE_URL.includes('YOUR-PROJECT') || SUPABASE_ANON_KEY.includes('YOUR-ANON-KEY')) {
-          console.warn('[DB] ⚠️ Supabase не настроен! Замените YOUR-PROJECT и YOUR-ANON-KEY в supabase-client.js');
-          return null;
-        }
-        
         const sdk = await loadSDK();
         supabase = sdk.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
           auth: {
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: true,
-            storageKey: 'family-doctor-auth'  // ← уникальный ключ, чтобы не конфликтовать
+            storageKey: 'family-doctor-auth'
           }
         });
         console.log('[DB] ✅ Supabase инициализирован');
@@ -74,7 +63,7 @@
 
   async function ensureInit() {
     const sb = await init();
-    if (!sb) throw new Error('Supabase не настроен. Проверьте console warnings.');
+    if (!sb) throw new Error('Supabase не настроен');
     return sb;
   }
 
@@ -87,7 +76,7 @@
       email,
       password,
       options: {
-        data: { name, username, sex, age }
+        data: { name, username: username || name, sex, age }
       }
     });
     if (error) throw new Error(error.message);
@@ -120,7 +109,7 @@
     
     if (error) {
       console.warn('[DB] Profile fetch error:', error.message);
-      return { ...user, profile: null };
+      return { ...user, profile: { name: user.user_metadata?.name || user.email?.split('@')[0] } };
     }
     
     return { ...user, profile };
@@ -194,12 +183,10 @@
     const { data: { user } } = await sb.auth.getUser();
     if (!user) throw new Error('Не авторизован');
     
-    // Снимаем isActive со всех
     await sb.from('family_members')
       .update({ is_active: false })
       .eq('user_id', user.id);
     
-    // Активируем выбранный
     const { error } = await sb.from('family_members')
       .update({ is_active: true })
       .eq('id', id);
@@ -389,8 +376,6 @@
     saveDiaryEntry, getDiaryEntries,
     saveHealthEvent, getHealthEvents, markEventCompleted,
     getUserStats, exportUserData,
-    version: '1.1.0'
+    version: '1.2.0'
   };
-
-  // НЕ вызываем init() автоматически — он будет вызван лениво при первом запросе
 })();
