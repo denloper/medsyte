@@ -17,7 +17,8 @@ const STATIC_ASSETS = [
   './calendar-engine.js',
   './diary-engine.js',
   './clinical-guidelines.json',
-  './manifest.json'
+  './manifest.json',
+  './local-db.js'
 ];
 
 const CDN_ASSETS = [
