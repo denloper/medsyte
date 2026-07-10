@@ -50,7 +50,7 @@
       <div>
         <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Пол</label>
         <div class="pc-pills" style="gap: 6px;">
-          <button class="pill pill-outline ripple-element click-scale active" id="sexFemale" onclick="selectSex('female')">👩 Жен</button>
+          <button class="pill pill-outline ripple-element click-scale" id="sexFemale" onclick="selectSex('female')">👩 Жен</button>
           <button class="pill pill-outline ripple-element click-scale" id="sexMale" onclick="selectSex('male')">👨 Муж</button>
         </div>
       </div>
@@ -180,7 +180,10 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
 <script src="database.js"></script>
+<script src="patient-profile.js"></script>
 <script src="animations.js"></script>
 <script>
 (function(){
@@ -202,13 +205,39 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
+  // ═══════ СИНХРОНИЗАЦИЯ С ПРОФИЛЕМ ═══════
   window.selectSex = function(sex) {
     selectedSex = sex;
     const fBtn = document.getElementById('sexFemale');
     const mBtn = document.getElementById('sexMale');
     fBtn.className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
     mBtn.className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+    
+    // Сохраняем в профиль (автоматическая синхронизация)
+    if (window.PatientProfile) {
+      window.PatientProfile.update({ sex });
+    }
   };
+
+  // Слушаем изменения возраста
+  document.getElementById('ageInput').addEventListener('input', function(e) {
+    const age = parseInt(e.target.value) || 35;
+    if (window.PatientProfile) {
+      window.PatientProfile.update({ age });
+    }
+  });
+
+  // ═══════ ИНИЦИАЛИЗАЦИЯ ПРОФИЛЯ ═══════
+  document.addEventListener('DOMContentLoaded', () => {
+    // PatientProfile автоматически применит сохранённые значения
+    // Но применяем явно для надёжности
+    if (window.PatientProfile) {
+      const profile = window.PatientProfile.get();
+      selectSex(profile.sex);
+      document.getElementById('ageInput').value = profile.age;
+      console.log('[Upload] Профиль загружен:', profile);
+    }
+  });
 
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
@@ -363,7 +392,8 @@
     showToast(`Распознано ${keys.length} показателей`, '✓');
   }
 
-  window.confirmResults = function() {
+  window.confirmResults = async function() {
+    // Обновляем значения если пользователь их изменил
     document.querySelectorAll('#parsedList input[data-test]').forEach(input => {
       const testName = input.dataset.test;
       const newValue = parseFloat(input.value);
@@ -392,6 +422,7 @@
 
     sessionStorage.setItem('analysisResults', JSON.stringify(data));
     
+    // Сохраняем в историю
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       history.push({
@@ -402,6 +433,19 @@
       });
       localStorage.setItem('analysis_history_v1', JSON.stringify(history));
     } catch (e) {}
+
+    // Синхронизация с Supabase (если доступен)
+    if (window.SupabaseDB) {
+      try {
+        await window.SupabaseDB.saveAnalysis({
+          fileName: selectedFile.name,
+          results: parsedResults
+        });
+        console.log('[Upload] ☁️ Анализ сохранён в Supabase');
+      } catch (e) {
+        console.warn('[Upload] ⚠️ Ошибка сохранения в Supabase:', e.message);
+      }
+    }
 
     showToast('Переход к результатам...', '📊');
     setTimeout(() => {

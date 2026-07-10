@@ -1,5 +1,5 @@
-const CACHE_VERSION = 'sem-dok-v21';
-const APP_VERSION = '5.6.0';
+const CACHE_VERSION = 'sem-dok-v22';
+const APP_VERSION = '5.8.0';
 
 const STATIC_ASSETS = [
   './',
@@ -20,7 +20,8 @@ const STATIC_ASSETS = [
   './calendar-engine.js?v=' + APP_VERSION,
   './diary-engine.js?v=' + APP_VERSION,
   './clinical-guidelines.json',
-  './manifest.json'
+  './manifest.json',
+  './patient-profile.js?v=' + APP_VERSION,
 ];
 
 const CDN_ASSETS = [
