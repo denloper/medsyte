@@ -7,6 +7,10 @@
   <meta name="theme-color" content="#8BAF8B">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="app-version" content="5.5.0">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
   <link rel="stylesheet" href="styles.css">
@@ -39,8 +43,8 @@
       <div class="pc-identity">
         <div class="avatar" id="userAvatar">СК</div>
         <div>
-          <div class="pc-name" id="userName">Саид Юсупов</div>
-          <div class="pc-id" id="activeMemberInfo">Основной профиль</div>
+          <div class="pc-name" id="userName">Гость</div>
+          <div class="pc-id" id="activeMemberInfo">Войдите для полного доступа</div>
         </div>
       </div>
       <button class="circle-btn dark-btn ripple-element" id="accountBtn" aria-label="Аккаунт">
@@ -58,7 +62,7 @@
         След. приём
       </div>
       <div class="pc-meta-item">
-        <strong id="remindersCount">3 актив.</strong>
+        <strong id="remindersCount" data-counter="3">0</strong>
         Напоминания
       </div>
     </div>
@@ -96,13 +100,14 @@
     </a>
   </div>
 
-  <!-- ═══════ VITALS 2x2 ═══════ -->
+  <!-- ═══════ VITALS 2x2 (SVG иконки — без подчёркиваний) ═══════ -->
   <div class="sec-hd animate-on-scroll animate-slide-left">
     <h2>Витальные показатели</h2>
     <a href="diary.html" class="see-all">Все →</a>
   </div>
 
   <div class="vitals-grid stagger">
+    <!-- Давление -->
     <a href="diary.html" class="v-card tilt-card ripple-element">
       <div class="v-icon red breathe">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -111,9 +116,7 @@
       </div>
       <div class="v-label">Давление</div>
       <div class="v-value">
-        <span data-counter="120">0</span>
-        <span class="v-unit">/</span>
-        <span data-counter="80">0</span>
+        <span data-counter="120">0</span><span class="v-unit">/</span><span data-counter="80">0</span>
       </div>
       <div class="v-dot ok pulse-dot"></div>
       <div class="spark">
@@ -127,6 +130,7 @@
       </div>
     </a>
 
+    <!-- Пульс -->
     <a href="diary.html" class="v-card tilt-card ripple-element">
       <div class="v-icon blue breathe">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -135,8 +139,7 @@
       </div>
       <div class="v-label">Пульс</div>
       <div class="v-value">
-        <span data-counter="72">0</span>
-        <span class="v-unit">уд/м</span>
+        <span data-counter="72">0</span><span class="v-unit">уд/м</span>
       </div>
       <div class="v-dot ok pulse-dot"></div>
       <div class="spark">
@@ -150,6 +153,7 @@
       </div>
     </a>
 
+    <!-- Сахар -->
     <a href="diary.html" class="v-card tilt-card ripple-element">
       <div class="v-icon green breathe">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -158,8 +162,7 @@
       </div>
       <div class="v-label">Сахар</div>
       <div class="v-value">
-        <span data-counter="5.4">0</span>
-        <span class="v-unit">ммоль</span>
+        <span data-counter="5.4">0</span><span class="v-unit">ммоль</span>
       </div>
       <div class="v-dot ok pulse-dot"></div>
       <div class="spark">
@@ -173,6 +176,7 @@
       </div>
     </a>
 
+    <!-- Вес -->
     <a href="diary.html" class="v-card tilt-card ripple-element">
       <div class="v-icon amber breathe">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -182,8 +186,7 @@
       </div>
       <div class="v-label">Вес</div>
       <div class="v-value">
-        <span data-counter="82">0</span>
-        <span class="v-unit">кг</span>
+        <span data-counter="82">0</span><span class="v-unit">кг</span>
       </div>
       <div class="v-dot warn pulse-dot"></div>
       <div class="spark">
@@ -235,34 +238,13 @@
     </div>
 
     <div class="bar-chart">
-      <div class="bc-col">
-        <div class="bc-fill dark-bar" style="height:60%"><span class="bc-val">6.5ч</span></div>
-        <span class="bc-label">Пн</span>
-      </div>
-      <div class="bc-col">
-        <div class="bc-fill dark-bar" style="height:75%"><span class="bc-val">7.8ч</span></div>
-        <span class="bc-label">Вт</span>
-      </div>
-      <div class="bc-col">
-        <div class="bc-fill green-bar" style="height:85%"><span class="bc-val gv">8.5ч</span></div>
-        <span class="bc-label">Ср</span>
-      </div>
-      <div class="bc-col">
-        <div class="bc-fill dark-bar" style="height:65%"><span class="bc-val">7.0ч</span></div>
-        <span class="bc-label">Чт</span>
-      </div>
-      <div class="bc-col">
-        <div class="bc-fill stripe" style="height:55%"><span class="bc-val">5.8ч</span></div>
-        <span class="bc-label">Пт</span>
-      </div>
-      <div class="bc-col">
-        <div class="bc-fill green-bar" style="height:90%"><span class="bc-val gv">9.0ч</span></div>
-        <span class="bc-label">Сб</span>
-      </div>
-      <div class="bc-col">
-        <div class="bc-fill dark-bar" style="height:80%"><span class="bc-val">8.2ч</span></div>
-        <span class="bc-label">Вс</span>
-      </div>
+      <div class="bc-col"><div class="bc-fill dark-bar" style="height:60%"><span class="bc-val">6.5ч</span></div><span class="bc-label">Пн</span></div>
+      <div class="bc-col"><div class="bc-fill dark-bar" style="height:75%"><span class="bc-val">7.8ч</span></div><span class="bc-label">Вт</span></div>
+      <div class="bc-col"><div class="bc-fill green-bar" style="height:85%"><span class="bc-val gv">8.5ч</span></div><span class="bc-label">Ср</span></div>
+      <div class="bc-col"><div class="bc-fill dark-bar" style="height:65%"><span class="bc-val">7.0ч</span></div><span class="bc-label">Чт</span></div>
+      <div class="bc-col"><div class="bc-fill stripe" style="height:55%"><span class="bc-val">5.8ч</span></div><span class="bc-label">Пт</span></div>
+      <div class="bc-col"><div class="bc-fill green-bar" style="height:90%"><span class="bc-val gv">9.0ч</span></div><span class="bc-label">Сб</span></div>
+      <div class="bc-col"><div class="bc-fill dark-bar" style="height:80%"><span class="bc-val">8.2ч</span></div><span class="bc-label">Вс</span></div>
     </div>
   </div>
 
@@ -274,7 +256,11 @@
     </div>
 
     <a href="diary.html" class="metric-row ripple-element" style="text-decoration:none;color:inherit;display:flex">
-      <div class="mr-circle red-bg breathe">❤️</div>
+      <div class="mr-circle red-bg breathe">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E63946" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+      </div>
       <div class="mr-info">
         <div class="mr-label">Пульс</div>
         <div class="mr-value"><span data-counter="76">0</span><span> уд/мин</span></div>
@@ -296,13 +282,7 @@
         <div class="mr-label">Гемоглобин</div>
         <div class="mr-value"><span data-counter="145">0</span><span> г/л</span></div>
       </div>
-      <div class="mini-persons">
-        <div class="mp-dot"></div>
-        <div class="mp-dot tall"></div>
-        <div class="mp-dot"></div>
-        <div class="mp-dot tall"></div>
-        <div class="mp-dot"></div>
-      </div>
+      <div class="arrow-btn">→</div>
     </a>
 
     <a href="results.html" class="metric-row ripple-element" style="text-decoration:none;color:inherit;display:flex">
@@ -328,7 +308,7 @@
     </div>
   </div>
 
-  <!-- ═══════ SYMPTOM CHECKER ═══════ -->
+  <!-- ═══════ SYMPTOM CHECKER (локальный) ═══════ -->
   <div class="sec-hd animate-on-scroll animate-slide-left">
     <h2>Проверка симптомов</h2>
   </div>
@@ -349,7 +329,7 @@
     </button>
   </div>
 
-  <div style="height: 80px;"></div>
+  <div style="height: 100px;"></div>
 </div>
 
 <!-- ═══════ BOTTOM NAVIGATION ═══════ -->
@@ -423,7 +403,7 @@
     </div>
     <div class="modal-body">
       <p style="margin-bottom:16px;color:var(--text-2);font-size:14px;line-height:1.5">
-        Опишите симптомы — получите персональный план обследований на основе клинических рекомендаций.
+        Опишите симптомы — получите персональный план обследований.
       </p>
 
       <div style="display:flex;gap:10px;margin-bottom:16px">
@@ -468,7 +448,7 @@
   </div>
 </div>
 
-<!-- ═══════ MODAL: ВХОД ═══════ -->
+<!-- ═══════ MODAL: ВХОД (email + пароль через Supabase) ═══════ -->
 <div class="modal-overlay" id="loginModal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -478,11 +458,11 @@
     </div>
     <div class="modal-body">
       <p style="color:var(--text-2);margin-bottom:16px;font-size:14px">
-        Войдите, чтобы синхронизировать данные между устройствами
+        Войдите для синхронизации данных между устройствами
       </p>
       <div style="margin-bottom:14px">
-        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Имя пользователя</label>
-        <input type="text" id="loginUsername" placeholder="username"
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Email</label>
+        <input type="email" id="loginEmail" placeholder="your@email.com"
                style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
       </div>
       <div style="margin-bottom:16px">
@@ -499,7 +479,7 @@
   </div>
 </div>
 
-<!-- ═══════ MODAL: РЕГИСТРАЦИЯ ═══════ -->
+<!-- ═══════ MODAL: РЕГИСТРАЦИЯ (через Supabase) ═══════ -->
 <div class="modal-overlay" id="registerModal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -509,7 +489,7 @@
     </div>
     <div class="modal-body">
       <p style="color:var(--text-2);margin-bottom:16px;font-size:14px">
-        Создайте аккаунт для сохранения данных и семейных профилей
+        Создайте аккаунт для сохранения данных в облаке
       </p>
       <div style="margin-bottom:14px">
         <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Имя *</label>
@@ -517,18 +497,13 @@
                style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
       </div>
       <div style="margin-bottom:14px">
-        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Email (необязательно)</label>
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Email *</label>
         <input type="email" id="regEmail" placeholder="email@example.com"
                style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
       </div>
       <div style="margin-bottom:14px">
-        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Имя пользователя *</label>
-        <input type="text" id="regUsername" placeholder="username"
-               style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
-      </div>
-      <div style="margin-bottom:14px">
-        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Пароль *</label>
-        <input type="password" id="regPassword" placeholder="Минимум 6 символов"
+        <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">Пароль * (мин. 6 символов)</label>
+        <input type="password" id="regPassword" placeholder="••••••••"
                style="width:100%;padding:12px 14px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:15px;background:var(--surface-2)">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
@@ -556,8 +531,8 @@
 </div>
 
 <!-- ═══════ SCRIPTS ═══════ -->
-<script src="https://cdn.jsdelivr.net/npm/dexie@3.2.4/dist/dexie.min.js"></script>
-<script src="local-db.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
 <script src="database.js"></script>
 <script src="animations.js"></script>
 <script>
@@ -591,12 +566,10 @@
     document.getElementById(id).classList.add('open');
     document.body.style.overflow = 'hidden';
     
-    // Обновляем содержимое модалки аккаунта
     if (id === 'accountModal') {
       refreshAccountModal();
     }
     
-    // Перезапускаем счётчики в модалке
     setTimeout(() => {
       if (window.AnimationsEngine) {
         document.querySelectorAll(`#${id} [data-counter]`).forEach(el => {
@@ -729,20 +702,22 @@
     }, 800);
   };
 
-  // ═══════ АВТОРИЗАЦИЯ И ПРОФИЛЬ ═══════
+  // ═══════════════════════════════════════
+  //  SUPABASE АВТОРИЗАЦИЯ
+  // ═══════════════════════════════════════
   
   async function refreshAccountModal() {
-    const user = await window.LocalDB.getCurrentUser();
+    const user = window.SupabaseDB ? await window.SupabaseDB.getCurrentUser() : null;
     const body = document.getElementById('accountModalBody');
     const title = document.getElementById('accountModalTitle');
     
-    if (!user) {
+    if (!user || !user.profile) {
       title.textContent = '👤 Авторизация';
       body.innerHTML = `
         <div style="text-align:center;padding:20px 0">
           <div style="font-size:64px;margin-bottom:16px">🔐</div>
           <p style="color:var(--text-2);margin-bottom:20px">
-            Создайте аккаунт для сохранения данных и семейных профилей
+            Создайте аккаунт для синхронизации данных между устройствами
           </p>
           <button class="next-btn magnetic-btn ripple-element" onclick="closeModal('accountModal'); openModal('registerModal');" style="margin-bottom:10px">
             ✨ Создать аккаунт
@@ -755,20 +730,23 @@
       return;
     }
     
-    title.textContent = '👤 ' + user.name;
-    const stats = await window.LocalDB.getUserStats();
-    const activeMember = await window.LocalDB.getActiveMember();
+    title.textContent = '👤 ' + user.profile.name;
+    let stats = { familyMembers: 0, analyses: 0, diaryEntries: 0, healthEvents: 0 };
+    let activeMember = null;
+    try {
+      stats = await window.SupabaseDB.getUserStats();
+      activeMember = await window.SupabaseDB.getActiveMember();
+    } catch(e) { console.warn('Stats load error:', e); }
     
     body.innerHTML = `
       <div style="text-align:center;padding:10px 0 20px">
         <div class="profile-avatar-wrap" style="display:inline-block">
           <div class="profile-avatar float-slow" style="font-size:36px">
-            ${user.name.charAt(0).toUpperCase()}
+            ${user.profile.name.charAt(0).toUpperCase()}
           </div>
         </div>
-        <div style="font-size:20px;font-weight:800;color:var(--dark);margin-top:12px">${user.name}</div>
-        <div style="font-size:13px;color:var(--green);font-weight:600">@${user.username}</div>
-        ${user.email ? `<div style="font-size:12px;color:var(--text-3);margin-top:4px">${user.email}</div>` : ''}
+        <div style="font-size:20px;font-weight:800;color:var(--dark);margin-top:12px">${user.profile.name}</div>
+        <div style="font-size:13px;color:var(--green);font-weight:600">${user.email || ''}</div>
       </div>
       
       <div class="profile-stats" style="margin-bottom:20px">
@@ -817,7 +795,6 @@
       </button>
     `;
     
-    // Запускаем счётчики
     setTimeout(() => {
       if (window.AnimationsEngine) {
         body.querySelectorAll('[data-counter]').forEach(el => {
@@ -831,29 +808,19 @@
   }
   
   window.doLogin = async function() {
-    const username = document.getElementById('loginUsername').value.trim();
+    const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     
-    if (!username || !password) {
+    if (!email || !password) {
       showToast('Заполните все поля', '⚠️');
       return;
     }
     
     try {
-      await window.LocalDB.login({ username, password });
+      await window.SupabaseDB.login({ email, password });
       showToast('Добро пожаловать!', '👋');
       closeModal('loginModal');
-      
-      // Миграция при первом входе
-      const migrationResult = await window.LocalDB.migrateFromLocalStorage();
-      if (migrationResult.migrated) {
-        const s = migrationResult.stats;
-        setTimeout(() => {
-          showToast(`Перенесено: ${s.analyses} анализов, ${s.diaryEntries} записей`, '🚀');
-        }, 500);
-      }
-      
-      loadUserData();
+      await loadUserData();
     } catch (e) {
       showToast(e.message, '❌');
     }
@@ -862,12 +829,11 @@
   window.doRegister = async function() {
     const name = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
-    const username = document.getElementById('regUsername').value.trim();
     const password = document.getElementById('regPassword').value;
     const sex = document.getElementById('regSex').value;
     const age = parseInt(document.getElementById('regAge').value) || 0;
     
-    if (!name || !username || !password) {
+    if (!name || !email || !password) {
       showToast('Заполните обязательные поля', '⚠️');
       return;
     }
@@ -877,20 +843,10 @@
     }
     
     try {
-      await window.LocalDB.register({ email, username, password, name, sex, age });
-      showToast('Аккаунт создан!', '🎉');
+      await window.SupabaseDB.register({ email, password, name, sex, age });
+      showToast('Аккаунт создан! Проверьте email.', '🎉');
       closeModal('registerModal');
-      
-      // Миграция старых данных
-      const migrationResult = await window.LocalDB.migrateFromLocalStorage();
-      if (migrationResult.migrated) {
-        const s = migrationResult.stats;
-        setTimeout(() => {
-          showToast(`Перенесено: ${s.analyses} анализов, ${s.diaryEntries} записей`, '🚀');
-        }, 500);
-      }
-      
-      loadUserData();
+      await loadUserData();
     } catch (e) {
       showToast(e.message, '❌');
     }
@@ -898,15 +854,19 @@
   
   window.doLogout = async function() {
     if (!confirm('Выйти из аккаунта?')) return;
-    await window.LocalDB.logout();
-    showToast('Вы вышли', '👋');
-    closeModal('accountModal');
-    loadUserData();
+    try {
+      await window.SupabaseDB.logout();
+      showToast('Вы вышли', '👋');
+      closeModal('accountModal');
+      await loadUserData();
+    } catch (e) {
+      showToast('Ошибка: ' + e.message, '❌');
+    }
   };
   
   window.exportAccountData = async function() {
     try {
-      const json = await window.LocalDB.exportUserData();
+      const json = await window.SupabaseDB.exportUserData();
       const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -924,22 +884,26 @@
   
   // ═══════ ЗАГРУЗКА ДАННЫХ ПОЛЬЗОВАТЕЛЯ ═══════
   async function loadUserData() {
-    const user = await window.LocalDB.getCurrentUser();
-    const activeMember = await window.LocalDB.getActiveMember();
-    
-    if (user) {
-      document.getElementById('userName').textContent = user.name;
-      const initials = user.name.charAt(0).toUpperCase();
-      document.getElementById('userAvatar').textContent = initials;
+    if (!window.SupabaseDB) return;
+    try {
+      const user = await window.SupabaseDB.getCurrentUser();
+      const activeMember = await window.SupabaseDB.getActiveMember();
       
-      if (activeMember) {
-        document.getElementById('activeMemberInfo').textContent = 
-          activeMember.relation === 'self' ? 'Основной профиль' : activeMember.name;
+      if (user && user.profile) {
+        document.getElementById('userName').textContent = user.profile.name;
+        document.getElementById('userAvatar').textContent = user.profile.name.charAt(0).toUpperCase();
+        
+        if (activeMember) {
+          document.getElementById('activeMemberInfo').textContent = 
+            activeMember.relation === 'self' ? 'Основной профиль' : activeMember.name;
+        }
+      } else {
+        document.getElementById('userName').textContent = 'Гость';
+        document.getElementById('userAvatar').textContent = '👤';
+        document.getElementById('activeMemberInfo').textContent = 'Войдите для полного доступа';
       }
-    } else {
-      document.getElementById('userName').textContent = 'Гость';
-      document.getElementById('userAvatar').textContent = '👤';
-      document.getElementById('activeMemberInfo').textContent = 'Войдите для полного доступа';
+    } catch (e) {
+      console.warn('loadUserData error:', e);
     }
   }
   
@@ -951,21 +915,6 @@
   // ═══════ АВТОЗАГРУЗКА ПРИ СТАРТЕ ═══════
   (async () => {
     await loadUserData();
-    
-    const user = await window.LocalDB.getCurrentUser();
-    if (user) {
-      // Миграция при загрузке если ещё не мигрировали
-      const migrationResult = await window.LocalDB.migrateFromLocalStorage();
-      if (migrationResult.migrated) {
-        const s = migrationResult.stats;
-        const total = s.familyMembers + s.analyses + s.diaryEntries + s.healthEvents;
-        if (total > 0) {
-          setTimeout(() => {
-            showToast(`Перенесены данные: ${total} записей`, '🚀');
-          }, 1500);
-        }
-      }
-    }
   })();
 
   // Initial toast
