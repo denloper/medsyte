@@ -134,22 +134,10 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
-  function getProfile() {
-    try {
-      const user = JSON.parse(localStorage.getItem('user_account_v1') || '{}');
-      return {
-        name: user.name || 'Пользователь',
-        sex: user.sex || 'any',
-        age: user.age || 35
-      };
-    } catch(e) {
-      return { name: 'Пользователь', sex: 'any', age: 35 };
-    }
-  }
 
   function renderPlan() {
     const profile = getProfile();
-    document.getElementById('profileInfo').textContent = `${profile.name}, ${profile.age} лет`;
+    document.getElementById('profileInfo').textContent = 'Персональный план';
     
     currentPlan = window.HealthCalendar ? window.HealthCalendar.generatePlan(profile) : [];
     const stats = window.HealthCalendar ? window.HealthCalendar.getStats(currentPlan) : { overdue: 0, urgent: 0, soon: 0, upcoming: 0, completedThisYear: 0, total: 0 };
