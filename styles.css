@@ -1580,3 +1580,46 @@ a.v-card:visited {
     padding: 10px 18px;
   }
 }
+
+/* ═══════════════════════════════════════
+   FIX: Карточки должны идти вертикально
+   ═══════════════════════════════════════ */
+
+/* Убедимся, что карточки идут в одну колонку */
+.sleep-card,
+.other-card,
+.notif-card {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  grid-column: 1 / -1 !important;
+  margin-bottom: 14px !important;
+  box-sizing: border-box !important;
+}
+
+/* Если карточки обернуты в grid-контейнер — исправляем */
+.app > .sleep-card,
+.app > .other-card,
+.app > .notif-card {
+  grid-column: 1 / -1 !important;
+}
+
+/* Убираем любые grid-стили у родительского контейнера */
+.app {
+  display: block !important;
+  grid-template-columns: none !important;
+}
+
+/* Исправляем отступы между карточками */
+.sleep-card + .other-card,
+.other-card + .notif-card {
+  margin-top: 0 !important;
+}
+
+/* Убеждаемся, что карточки не сжимаются */
+.sleep-card,
+.other-card,
+.notif-card {
+  min-width: 100% !important;
+  flex-shrink: 0 !important;
+}
