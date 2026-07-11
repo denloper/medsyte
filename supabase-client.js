@@ -77,7 +77,7 @@
   async function register({ 
     email, password, 
     firstName, lastName, patronymic, 
-    sex, age, avatarFile 
+    sex, age, birthDate, avatarFile 
   }) {
     const sb = await ensureInit();
     
@@ -87,22 +87,23 @@
     
     const fullName = [lastName, firstName, patronymic].filter(Boolean).join(' ');
     
-    // 1. Создаём пользователя
     const { data: authData, error: authError } = await sb.auth.signUp({
-      email, password,
-      options: { 
+      email,
+      password,
+      options: {
         data: { 
           name: fullName,
           first_name: firstName,
           last_name: lastName,
           patronymic: patronymic || '',
-          sex, age 
-        } 
+          sex, 
+          age,
+          birth_date: birthDate
+        }
       }
     });
     if (authError) throw new Error(authError.message);
     
-    // 2. Загружаем аватар если есть
     if (avatarFile && authData.user) {
       try {
         const avatarUrl = await uploadAvatar(avatarFile, authData.user.id);
@@ -417,6 +418,63 @@
     }, null, 2);
   }
 
+// ═══════════════════════════════════════
+//  АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ ВОЗРАСТА
+// ═══════════════════════════════════════
+async function updateAgeIfBirthday() {
+  const sb = await ensureInit();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  
+  const { data: profile } = await sb
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single();
+  
+  if (!profile || !profile.birth_date) return;
+  
+  const birthDate = new Date(profile.birth_date);
+  const today = new Date();
+  
+  let newAge = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    newAge--;
+  }
+  
+  // Если возраст изменился - обновляем
+  if (newAge !== profile.age) {
+    await sb.from('profiles')
+      .update({ age: newAge, updated_at: new Date().toISOString() })
+      .eq('id', user.id);
+    
+    console.log(`[DB] Возраст обновлён: ${profile.age} → ${newAge}`);
+    
+    // Показываем поздравление если сегодня ДР
+    if (today.getMonth() === birthDate.getMonth() && 
+        today.getDate() === birthDate.getDate()) {
+      setTimeout(() => {
+        if (window.showToast) {
+          window.showToast(`🎂 С днём рождения! Вам ${newAge} ${getAgeWord(newAge)}`, '🎉');
+        }
+      }, 1000);
+    }
+  }
+}
+
+function getAgeWord(age) {
+  const lastDigit = age % 10;
+  const lastTwoDigits = age % 100;
+  
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 19) return 'лет';
+  if (lastDigit === 1) return 'год';
+  if (lastDigit >= 2 && lastDigit <= 4) return 'года';
+  return 'лет';
+}
+
+  
   // ═══════════════════════════════════════
   //  ЭКСПОРТ API
   // ═══════════════════════════════════════
@@ -426,8 +484,8 @@
     updateProfile, uploadAvatar, deleteAvatar,
     getFioChangeRequestData,
     getFamilyMembers, addFamilyMember, setActiveMember, getActiveMember,
-    saveDiaryEntry, getUserStats, exportUserData,
+    saveDiaryEntry, getUserStats, exportUserData, updateAgeIfBirthday,
     SUPPORT_EMAIL, SUPPORT_TELEGRAM,
-    version: '1.4.0'
+    version: '1.5.0'
   };
 })();
