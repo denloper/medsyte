@@ -170,7 +170,10 @@
     
     // Получаем текущий профиль
     const { data: current } = await sb
-      .from('profiles').select('*').eq('id', user.id).single();
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
     
     // Если ФИО заблокировано — убираем из updates
     if (current?.fio_locked) {
@@ -187,6 +190,18 @@
       const pt = updates.patronymic ?? current?.patronymic ?? '';
       updates.full_name = [ln, fn, pt].filter(Boolean).join(' ');
       updates.name = updates.full_name;
+    }
+    
+    // Если обновляется дата рождения — пересчитываем возраст
+    if (updates.birth_date) {
+      const birthDate = new Date(updates.birth_date);
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      updates.age = age;
     }
     
     const { error } = await sb
