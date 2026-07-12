@@ -1,6 +1,6 @@
 /**
- * AI Medical Assistant v3.1
- * Полный контекст database.js + RAG + Groq + Supabase чат
+ * AI Medical Assistant v3.2
+ * Полная база database.js + RAG + Groq + Supabase чат + Auth listener
  */
 (function() {
   'use strict';
@@ -180,16 +180,16 @@
   }
 
   // ═══════════════════════════════════════
-  //  ПРОВЕРКА АВТОРИЗАЦИИ (через SupabaseDB API)
+  //  ПРОВЕРКА АВТОРИЗАЦИИ
   // ═══════════════════════════════════════
   async function checkAuth() {
-    if (!window.SupabaseDB) {
+    if (!sb) {
       isUserAuthenticated = false;
       currentUserId = null;
       return;
     }
     try {
-      const user = await window.SupabaseDB.getCurrentUser();
+      const { data: { user } } = await sb.auth.getUser();
       if (user && user.id) {
         isUserAuthenticated = true;
         currentUserId = user.id;
@@ -198,6 +198,7 @@
         currentUserId = null;
       }
     } catch (e) {
+      console.warn('⚠️ checkAuth failed:', e.message);
       isUserAuthenticated = false;
       currentUserId = null;
     }
@@ -209,7 +210,6 @@
   async function loadHistoryFromSupabase() {
     if (!isUserAuthenticated || !sb) return false;
     
-    // Проверяем что пользователь действительно авторизован
     try {
       const { data: { user } } = await sb.auth.getUser();
       if (!user || !user.id) {
@@ -240,7 +240,6 @@
             isUserAuthenticated = false;
             return false;
           }
-          // Повторяем запрос после refresh
           return await loadHistoryFromSupabase();
         }
         throw error;
@@ -284,7 +283,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE (с retry + fallback)
+  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE (с retry)
   // ═══════════════════════════════════════
   async function saveMessageToSupabase(role, content, source = null, retryCount = 0) {
     if (!isUserAuthenticated || !sb || !currentUserId) {
@@ -292,7 +291,6 @@
     }
 
     try {
-      // Явная проверка авторизации
       const { data: { user } } = await sb.auth.getUser();
       if (!user || user.id !== currentUserId) {
         console.warn('⚠️ User session invalid');
@@ -309,7 +307,6 @@
       });
 
       if (error) {
-        // Если 401 — пробуем refresh token
         if ((error.status === 401 || error.code === 'PGRST301') && retryCount < 1) {
           console.warn('⚠️ 401 error, refreshing session...');
           const { error: refreshError } = await sb.auth.refreshSession();
@@ -322,7 +319,6 @@
       return true;
     } catch (e) {
       console.warn(`⚠️ Failed to save message to Supabase: ${e.message}`);
-      // Fallback: помечаем сообщение как несинхронизированное
       const lastMsg = chatHistory[chatHistory.length - 1];
       if (lastMsg) {
         lastMsg.synced = false;
@@ -333,7 +329,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ В SUPABASE (batch + retry)
+  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ В SUPABASE
   // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
     if (!isUserAuthenticated || !sb || !currentUserId) return;
@@ -349,49 +345,21 @@
         metadata: { migrated: true, original_timestamp: msg.timestamp }
       }));
 
-      // Batch insert по 10 сообщений
       for (let i = 0; i < messagesToInsert.length; i += 10) {
         const batch = messagesToInsert.slice(i, i + 10);
         const { error } = await sb.from('chat_messages').insert(batch);
         
         if (error) {
           console.warn(`⚠️ Batch ${i/10 + 1} failed:`, error.message);
-          // Продолжаем с следующей партией
           break;
         }
       }
 
-      // Помечаем все как синхронизированные
       chatHistory.forEach(msg => { msg.synced = true; });
       saveToLocalStorage();
       console.log(`✅ Migrated ${localHistory.length} messages to Supabase`);
     } catch (e) {
       console.warn('⚠️ Migration failed:', e.message);
-    }
-  }
-
-  // ═══════════════════════════════════════
-  //  ПРОВЕРКА АВТОРИЗАЦИИ (улучшенная)
-  // ═══════════════════════════════════════
-  async function checkAuth() {
-    if (!window.SupabaseDB || !sb) {
-      isUserAuthenticated = false;
-      currentUserId = null;
-      return;
-    }
-    try {
-      const { data: { user } } = await sb.auth.getUser();
-      if (user && user.id) {
-        isUserAuthenticated = true;
-        currentUserId = user.id;
-      } else {
-        isUserAuthenticated = false;
-        currentUserId = null;
-      }
-    } catch (e) {
-      console.warn('⚠️ checkAuth failed:', e.message);
-      isUserAuthenticated = false;
-      currentUserId = null;
     }
   }
 
@@ -576,25 +544,35 @@
   }
 
   // ═══════════════════════════════════════
-  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ (используем sb)
+  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ (ШАГ 4)
   // ═══════════════════════════════════════
   function setupAuthListener() {
     if (!sb || !sb.auth) {
       console.warn('⚠️ Auth listener not available');
       return;
     }
-    sb.auth.onAuthStateChange(async (event) => {
-      if (event === 'SIGNED_IN') {
+
+    sb.auth.onAuthStateChange(async (event, session) => {
+      console.log(`🔐 Auth state changed: ${event}`);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        isUserAuthenticated = true;
+        currentUserId = session.user.id;
         await loadHistory();
         window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {
           detail: { history: chatHistory, authenticated: true }
         }));
       } else if (event === 'SIGNED_OUT') {
+        isUserAuthenticated = false;
+        currentUserId = null;
         chatHistory = [];
-        await loadHistory();
+        loadHistoryFromLocalStorage();
         window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {
           detail: { history: chatHistory, authenticated: false }
         }));
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        console.log('🔄 Token refreshed');
+        currentUserId = session.user.id;
       }
     });
   }
@@ -605,7 +583,7 @@
   async function init() {
     await loadHistory();
     setupAuthListener();
-    console.log('🤖 AI Assistant v3.1 initialized');
+    console.log('🤖 AI Assistant v3.2 initialized');
     console.log(`📚 Database: ${window.labTests?.length || 0} tests, ${window.diagnosticRules?.length || 0} rules, ${Object.keys(window.supplementMap || {}).length} supplements`);
     console.log(`☁️ Supabase client: ${sb ? '✓ connected' : '✗ disabled'}`);
   }
@@ -628,7 +606,7 @@
       preventive: window.preventiveRecommendations?.length || 0
     }),
     isSupabaseConnected: () => !!sb,
-    version: '3.1.0'
+    version: '3.2.0'
   };
 
   window.addEventListener('load', () => {
