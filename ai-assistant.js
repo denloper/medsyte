@@ -360,6 +360,18 @@
     }
   }
 
+  if (!messages || (Array.isArray(messages) && messages.length === 0)) {
+    console.warn('Пустой массив сообщений – запрос не отправлен');
+    return { reply: 'Пожалуйста, введите текст сообщения.', source: 'fallback' };
+  }
+
+  // Также можно ограничить длину:
+  const totalLength = JSON.stringify(messages).length;
+  if (totalLength > 500000) { // 500 КБ – примерный лимит
+    console.warn('Слишком большой запрос, обрезаем историю');
+    messages = messages.slice(-10); // оставить только последние 10 сообщений
+  }
+
   // ═══════════════════════════════════════
   //  ВЫЗОВ EDGE FUNCTION (GROQ)
   // ═══════════════════════════════════════
@@ -367,6 +379,9 @@
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
     try {
+      const payload = { messages };
+      console.log('Отправляемый payload:', payload);
+      console.log('Размер JSON:', JSON.stringify(payload).length);
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
         method: 'POST',
         headers: {
