@@ -29,7 +29,6 @@
   
   <!-- ═══════ PATIENT HEADER CARD ═══════ -->
   <div class="patient-card fade-in">
-    <!-- Личный профиль -->
     <div class="pc-top">
       <div class="pc-identity" id="accountBtn" style="cursor: pointer; flex: 1;">
         <div class="avatar ripple-element" id="userAvatar">СК</div>
@@ -88,15 +87,21 @@
   <!-- ═══════ МЕДИЦИНСКИЙ АГЕНТ ИИ ═══════ -->
   <div class="sec-hd" style="display: flex; justify-content: space-between; align-items: center;">
     <h2>Медицинский агент ИИ</h2>
-    <button onclick="clearChatHistory()" style="background: none; border: none; color: var(--text-3); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s;" 
-            onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--red)'"
-            onmouseout="this.style.background='none'; this.style.color='var(--text-3)'">
-      🗑 Очистить
-    </button>
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <button onclick="clearChatHistory()" style="background: none; border: none; color: var(--text-3); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s;" 
+              onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--red)'"
+              onmouseout="this.style.background='none'; this.style.color='var(--text-3)'">
+        🗑 Очистить
+      </button>
+      <a href="chat.html" style="background: var(--green); color: white; padding: 6px 14px; border-radius: 16px; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(61, 139, 78, 0.3); transition: all 0.2s;"
+         onmouseover="this.style.background='var(--green-light, #5BAD6F)'"
+         onmouseout="this.style.background='var(--green)'">
+        💬 Полный чат →
+      </a>
+    </div>
   </div>
 
   <div class="chat-wrap" id="chatWrap" style="max-height: 400px; overflow-y: auto; margin-bottom: 12px; background: var(--surface); border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(28,43,28,0.06);">
-    <!-- Приветственное сообщение -->
     <div class="chat-bubble ai" style="background: var(--surface-2); padding: 12px 16px; border-radius: 14px; margin-bottom: 10px;">
       <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px; color: var(--dark);">🤖 Медицинский AI-ассистент</div>
       <div style="font-size: 14px; color: var(--text-1); line-height: 1.5;">
@@ -242,9 +247,9 @@
       <div class="nav-icon">📄</div>
       <span class="nav-label">Анализы</span>
     </a>
-    <a href="diary.html" class="nav-item">
-      <div class="nav-icon">📓</div>
-      <span class="nav-label">Дневник</span>
+    <a href="chat.html" class="nav-item">
+      <div class="nav-icon">💬</div>
+      <span class="nav-label">ИИ-чат</span>
     </a>
     <a href="calendar.html" class="nav-item">
       <div class="nav-icon">📅</div>
@@ -666,7 +671,7 @@
     recognition.interimResults = false;
     
     const voiceBtn = document.querySelector('.voice-btn');
-    voiceBtn.classList.add('recording');
+    if (voiceBtn) voiceBtn.classList.add('recording');
     showToast('🎤 Говорите...', '🎤');
     
     recognition.start();
@@ -674,18 +679,18 @@
     recognition.onresult = function(event) {
       const text = event.results[0][0].transcript;
       document.getElementById('chatInputField').value = text;
-      voiceBtn.classList.remove('recording');
+      if (voiceBtn) voiceBtn.classList.remove('recording');
       showToast('Распознано ✓', '✓');
       window.sendChatMessage();
     };
     
     recognition.onerror = function(event) {
-      voiceBtn.classList.remove('recording');
+      if (voiceBtn) voiceBtn.classList.remove('recording');
       showToast('Ошибка распознавания: ' + event.error, '❌');
     };
     
     recognition.onend = function() {
-      voiceBtn.classList.remove('recording');
+      if (voiceBtn) voiceBtn.classList.remove('recording');
     };
   };
 
@@ -711,11 +716,9 @@
     const chatMessages = document.getElementById('chatMessages');
     const chatWrap = document.getElementById('chatWrap');
     
-    // Очищаем подсказки
     const hints = chatMessages.querySelectorAll('[style*="text-align: center"]');
     hints.forEach(h => h.remove());
     
-    // Сообщение пользователя
     const userMsg = document.createElement('div');
     userMsg.className = 'chat-user-msg';
     userMsg.innerHTML = `${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}<div class="time">сейчас</div>`;
@@ -726,7 +729,6 @@
     
     setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 100);
     
-    // Typing indicator
     const typing = document.createElement('div');
     typing.id = 'chatTyping';
     typing.style.cssText = 'display: flex; gap: 4px; padding: 12px 16px; background: var(--surface-2); border-radius: 14px; margin-bottom: 10px; margin-right: 40px; width: fit-content;';
@@ -761,8 +763,7 @@
       
       setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 100);
       
-      // Уведомление о синхронизации
-      if (window.AIAssistant.isAuthenticated()) {
+      if (window.AIAssistant.isAuthenticated && window.AIAssistant.isAuthenticated()) {
         const syncBadge = document.createElement('div');
         syncBadge.style.cssText = 'text-align: center; font-size: 11px; color: var(--text-3); margin-top: 4px;';
         syncBadge.innerHTML = '☁️ Сохранено в облаке';
@@ -797,15 +798,15 @@
           <button class="modal-close ripple-element" onclick="closeModal('allQuickActionsModal')">✕</button>
         </div>
         <div class="modal-body">
-          <div class="all-grid">
-            <a href="upload.html" class="all-item"><div class="icon">📄</div><div class="label">Загрузить анализ</div></a>
-            <a href="nutrition.html" class="all-item"><div class="icon">🥗</div><div class="label">План питания</div></a>
-            <a href="calendar.html" class="all-item"><div class="icon">📅</div><div class="label">Календарь здоровья</div></a>
-            <a href="#" onclick="closeModal('allQuickActionsModal'); openModal('emergencyModal'); return false;" class="all-item"><div class="icon">🚨</div><div class="label">Быстрая помощь</div></a>
-            <a href="history.html" class="all-item"><div class="icon">📊</div><div class="label">История анализов</div></a>
-            <a href="compare.html" class="all-item"><div class="icon">📈</div><div class="label">Динамика</div></a>
-            <a href="pharmacy.html" class="all-item"><div class="icon">💊</div><div class="label">Аптечка</div></a>
-            <a href="diary.html" class="all-item"><div class="icon">📓</div><div class="label">Дневник здоровья</div></a>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+            <a href="upload.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;"><div style="font-size: 32px;">📄</div><div style="font-weight: 600; font-size: 14px;">Загрузить анализ</div></a>
+            <a href="nutrition.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;"><div style="font-size: 32px;">🥗</div><div style="font-weight: 600; font-size: 14px;">План питания</div></a>
+            <a href="calendar.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;"><div style="font-size: 32px;">📅</div><div style="font-weight: 600; font-size: 14px;">Календарь здоровья</div></a>
+            <a href="#" onclick="closeModal('allQuickActionsModal'); openModal('emergencyModal'); return false;" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;"><div style="font-size: 32px;">🚨</div><div style="font-weight: 600; font-size: 14px;">Быстрая помощь</div></a>
+            <a href="history.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;"><div style="font-size: 32px;">📊</div><div style="font-weight: 600; font-size: 14px;">История анализов</div></a>
+            <a href="compare.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;"><div style="font-size: 32px;">📈</div><div style="font-weight: 600; font-size: 14px;">Динамика</div></a>
+            <a href="pharmacy.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;"><div style="font-size: 32px;">💊</div><div style="font-weight: 600; font-size: 14px;">Аптечка</div></a>
+            <a href="diary.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;"><div style="font-size: 32px;">📓</div><div style="font-weight: 600; font-size: 14px;">Дневник здоровья</div></a>
           </div>
         </div>
       </div>
@@ -834,36 +835,36 @@
           <button class="modal-close ripple-element" onclick="closeModal('allFunctionsModal')">✕</button>
         </div>
         <div class="modal-body">
-          <div class="all-list">
-            <a href="history.html" class="all-list-item">
-              <div class="icon-wrap" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">📊</div>
-              <div class="content"><div class="title">История анализов</div><div class="subtitle">Все загруженные анализы</div></div>
-              <div class="arrow">→</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <a href="history.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; align-items: center; gap: 14px;">
+              <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); display: flex; align-items: center; justify-content: center; font-size: 22px;">📊</div>
+              <div style="flex: 1;"><div style="font-weight: 700; font-size: 15px; color: var(--dark);">История анализов</div><div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">Все загруженные анализы</div></div>
+              <span style="color: var(--text-3);">→</span>
             </a>
-            <a href="compare.html" class="all-list-item">
-              <div class="icon-wrap" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">📈</div>
-              <div class="content"><div class="title">Динамика</div><div class="subtitle">Сравнение анализов</div></div>
-              <div class="arrow">→</div>
+            <a href="compare.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; align-items: center; gap: 14px;">
+              <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); display: flex; align-items: center; justify-content: center; font-size: 22px;">📈</div>
+              <div style="flex: 1;"><div style="font-weight: 700; font-size: 15px; color: var(--dark);">Динамика</div><div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">Сравнение анализов</div></div>
+              <span style="color: var(--text-3);">→</span>
             </a>
-            <a href="pharmacy.html" class="all-list-item">
-              <div class="icon-wrap" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">💊</div>
-              <div class="content"><div class="title">Аптечка</div><div class="subtitle">Управление лекарствами</div></div>
-              <div class="arrow">→</div>
+            <a href="pharmacy.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; align-items: center; gap: 14px;">
+              <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); display: flex; align-items: center; justify-content: center; font-size: 22px;">💊</div>
+              <div style="flex: 1;"><div style="font-weight: 700; font-size: 15px; color: var(--dark);">Аптечка</div><div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">Управление лекарствами</div></div>
+              <span style="color: var(--text-3);">→</span>
             </a>
-            <a href="nutrition.html" class="all-list-item">
-              <div class="icon-wrap" style="background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);">🥗</div>
-              <div class="content"><div class="title">Питание</div><div class="subtitle">ИИ-план питания</div></div>
-              <div class="arrow">→</div>
+            <a href="nutrition.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; align-items: center; gap: 14px;">
+              <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); display: flex; align-items: center; justify-content: center; font-size: 22px;">🥗</div>
+              <div style="flex: 1;"><div style="font-weight: 700; font-size: 15px; color: var(--dark);">Питание</div><div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">ИИ-план питания</div></div>
+              <span style="color: var(--text-3);">→</span>
             </a>
-            <a href="recommendations.html" class="all-list-item">
-              <div class="icon-wrap" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">💡</div>
-              <div class="content"><div class="title">Рекомендации</div><div class="subtitle">Персональные советы</div></div>
-              <div class="arrow">→</div>
+            <a href="recommendations.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; align-items: center; gap: 14px;">
+              <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); display: flex; align-items: center; justify-content: center; font-size: 22px;">💡</div>
+              <div style="flex: 1;"><div style="font-weight: 700; font-size: 15px; color: var(--dark);">Рекомендации</div><div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">Персональные советы</div></div>
+              <span style="color: var(--text-3);">→</span>
             </a>
-            <a href="diary.html" class="all-list-item">
-              <div class="icon-wrap" style="background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);">📓</div>
-              <div class="content"><div class="title">Дневник здоровья</div><div class="subtitle">9 метрик отслеживания</div></div>
-              <div class="arrow">→</div>
+            <a href="diary.html" style="background: var(--surface); border-radius: 14px; padding: 16px; text-decoration: none; color: inherit; display: flex; align-items: center; gap: 14px;">
+              <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); display: flex; align-items: center; justify-content: center; font-size: 22px;">📓</div>
+              <div style="flex: 1;"><div style="font-weight: 700; font-size: 15px; color: var(--dark);">Дневник здоровья</div><div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">9 метрик отслеживания</div></div>
+              <span style="color: var(--text-3);">→</span>
             </a>
           </div>
         </div>
@@ -994,8 +995,12 @@
   let selectedSex = 'female';
   window.selectSex = function(sex) {
     selectedSex = sex;
-    document.getElementById('sexFemale').className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
-    document.getElementById('sexMale').className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+    const femaleBtn = document.getElementById('sexFemale');
+    const maleBtn = document.getElementById('sexMale');
+    if (femaleBtn && maleBtn) {
+      femaleBtn.className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+      maleBtn.className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+    }
   };
 
   document.addEventListener('DOMContentLoaded', () => {

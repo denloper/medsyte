@@ -108,6 +108,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      align-items: stretch; /* Важно: растягиваем элементы */
     }
     
     .chat-area::-webkit-scrollbar {
@@ -256,18 +257,19 @@
       50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
     }
     
-    /* Messages */
+    /* Messages - пользователь (справа) */
     .msg-user {
       background: var(--green, #3D8B4E);
       color: white;
       padding: 10px 14px;
       border-radius: 16px 16px 4px 16px;
-      align-self: flex-end;
-      max-width: 80%;
+      align-self: flex-end; /* Выравнивание по правому краю */
+      max-width: 75%;
       font-size: 14px;
       line-height: 1.5;
       word-wrap: break-word;
       box-shadow: 0 2px 4px rgba(61, 139, 78, 0.2);
+      margin-left: auto; /* Прижимаем к правому краю */
     }
     
     .msg-user .time {
@@ -277,16 +279,18 @@
       text-align: right;
     }
     
+    /* Messages - AI (слева) */
     .msg-ai {
       background: var(--surface, #fff);
       padding: 12px 16px;
       border-radius: 16px 16px 16px 4px;
-      align-self: flex-start;
+      align-self: flex-start; /* Выравнивание по левому краю */
       max-width: 85%;
       font-size: 14px;
       line-height: 1.6;
       color: var(--text-1, #374151);
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+      margin-right: auto; /* Прижимаем к левому краю */
     }
     
     .msg-ai .source-badge {
@@ -326,15 +330,16 @@
       font-size: 0.9em;
     }
     
-    /* Typing indicator */
+    /* Typing indicator (слева) */
     .typing {
       display: flex;
       gap: 4px;
       padding: 12px 16px;
       background: var(--surface, #fff);
       border-radius: 16px 16px 16px 4px;
-      align-self: flex-start;
+      align-self: flex-start; /* Выравнивание по левому краю */
       box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+      margin-right: auto; /* Прижимаем к левому краю */
     }
     
     .typing-dot {
@@ -361,15 +366,16 @@
       margin-top: 4px;
     }
     
-    /* Error message */
+    /* Error message (слева) */
     .msg-error {
       background: #fee2e2;
       color: #991b1b;
       padding: 10px 14px;
       border-radius: 14px;
-      align-self: flex-start;
+      align-self: flex-start; /* Выравнивание по левому краю */
       max-width: 85%;
       font-size: 13px;
+      margin-right: auto; /* Прижимаем к левому краю */
     }
     
     .msg-error a {

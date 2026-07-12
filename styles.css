@@ -2031,3 +2031,60 @@ a.v-card:visited {
   height: 1px;
   background: var(--surface-2);
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   CHAT.HTML SPECIFIC STYLES
+   ═══════════════════════════════════════════════════════════ */
+
+/* Адаптация для iOS safe area */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .chat-input-bar-full {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Плавные переходы для сообщений */
+.msg-user, .msg-ai {
+  animation: messageSlideIn 0.3s ease;
+}
+
+@keyframes messageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Мобильная оптимизация */
+@media (max-width: 480px) {
+  .chat-header-title h1 {
+    font-size: 16px;
+  }
+  
+  .msg-user, .msg-ai {
+    max-width: 88%;
+    font-size: 14px;
+  }
+  
+  .quick-q-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+}
+
+/* Планшетная версия */
+@media (min-width: 768px) {
+  .chat-page {
+    border-left: 1px solid var(--surface-2, #e5e7eb);
+    border-right: 1px solid var(--surface-2, #e5e7eb);
+  }
+  
+  .msg-user, .msg-ai {
+    max-width: 70%;
+  }
+}
