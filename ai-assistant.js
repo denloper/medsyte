@@ -184,12 +184,27 @@
   // ═══════════════════════════════════════
   async function checkAuth() {
     if (!sb) {
-      console.warn('⚠️ Supabase client not available');
       isUserAuthenticated = false;
       currentUserId = null;
       return;
     }
     try {
+      // 1. Сначала пробуем получить сессию напрямую
+      const { data: { session }, error: sessionError } = await sb.auth.getSession();
+      if (sessionError) {
+        console.warn('⚠️ Session error:', sessionError.message);
+        isUserAuthenticated = false;
+        currentUserId = null;
+        return;
+      }
+      if (session && session.user) {
+        isUserAuthenticated = true;
+        currentUserId = session.user.id;
+        console.log(`✅ User authenticated via session: ${currentUserId}`);
+        return;
+      }
+
+      // 2. Если сессии нет, пробуем getUser (может обновить токен)
       const { data: { user }, error } = await sb.auth.getUser();
       if (error) {
         console.warn('⚠️ Auth error:', error.message);
@@ -200,9 +215,8 @@
       if (user && user.id) {
         isUserAuthenticated = true;
         currentUserId = user.id;
-        console.log(`✅ User authenticated: ${user.id}`);
+        console.log(`✅ User authenticated via getUser: ${currentUserId}`);
       } else {
-        console.warn('⚠️ No user in session');
         isUserAuthenticated = false;
         currentUserId = null;
       }
@@ -581,7 +595,8 @@
     sb.auth.onAuthStateChange(async (event, session) => {
       console.log(`🔐 Auth state changed: ${event}`);
 
-      if (event === 'SIGNED_IN' && session?.user) {
+      // ✅ Добавляем INITIAL_SESSION
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
         isUserAuthenticated = true;
         currentUserId = session.user.id;
         await loadHistory();

@@ -12,48 +12,77 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
-
-    const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
-    if (!GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY не настроен');
+    // 1. Читаем тело запроса с защитой от пустого JSON
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON body', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Groq использует OpenAI-совместимый API
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const { messages } = body;
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Messages array is required', success: false }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2. Получаем API-ключ OpenRouter из секретов
+    const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
+    if (!OPENROUTER_API_KEY) {
+      console.error('OPENROUTER_API_KEY не настроен');
+      throw new Error('OPENROUTER_API_KEY не настроен');
+    }
+
+    // 3. Вызываем OpenRouter с моделью tencent/hy3:free
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'tencent/hy3:free',   // <-- заменили Groq на Tencent Hy3
         messages: messages.map((m) => ({
           role: m.role,
           content: m.content
         })),
         temperature: 0.7,
         max_tokens: 2048,
-        top_p: 0.95
+        top_p: 0.95,                // этот параметр поддерживается OpenRouter
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Groq API error: ${errorData.error?.message || response.statusText}`);
+      // Пытаемся распарсить ошибку от OpenRouter
+      let errorMessage = `OpenRouter API error: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error?.message) {
+          errorMessage = `OpenRouter API error: ${errorData.error.message}`;
+        }
+      } catch (_) {
+        // если не удалось прочитать JSON, оставляем базовое сообщение
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
-    
+
     if (!data.choices || data.choices.length === 0) {
-      throw new Error('Groq не вернул ответ');
+      throw new Error('OpenRouter не вернул ответ');
     }
-    
+
     const reply = data.choices[0]?.message?.content 
       || 'Извините, не удалось сгенерировать ответ.';
 
+    // 4. Возвращаем успешный ответ
     return new Response(
-      JSON.stringify({ reply, success: true, source: 'groq' }),
+      JSON.stringify({ reply, success: true, source: 'tencent-hy3' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
