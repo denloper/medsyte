@@ -9,7 +9,78 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🥗</text></svg>">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="animations.css">
-  <title>План питания</title>
+  <title>План питания ИИ</title>
+  <style>
+    .survey-step { display: none; animation: fadeInUp 0.4s ease; }
+    .survey-step.active { display: block; }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .option-card {
+      background: var(--surface);
+      border: 2px solid var(--surface-2);
+      border-radius: 14px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .option-card:hover { border-color: var(--green); }
+    .option-card.selected {
+      border-color: var(--green);
+      background: rgba(61, 139, 78, 0.08);
+    }
+    .option-card .icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+      background: var(--surface-2);
+    }
+    .option-card.selected .icon { background: var(--green); }
+    .option-card .label { flex: 1; font-weight: 600; color: var(--dark); font-size: 15px; }
+    .option-card .check {
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 2px solid var(--surface-2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: white;
+    }
+    .option-card.selected .check {
+      background: var(--green); border-color: var(--green);
+    }
+    .progress-bar {
+      height: 6px; background: var(--surface-2); border-radius: 3px;
+      overflow: hidden; margin-bottom: 20px;
+    }
+    .progress-fill {
+      height: 100%; background: linear-gradient(90deg, var(--green), var(--green-light, #5BAD6F));
+      border-radius: 3px; transition: width 0.3s ease;
+    }
+    .meal-plan-day {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(28,43,28,0.06);
+    }
+    .meal-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--surface-2);
+    }
+    .meal-item:last-child { border-bottom: none; }
+    .meal-time {
+      font-size: 12px; font-weight: 700; color: var(--green);
+      min-width: 60px; padding-top: 2px;
+    }
+    .meal-content { flex: 1; }
+    .meal-name { font-weight: 600; color: var(--dark); font-size: 14px; margin-bottom: 2px; }
+    .meal-desc { font-size: 12px; color: var(--text-3); }
+  </style>
 </head>
 <body>
 
@@ -21,178 +92,223 @@
 <div class="app">
   
   <!-- Header -->
-  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
+  <div class="patient-card fade-in" style="padding: 16px 20px;">
     <div class="pc-top" style="margin-bottom: 0;">
       <div class="pc-identity">
         <a href="index.html" class="circle-btn ripple-element">←</a>
         <div>
-          <div class="pc-name">🥗 План питания</div>
-          <div class="pc-id">Персональный калькулятор</div>
+          <div class="pc-name">🥗 План питания ИИ</div>
+          <div class="pc-id" id="stepIndicator">Шаг 1 из 6</div>
         </div>
       </div>
-      <button class="circle-btn dark-btn ripple-element" onclick="savePlan()">💾</button>
     </div>
   </div>
 
-  <!-- Ввод данных -->
-  <div class="sec-hd animate-on-scroll animate-slide-left">
-    <h2>Ваши данные</h2>
+  <!-- Progress -->
+  <div class="progress-bar">
+    <div class="progress-fill" id="progressFill" style="width: 16%;"></div>
   </div>
 
-  <div class="doctor-card animate-on-scroll animate-fade-up tilt-card">
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-      <div>
-        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Пол</label>
-        <div class="pc-pills" style="gap: 6px;">
-          <button class="pill pill-green ripple-element click-scale" id="sexFemale" onclick="selectSex('female')">👩 Жен</button>
-          <button class="pill pill-outline ripple-element click-scale" id="sexMale" onclick="selectSex('male')">👨 Муж</button>
+  <!-- Опросник -->
+  <div id="surveyContainer">
+    
+    <!-- Шаг 1: Цель -->
+    <div class="survey-step active" data-step="1">
+      <div class="sec-hd"><h2>🎯 Ваша цель</h2></div>
+      <p style="color: var(--text-2); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">
+        Выберите, чего вы хотите достичь с помощью питания
+      </p>
+      
+      <div class="option-card" data-goal="loss" onclick="selectGoal(this, 'loss')">
+        <div class="icon" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">⬇️</div>
+        <div class="label">Похудеть</div>
+        <div class="check">✓</div>
+      </div>
+      <div class="option-card" data-goal="maintain" onclick="selectGoal(this, 'maintain')">
+        <div class="icon" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">⚖️</div>
+        <div class="label">Поддерживать вес</div>
+        <div class="check">✓</div>
+      </div>
+      <div class="option-card" data-goal="gain" onclick="selectGoal(this, 'gain')">
+        <div class="icon" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">⬆️</div>
+        <div class="label">Набрать массу</div>
+        <div class="check">✓</div>
+      </div>
+      <div class="option-card" data-goal="health" onclick="selectGoal(this, 'health')">
+        <div class="icon" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">💚</div>
+        <div class="label">Улучшить здоровье</div>
+        <div class="check">✓</div>
+      </div>
+    </div>
+
+    <!-- Шаг 2: Приёмы пищи -->
+    <div class="survey-step" data-step="2">
+      <div class="sec-hd"><h2>🍽 Сколько приёмов пищи</h2></div>
+      <p style="color: var(--text-2); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">
+        Как часто вы хотите есть в течение дня?
+      </p>
+      
+      <div class="option-card" onclick="selectMeals(this, 2)">
+        <div class="icon">2️⃣</div>
+        <div class="label">2 раза (завтрак + ужин)</div>
+        <div class="check">✓</div>
+      </div>
+      <div class="option-card" onclick="selectMeals(this, 3)">
+        <div class="icon">3️⃣</div>
+        <div class="label">3 раза (завтрак, обед, ужин)</div>
+        <div class="check">✓</div>
+      </div>
+      <div class="option-card" onclick="selectMeals(this, 5)">
+        <div class="icon">5️⃣</div>
+        <div class="label">5 раз (+ перекусы)</div>
+        <div class="check">✓</div>
+      </div>
+    </div>
+
+    <!-- Шаг 3: Любимые продукты -->
+    <div class="survey-step" data-step="3">
+      <div class="sec-hd"><h2>😍 Что вы любите</h2></div>
+      <p style="color: var(--text-2); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">
+        Выберите продукты, которые вам нравятся (можно несколько)
+      </p>
+      
+      <div id="likesContainer">
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Мясо')"><div class="icon">🥩</div><div class="label">Мясо</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Рыба')"><div class="icon">🐟</div><div class="label">Рыба и морепродукты</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Курица')"><div class="icon">🍗</div><div class="label">Курица и индейка</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Овощи')"><div class="icon">🥦</div><div class="label">Овощи</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Фрукты')"><div class="icon">🍎</div><div class="label">Фрукты</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Молочные')"><div class="icon">🥛</div><div class="label">Молочные продукты</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Злаки')"><div class="icon">🌾</div><div class="label">Злаки и крупы</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Яйца')"><div class="icon">🥚</div><div class="label">Яйца</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Орехи')"><div class="icon">🥜</div><div class="label">Орехи и семена</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Сладкое')"><div class="icon">🍫</div><div class="label">Сладкое</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'likes', 'Острое')"><div class="icon">🌶</div><div class="label">Острое</div><div class="check">✓</div></div>
+      </div>
+    </div>
+
+    <!-- Шаг 4: Не любит / аллергии -->
+    <div class="survey-step" data-step="4">
+      <div class="sec-hd"><h2>🚫 Что не любите / аллергия</h2></div>
+      <p style="color: var(--text-2); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">
+        Исключим эти продукты из вашего плана (можно несколько)
+      </p>
+      
+      <div id="dislikesContainer">
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Глютен')"><div class="icon">🌾</div><div class="label">Глютен (хлеб, макароны)</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Лактоза')"><div class="icon">🥛</div><div class="label">Лактоза (молоко)</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Мясо')"><div class="icon">🥩</div><div class="label">Мясо</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Рыба')"><div class="icon">🐟</div><div class="label">Рыба</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Яйца')"><div class="icon">🥚</div><div class="label">Яйца</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Орехи')"><div class="icon">🥜</div><div class="label">Орехи</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Морепродукты')"><div class="icon">🦐</div><div class="label">Морепродукты</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Острое')"><div class="icon">🌶</div><div class="label">Острое</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Сладкое')"><div class="icon">🍬</div><div class="label">Сладкое</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'dislikes', 'Грибы')"><div class="icon">🍄</div><div class="label">Грибы</div><div class="check">✓</div></div>
+      </div>
+    </div>
+
+    <!-- Шаг 5: Бытовая техника -->
+    <div class="survey-step" data-step="5">
+      <div class="sec-hd"><h2>🍳 Бытовая техника</h2></div>
+      <p style="color: var(--text-2); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">
+        Что у вас есть на кухне? Выберем подходящие рецепты (можно несколько)
+      </p>
+      
+      <div id="appliancesContainer">
+        <div class="option-card" onclick="toggleMulti(this, 'appliances', 'Плита')"><div class="icon">🔥</div><div class="label">Плита (газовая/электро)</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'appliances', 'Духовка')"><div class="icon">♨️</div><div class="label">Духовка</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'appliances', 'Микроволновка')"><div class="icon">📻</div><div class="label">Микроволновка</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'appliances', 'Мультиварка')"><div class="icon">🍲</div><div class="label">Мультиварка</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'appliances', 'Гриль')"><div class="icon">🔥</div><div class="label">Гриль / электрогриль</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'appliances', 'Блендер')"><div class="icon">🥤</div><div class="label">Блендер</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'appliances', 'Миксер')"><div class="icon">🌀</div><div class="label">Миксер</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'appliances', 'Пароварка')"><div class="icon">💨</div><div class="label">Пароварка</div><div class="check">✓</div></div>
+        <div class="option-card" onclick="toggleMulti(this, 'appliances', 'Фритюрница')"><div class="icon">🍟</div><div class="label">Фритюрница без масла</div><div class="check">✓</div></div>
+      </div>
+    </div>
+
+    <!-- Шаг 6: Предпочтения в готовке -->
+    <div class="survey-step" data-step="6">
+      <div class="sec-hd"><h2>👨‍🍳 Стиль готовки</h2></div>
+      <p style="color: var(--text-2); font-size: 14px; margin-bottom: 20px; line-height: 1.5;">
+        Как вы предпочитаете готовить?
+      </p>
+      
+      <div class="option-card" onclick="selectCooking(this, 'easy_week')">
+        <div class="icon" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">⚡</div>
+        <div class="label">
+          <div style="font-weight: 700;">Готовить легко на несколько дней</div>
+          <div style="font-size: 12px; color: var(--text-3); font-weight: 400; margin-top: 2px;">Минимум времени, максимум результата</div>
         </div>
+        <div class="check">✓</div>
       </div>
-      <div>
-        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Возраст</label>
-        <input type="number" id="ageInput" value="35" min="10" max="120" 
-               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      <div class="option-card" onclick="selectCooking(this, 'daily')">
+        <div class="icon" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">📅</div>
+        <div class="label">
+          <div style="font-weight: 700;">Готовить день в день</div>
+          <div style="font-size: 12px; color: var(--text-3); font-weight: 400; margin-top: 2px;">Свежие блюда каждый день</div>
+        </div>
+        <div class="check">✓</div>
       </div>
-    </div>
-    
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-      <div>
-        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Рост (см)</label>
-        <input type="number" id="heightInput" value="175" min="100" max="250" 
-               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      <div class="option-card" onclick="selectCooking(this, 'family')">
+        <div class="icon" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">👨‍👩‍👧</div>
+        <div class="label">
+          <div style="font-weight: 700;">Готовить для всей семьи</div>
+          <div style="font-size: 12px; color: var(--text-3); font-weight: 400; margin-top: 2px;">Большие порции, разные вкусы</div>
+        </div>
+        <div class="check">✓</div>
       </div>
-      <div>
-        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Вес (кг)</label>
-        <input type="number" id="weightInput" value="70" min="30" max="300" step="0.1"
-               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+      <div class="option-card" onclick="selectCooking(this, 'minimal')">
+        <div class="icon" style="background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);">🚀</div>
+        <div class="label">
+          <div style="font-weight: 700;">Минимум готовки</div>
+          <div style="font-size: 12px; color: var(--text-3); font-weight: 400; margin-top: 2px;">Быстрые рецепты до 15 минут</div>
+        </div>
+        <div class="check">✓</div>
       </div>
-    </div>
-
-    <div style="margin-bottom: 12px;">
-      <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Уровень активности</label>
-      <select id="activityLevel" 
-              style="width: 100%; padding: 12px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
-        <option value="1.2">🛋 Минимальная (сидячий образ жизни)</option>
-        <option value="1.375">🚶 Лёгкая (1-3 тренировки/нед)</option>
-        <option value="1.55" selected>🏃 Средняя (3-5 тренировок/нед)</option>
-        <option value="1.725">💪 Высокая (6-7 тренировок/нед)</option>
-        <option value="1.9">🔥 Очень высокая (2 тренировки/день)</option>
-      </select>
-    </div>
-
-    <div>
-      <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Цель</label>
-      <div class="pc-pills" style="gap: 6px;">
-        <button class="pill pill-outline ripple-element click-scale" id="goalLoss" onclick="setGoal('loss')">⬇ Похудение</button>
-        <button class="pill pill-green ripple-element click-scale" id="goalMaintain" onclick="setGoal('maintain')">⚖ Поддержка</button>
-        <button class="pill pill-outline ripple-element click-scale" id="goalGain" onclick="setGoal('gain')">⬆ Набор</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Расчёт кнопка -->
-  <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" onclick="calculate()" style="margin: 16px 0;">
-    🧮 Рассчитать план
-  </button>
-
-  <!-- Результаты -->
-  <div id="resultsSection" style="display: none;">
-    
-    <!-- Калории и БЖУ -->
-    <div class="sec-hd animate-on-scroll animate-slide-left">
-      <h2>Ваша норма</h2>
-    </div>
-
-    <div class="dark-card animate-on-scroll animate-fade-up animated-gradient">
-      <div class="dc-metric">
-        <div class="dc-value"><span id="bmrValue">0</span></div>
-        <div class="dc-name">BMR (базовый)</div>
-      </div>
-      <div class="dc-avatar float-slow">🔥</div>
-      <div class="dc-metric">
-        <div class="dc-value"><span id="tdeeValue">0</span></div>
-        <div class="dc-name">TDEE (с активностью)</div>
+      <div class="option-card" onclick="selectCooking(this, 'creative')">
+        <div class="icon" style="background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);">🎨</div>
+        <div class="label">
+          <div style="font-weight: 700;">Люблю готовить творчески</div>
+          <div style="font-size: 12px; color: var(--text-3); font-weight: 400; margin-top: 2px;">Эксперименты и новые блюда</div>
+        </div>
+        <div class="check">✓</div>
       </div>
     </div>
 
-    <div class="vitals-grid stagger">
-      <div class="v-card tilt-card ripple-element">
-        <div class="v-icon amber breathe">🔥</div>
-        <div class="v-label">Калории</div>
-        <div class="v-value"><span id="caloriesValue">0</span><span class="v-unit">ккал</span></div>
-        <div style="font-size: 11px; color: var(--text-3); margin-top: 8px;" id="caloriesNote">Цель с учётом активности</div>
+    <!-- Результат -->
+    <div class="survey-step" data-step="result">
+      <div class="sec-hd"><h2>🎉 Ваш персональный план</h2></div>
+      
+      <div id="planSummary" style="background: linear-gradient(135deg, var(--green), var(--green-light, #5BAD6F)); color: white; padding: 20px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 4px 16px rgba(61,139,78,0.3);">
+        <!-- Заполняется динамически -->
       </div>
       
-      <div class="v-card tilt-card ripple-element">
-        <div class="v-icon green breathe">📊</div>
-        <div class="v-label">ИМТ</div>
-        <div class="v-value"><span id="bmiValue">0</span></div>
-        <div style="font-size: 11px; color: var(--text-3); margin-top: 8px;" id="bmiCategory">—</div>
+      <div id="planDays">
+        <!-- Заполняется динамически -->
+      </div>
+      
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button onclick="savePlan()" class="next-btn magnetic-btn ripple-element" style="flex: 1;">
+          💾 Сохранить план
+        </button>
+        <button onclick="restartSurvey()" class="next-btn ripple-element" style="flex: 1; background: var(--surface-2); color: var(--text-1);">
+          🔄 Пройти снова
+        </button>
       </div>
     </div>
 
-    <!-- БЖУ -->
-    <div class="sec-hd animate-on-scroll animate-slide-left">
-      <h2>БЖУ (макронутриенты)</h2>
-    </div>
+  </div>
 
-    <div class="sleep-card animate-on-scroll animate-fade-up">
-      <div class="sc-stats" style="gap: 16px;">
-        <div class="sc-stat" style="flex: 1; text-align: center;">
-          <label>🥩 Белки</label>
-          <div class="big"><span id="proteinValue">0</span><span style="font-size:14px;color:var(--text-3)">г</span></div>
-          <div style="font-size: 11px; color: var(--text-3); margin-top: 4px;" id="proteinCal"></div>
-        </div>
-        <div class="sc-stat" style="flex: 1; text-align: center;">
-          <label>🥑 Жиры</label>
-          <div class="big"><span id="fatValue">0</span><span style="font-size:14px;color:var(--text-3)">г</span></div>
-          <div style="font-size: 11px; color: var(--text-3); margin-top: 4px;" id="fatCal"></div>
-        </div>
-        <div class="sc-stat" style="flex: 1; text-align: center;">
-          <label>🍚 Углеводы</label>
-          <div class="big"><span id="carbsValue">0</span><span style="font-size:14px;color:var(--text-3)">г</span></div>
-          <div style="font-size: 11px; color: var(--text-3); margin-top: 4px;" id="carbsCal"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- План питания на день -->
-    <div class="sec-hd animate-on-scroll animate-slide-left">
-      <h2>План на день</h2>
-    </div>
-
-    <div class="other-card animate-on-scroll animate-fade-up" id="mealPlan"></div>
-
-    <!-- Вода -->
-    <div class="sec-hd animate-on-scroll animate-slide-left">
-      <h2>💧 Вода</h2>
-    </div>
-
-    <div class="doctor-card animate-on-scroll animate-fade-up">
-      <div class="doc-row">
-        <div class="doc-avatar float-slow">💧</div>
-        <div style="flex: 1;">
-          <div class="doc-name">Дневная норма воды</div>
-          <div class="doc-spec" id="waterNorm">— литров</div>
-        </div>
-      </div>
-      <div style="padding: 12px; background: var(--surface-2); border-radius: var(--r-sm); font-size: 13px; color: var(--text-2); line-height: 1.5;">
-        💡 Расчёт: 30 мл на 1 кг веса + 500 мл за каждую тренировку
-      </div>
-    </div>
-
-    <!-- Рекомендации -->
-    <div class="sec-hd animate-on-scroll animate-slide-left">
-      <h2>💡 Рекомендации</h2>
-    </div>
-
-    <div class="notif-card animate-on-scroll animate-fade-up" style="border-left: 4px solid var(--green);" id="recommendations"></div>
-
-    <!-- Сохранить -->
-    <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" onclick="savePlan()" style="margin: 16px 0;">
-      💾 Сохранить план
+  <!-- Кнопки навигации -->
+  <div id="navButtons" style="display: flex; gap: 10px; margin-top: 20px;">
+    <button id="backBtn" onclick="prevStep()" class="next-btn ripple-element" style="flex: 1; background: var(--surface-2); color: var(--text-1); display: none;">
+      ← Назад
     </button>
-
+    <button id="nextBtn" onclick="nextStep()" class="next-btn magnetic-btn ripple-element" style="flex: 1;">
+      Далее →
+    </button>
   </div>
 
   <div style="height: 100px;"></div>
@@ -209,7 +325,10 @@
       <div class="nav-icon">📄</div>
       <span class="nav-label">Анализы</span>
     </a>
-    <a href="index.html" class="nav-fab" aria-label="Чат">💬</a>
+    <a href="diary.html" class="nav-item">
+      <div class="nav-icon">📓</div>
+      <span class="nav-label">Дневник</span>
+    </a>
     <a href="calendar.html" class="nav-item">
       <div class="nav-icon">📅</div>
       <span class="nav-label">Календарь</span>
@@ -221,13 +340,25 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
 <script src="animations.js"></script>
 <script>
 (function(){
   'use strict';
 
-  let selectedSex = 'female';
-  let selectedGoal = 'maintain';
+  // Состояние опросника
+  const survey = {
+    goal: null,
+    meals: null,
+    likes: [],
+    dislikes: [],
+    appliances: [],
+    cooking: null
+  };
+  
+  let currentStep = 1;
+  const totalSteps = 6;
 
   window.showToast = function(text, icon = '✓') {
     const toast = document.getElementById('toast');
@@ -237,258 +368,341 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
-  window.selectSex = function(sex) {
-    selectedSex = sex;
-    document.getElementById('sexFemale').className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
-    document.getElementById('sexMale').className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+  // Выбор цели
+  window.selectGoal = function(el, goal) {
+    document.querySelectorAll('[data-step="1"] .option-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    survey.goal = goal;
   };
 
-  window.setGoal = function(goal) {
-    selectedGoal = goal;
-    document.getElementById('goalLoss').className = goal === 'loss' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
-    document.getElementById('goalMaintain').className = goal === 'maintain' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
-    document.getElementById('goalGain').className = goal === 'gain' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+  // Выбор количества приёмов
+  window.selectMeals = function(el, meals) {
+    document.querySelectorAll('[data-step="2"] .option-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    survey.meals = meals;
   };
 
-  window.calculate = function() {
-    const age = parseInt(document.getElementById('ageInput').value) || 35;
-    const height = parseFloat(document.getElementById('heightInput').value) || 175;
-    const weight = parseFloat(document.getElementById('weightInput').value) || 70;
-    const activity = parseFloat(document.getElementById('activityLevel').value) || 1.55;
-
-    // BMR по формуле Миффлина-Сан Жеора
-    let bmr;
-    if (selectedSex === 'male') {
-      bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+  // Multi-select
+  window.toggleMulti = function(el, category, value) {
+    el.classList.toggle('selected');
+    if (el.classList.contains('selected')) {
+      if (!survey[category].includes(value)) survey[category].push(value);
     } else {
-      bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+      survey[category] = survey[category].filter(v => v !== value);
     }
+  };
 
-    // TDEE
-    const tdee = bmr * activity;
+  // Выбор стиля готовки
+  window.selectCooking = function(el, cooking) {
+    document.querySelectorAll('[data-step="6"] .option-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    survey.cooking = cooking;
+  };
 
-    // Калории с учётом цели
-    let calories = tdee;
-    let caloriesNote = '';
-    if (selectedGoal === 'loss') {
-      calories = tdee * 0.8; // дефицит 20%
-      caloriesNote = 'Дефицит 20% для похудения';
-    } else if (selectedGoal === 'gain') {
-      calories = tdee * 1.15; // профицит 15%
-      caloriesNote = 'Профицит 15% для набора';
-    } else {
-      caloriesNote = 'Поддержание веса';
+  // Проверка текущего шага
+  function validateStep() {
+    switch(currentStep) {
+      case 1: return survey.goal !== null;
+      case 2: return survey.meals !== null;
+      case 3: return true; // likes могут быть пустыми
+      case 4: return true; // dislikes могут быть пустыми
+      case 5: return survey.appliances.length > 0;
+      case 6: return survey.cooking !== null;
+      default: return true;
     }
+  }
 
-    // БЖУ
-    const proteinPerKg = selectedGoal === 'gain' ? 2.0 : selectedGoal === 'loss' ? 1.8 : 1.5;
-    const protein = Math.round(weight * proteinPerKg);
-    const fat = Math.round(weight * 1.0); // 1 г/кг
-    const proteinCal = protein * 4;
-    const fatCal = fat * 9;
-    const carbsCal = Math.max(0, calories - proteinCal - fatCal);
-    const carbs = Math.round(carbsCal / 4);
-
-    // ИМТ
-    const bmi = weight / Math.pow(height / 100, 2);
-    let bmiCategory = '';
-    if (bmi < 18.5) bmiCategory = '⚠ Недостаток веса';
-    else if (bmi < 25) bmiCategory = '✓ Норма';
-    else if (bmi < 30) bmiCategory = '⚠ Избыточный вес';
-    else bmiCategory = '🚨 Ожирение';
-
-    // Вода
-    const water = ((weight * 30) / 1000).toFixed(1);
-
-    // Отображение
-    document.getElementById('bmrValue').textContent = Math.round(bmr);
-    document.getElementById('tdeeValue').textContent = Math.round(tdee);
-    document.getElementById('caloriesValue').textContent = Math.round(calories);
-    document.getElementById('caloriesNote').textContent = caloriesNote;
-    document.getElementById('bmiValue').textContent = bmi.toFixed(1);
-    document.getElementById('bmiCategory').textContent = bmiCategory;
-    document.getElementById('proteinValue').textContent = protein;
-    document.getElementById('fatValue').textContent = fat;
-    document.getElementById('carbsValue').textContent = carbs;
-    document.getElementById('proteinCal').textContent = `${proteinCal} ккал`;
-    document.getElementById('fatCal').textContent = `${fatCal} ккал`;
-    document.getElementById('carbsCal').textContent = `${Math.round(carbsCal)} ккал`;
-    document.getElementById('waterNorm').textContent = `${water} литров в день`;
-
-    // План приёмов пищи
-    renderMealPlan(calories, protein, fat, carbs);
-    renderRecommendations(bmi, selectedGoal, age);
-
-    document.getElementById('resultsSection').style.display = 'block';
+  // Навигация
+  function updateUI() {
+    // Скрыть все шаги
+    document.querySelectorAll('.survey-step').forEach(s => s.classList.remove('active'));
+    // Показать текущий
+    const stepEl = document.querySelector(`[data-step="${currentStep === 7 ? 'result' : currentStep}"]`);
+    if (stepEl) stepEl.classList.add('active');
     
-    setTimeout(() => {
-      document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-
-    showToast('План рассчитан!', '🎯');
-  };
-
-  function renderMealPlan(calories, protein, fat, carbs) {
-    const meals = [
-      { 
-        name: '🌅 Завтрак', 
-        time: '7:00-9:00', 
-        percent: 0.25,
-        examples: ['Овсянка с ягодами и орехами', 'Омлет с овощами', 'Творог с фруктами']
-      },
-      { 
-        name: '🍎 Перекус', 
-        time: '11:00', 
-        percent: 0.10,
-        examples: ['Яблоко + миндаль', 'Йогурт', 'Протеиновый батончик']
-      },
-      { 
-        name: '☀ Обед', 
-        time: '13:00-14:00', 
-        percent: 0.35,
-        examples: ['Курица + гречка + салат', 'Рыба + рис + овощи', 'Говядина + киноа']
-      },
-      { 
-        name: '🥤 Полдник', 
-        time: '16:00-17:00', 
-        percent: 0.10,
-        examples: ['Творог', 'Фрукты', 'Протеиновый коктейль']
-      },
-      { 
-        name: '🌙 Ужин', 
-        time: '19:00-20:00', 
-        percent: 0.20,
-        examples: ['Рыба + овощи на пару', 'Куриная грудка + салат', 'Творог с зеленью']
-      }
-    ];
-
-    let html = '';
-    meals.forEach((meal, idx) => {
-      const mealCal = Math.round(calories * meal.percent);
-      const mealP = Math.round(protein * meal.percent);
-      const mealF = Math.round(fat * meal.percent);
-      const mealC = Math.round(carbs * meal.percent);
-      
-      html += `
-        <div class="metric-row ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.05}s backwards;">
-          <div style="flex: 1;">
-            <div style="font-weight: 700; color: var(--dark); font-size: 15px; margin-bottom: 2px;">
-              ${meal.name}
-            </div>
-            <div style="font-size: 12px; color: var(--text-3); margin-bottom: 6px;">${meal.time}</div>
-            <div style="font-size: 13px; color: var(--text-2); font-style: italic;">
-              ${meal.examples[Math.floor(Math.random() * meal.examples.length)]}
-            </div>
-          </div>
-          <div style="text-align: right;">
-            <div style="font-size: 18px; font-weight: 800; color: var(--green);">${mealCal}</div>
-            <div style="font-size: 11px; color: var(--text-3);">ккал</div>
-            <div style="font-size: 10px; color: var(--text-3); margin-top: 2px;">
-              Б:${mealP} Ж:${mealF} У:${mealC}
-            </div>
-          </div>
-        </div>
-      `;
-    });
-
-    document.getElementById('mealPlan').innerHTML = html;
-  }
-
-  function renderRecommendations(bmi, goal, age) {
-    const recs = [];
-
-    if (bmi > 30) {
-      recs.push({ icon: '🚨', text: 'Рекомендуется консультация эндокринолога для исключения гормональных причин ожирения' });
-    }
-    if (bmi < 18.5) {
-      recs.push({ icon: '⚠', text: 'Недостаток веса — проверьте ферритин, витамин D, гормоны щитовидной железы' });
-    }
-    if (goal === 'loss') {
-      recs.push({ icon: '💡', text: 'Безопасное похудение: 0.5-1 кг в неделю. Не снижайте калории ниже BMR!' });
-      recs.push({ icon: '🏃', text: 'Добавьте кардио 3-4 раза в неделю по 30-40 минут' });
-    }
-    if (goal === 'gain') {
-      recs.push({ icon: '💪', text: 'Для набора массы нужны силовые тренировки 3-4 раза в неделю' });
-      recs.push({ icon: '😴', text: 'Спите 7-9 часов — гормон роста вырабатывается во сне' });
-    }
-    if (age > 50) {
-      recs.push({ icon: '🦴', text: 'Проверьте витамин D и кальций для профилактики остеопороза' });
-    }
-
-    recs.push({ icon: '💧', text: 'Пейте воду равномерно в течение дня, не только когда хочется' });
-    recs.push({ icon: '🥗', text: 'Ешьте 5 порций овощей и фруктов в день (разных цветов)' });
-
-    let html = '';
-    recs.forEach((rec, idx) => {
-      html += `
-        <div class="notif-item ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.05}s backwards;">
-          <div class="notif-icon-wrap green-bg">${rec.icon}</div>
-          <div class="notif-body">
-            <div class="notif-desc" style="font-size: 14px; color: var(--text-1);">${rec.text}</div>
-          </div>
-        </div>
-      `;
-    });
-
-    document.getElementById('recommendations').innerHTML = html;
-  }
-
-  window.savePlan = function() {
-    const plan = {
-      date: new Date().toISOString(),
-      sex: selectedSex,
-      age: parseInt(document.getElementById('ageInput').value),
-      height: parseFloat(document.getElementById('heightInput').value),
-      weight: parseFloat(document.getElementById('weightInput').value),
-      activity: parseFloat(document.getElementById('activityLevel').value),
-      goal: selectedGoal,
-      bmr: parseInt(document.getElementById('bmrValue').textContent),
-      tdee: parseInt(document.getElementById('tdeeValue').textContent),
-      calories: parseInt(document.getElementById('caloriesValue').textContent),
-      protein: parseInt(document.getElementById('proteinValue').textContent),
-      fat: parseInt(document.getElementById('fatValue').textContent),
-      carbs: parseInt(document.getElementById('carbsValue').textContent),
-      water: parseFloat(document.getElementById('waterNorm').textContent),
-      bmi: parseFloat(document.getElementById('bmiValue').textContent)
-    };
-
-    // Сохраняем в localStorage
-    const history = JSON.parse(localStorage.getItem('nutrition_history_v1') || '[]');
-    history.push(plan);
-    localStorage.setItem('nutrition_history_v1', JSON.stringify(history));
-    localStorage.setItem('nutrition_plan_current_v1', JSON.stringify(plan));
-
-    // Если есть Supabase — сохраняем туда
-    if (window.SupabaseDB) {
-      window.SupabaseDB.saveDiaryEntry({
-        metricType: 'nutrition_plan',
-        value: plan
-      }).then(() => {
-        showToast('План сохранён в облако', '☁️');
-      }).catch(() => {
-        showToast('План сохранён локально', '💾');
-      });
+    // Индикатор
+    const stepIndicator = document.getElementById('stepIndicator');
+    const progressFill = document.getElementById('progressFill');
+    const navButtons = document.getElementById('navButtons');
+    const backBtn = document.getElementById('backBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    if (currentStep <= totalSteps) {
+      stepIndicator.textContent = `Шаг ${currentStep} из ${totalSteps}`;
+      progressFill.style.width = `${(currentStep / totalSteps) * 100}%`;
+      navButtons.style.display = 'flex';
+      backBtn.style.display = currentStep === 1 ? 'none' : 'block';
+      nextBtn.textContent = currentStep === totalSteps ? '🎉 Создать план' : 'Далее →';
     } else {
-      showToast('План сохранён', '💾');
+      stepIndicator.textContent = 'План готов!';
+      progressFill.style.width = '100%';
+      navButtons.style.display = 'none';
+    }
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  window.nextStep = function() {
+    if (!validateStep()) {
+      showToast('Сделайте выбор, чтобы продолжить', '⚠️');
+      return;
+    }
+    
+    if (currentStep < totalSteps) {
+      currentStep++;
+      updateUI();
+    } else if (currentStep === totalSteps) {
+      generatePlan();
+      currentStep = 7;
+      updateUI();
     }
   };
 
-  // Восстановление данных
-  function loadSavedData() {
+  window.prevStep = function() {
+    if (currentStep > 1) {
+      currentStep--;
+      updateUI();
+    }
+  };
+
+  // Генерация плана
+  function generatePlan() {
+    const goalLabels = {
+      loss: 'Похудение',
+      maintain: 'Поддержание веса',
+      gain: 'Набор массы',
+      health: 'Улучшение здоровья'
+    };
+    
+    const cookingLabels = {
+      easy_week: 'Легко на несколько дней',
+      daily: 'День в день',
+      family: 'Для всей семьи',
+      minimal: 'Минимум готовки',
+      creative: 'Творческий подход'
+    };
+    
+    const caloriesMap = {
+      loss: { m: 1800, f: 1500 },
+      maintain: { m: 2400, f: 2000 },
+      gain: { m: 3000, f: 2500 },
+      health: { m: 2200, f: 1900 }
+    };
+    
+    // Определяем пол из профиля (если есть) или по умолчанию female
+    let sex = 'female';
     try {
-      const saved = JSON.parse(localStorage.getItem('nutrition_plan_current_v1') || 'null');
-      if (saved) {
-        document.getElementById('ageInput').value = saved.age || 35;
-        document.getElementById('heightInput').value = saved.height || 175;
-        document.getElementById('weightInput').value = saved.weight || 70;
-        document.getElementById('activityLevel').value = saved.activity || 1.55;
-        selectSex(saved.sex || 'female');
-        setGoal(saved.goal || 'maintain');
+      if (window.PatientProfile) {
+        const p = window.PatientProfile.get();
+        if (p && p.sex) sex = p.sex;
       }
     } catch(e) {}
+    
+    const baseCalories = caloriesMap[survey.goal][sex === 'male' ? 'm' : 'f'];
+    const mealMultiplier = { 2: 1.1, 3: 1.0, 5: 0.95 };
+    const totalCalories = Math.round(baseCalories * (mealMultiplier[survey.meals] || 1));
+    
+    // БЖУ
+    const protein = Math.round(totalCalories * 0.3 / 4);
+    const fat = Math.round(totalCalories * 0.3 / 9);
+    const carbs = Math.round(totalCalories * 0.4 / 4);
+    
+    // Summary
+    document.getElementById('planSummary').innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <div style="font-size: 48px;">🥗</div>
+        <div>
+          <div style="font-size: 22px; font-weight: 800;">${totalCalories} ккал/день</div>
+          <div style="font-size: 13px; opacity: 0.9;">${goalLabels[survey.goal]} • ${survey.meals} приёмов пищи</div>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px;">
+        <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; text-align: center;">
+          <div style="font-size: 20px; font-weight: 800;">${protein}г</div>
+          <div style="font-size: 11px; opacity: 0.8;">Белки</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; text-align: center;">
+          <div style="font-size: 20px; font-weight: 800;">${fat}г</div>
+          <div style="font-size: 11px; opacity: 0.8;">Жиры</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 10px; text-align: center;">
+          <div style="font-size: 20px; font-weight: 800;">${carbs}г</div>
+          <div style="font-size: 11px; opacity: 0.8;">Углеводы</div>
+        </div>
+      </div>
+      <div style="margin-top: 16px; padding: 12px; background: rgba(255,255,255,0.1); border-radius: 10px; font-size: 13px;">
+        🍳 Стиль готовки: <strong>${cookingLabels[survey.cooking]}</strong>
+      </div>
+    `;
+    
+    // Генерация плана на 7 дней
+    const days = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    const daysHtml = days.map((day, idx) => generateDayPlan(day, idx)).join('');
+    document.getElementById('planDays').innerHTML = daysHtml;
+  }
+  
+  function generateDayPlan(day, dayIndex) {
+    const mealTemplates = {
+      2: [
+        { time: '09:00', name: 'Завтрак', type: 'breakfast' },
+        { time: '18:00', name: 'Ужин', type: 'dinner' }
+      ],
+      3: [
+        { time: '08:00', name: 'Завтрак', type: 'breakfast' },
+        { time: '13:00', name: 'Обед', type: 'lunch' },
+        { time: '19:00', name: 'Ужин', type: 'dinner' }
+      ],
+      5: [
+        { time: '08:00', name: 'Завтрак', type: 'breakfast' },
+        { time: '11:00', name: 'Перекус', type: 'snack' },
+        { time: '14:00', name: 'Обед', type: 'lunch' },
+        { time: '17:00', name: 'Полдник', type: 'snack' },
+        { time: '19:30', name: 'Ужин', type: 'dinner' }
+      ]
+    };
+    
+    const meals = mealTemplates[survey.meals] || mealTemplates[3];
+    
+    const recipes = {
+      breakfast: [
+        { name: 'Овсянка с ягодами и орехами', desc: '60г овсянки, горсть ягод, 15г орехов' },
+        { name: 'Омлет с овощами', desc: '2 яйца, помидоры, шпинат, сыр' },
+        { name: 'Творог с фруктами', desc: '200г творога 5%, банан, мёд' },
+        { name: 'Гречневая каша с яйцом', desc: '80г гречки, варёное яйцо, зелень' },
+        { name: 'Сырники со сметаной', desc: '3 сырника, 2 ст.л. сметаны' },
+        { name: 'Тосты с авокадо и яйцом', desc: '2 тоста, авокадо, пашот' },
+        { name: 'Йогурт с гранолой', desc: '200г греческого йогурта, 40г гранолы' }
+      ],
+      lunch: [
+        { name: 'Куриная грудка с гречкой', desc: '150г курицы, 80г гречки, салат' },
+        { name: 'Рыба с рисом и овощами', desc: '150г рыбы, 80г риса, брокколи' },
+        { name: 'Говядина с киноа', desc: '150г говядины, 80г киноа, овощи' },
+        { name: 'Индейка с картофелем', desc: '150г индейки, запечённый картофель' },
+        { name: 'Паста с курицей', desc: '80г пасты, 120г курицы, томатный соус' },
+        { name: 'Суп-пюре из тыквы', desc: '300мл супа, гренки, курица 100г' },
+        { name: 'Борщ с говядиной', desc: '300мл борща, сметана, хлеб' }
+      ],
+      dinner: [
+        { name: 'Запечённая рыба с овощами', desc: '150г рыбы, ассорти овощей' },
+        { name: 'Куриный салат', desc: '150г курицы, микс салатов, оливки' },
+        { name: 'Творожная запеканка', desc: '200г запеканки, ягоды' },
+        { name: 'Омлет с грибами', desc: '2 яйца, шампиньоны, сыр' },
+        { name: 'Тушёные овощи с курицей', desc: '200г овощей, 120г курицы' },
+        { name: 'Стейк из говядины', desc: '150г стейка, зелёные овощи' },
+        { name: 'Творог с зеленью', desc: '200г творога, зелень, огурец' }
+      ],
+      snack: [
+        { name: 'Яблоко + миндаль', desc: '1 яблоко, 15г миндаля' },
+        { name: 'Греческий йогурт', desc: '150г йогурта, ягоды' },
+        { name: 'Протеиновый коктейль', desc: '30г протеина, молоко, банан' },
+        { name: 'Морковь + хумус', desc: '1 морковь, 50г хумуса' },
+        { name: 'Орехи и сухофрукты', desc: '30г смеси' },
+        { name: 'Творог', desc: '150г творога 2%' },
+        { name: 'Фрукты', desc: '1 банан или апельсин' }
+      ]
+    };
+    
+    // Учитываем предпочтения
+    const filterRecipe = (recipeList, type) => {
+      let filtered = recipeList.filter(r => {
+        // Исключаем по аллергиям
+        if (survey.dislikes.includes('Мясо') && (r.name.includes('говядина') || r.name.includes('курица') || r.name.includes('индейка') || r.name.includes('Говядина') || r.name.includes('Куриная'))) return false;
+        if (survey.dislikes.includes('Рыба') && (r.name.includes('рыба') || r.name.includes('Рыба'))) return false;
+        if (survey.dislikes.includes('Яйца') && (r.name.includes('яйц') || r.name.includes('Омлет'))) return false;
+        if (survey.dislikes.includes('Молочные') && (r.name.includes('творог') || r.name.includes('йогурт') || r.name.includes('сыр') || r.name.includes('сметан'))) return false;
+        if (survey.dislikes.includes('Глютен') && (r.name.includes('паста') || r.name.includes('тост') || r.name.includes('хлеб') || r.name.includes('гренки'))) return false;
+        if (survey.dislikes.includes('Орехи') && (r.name.includes('орех') || r.name.includes('миндаль'))) return false;
+        if (survey.dislikes.includes('Грибы') && r.name.includes('гриб')) return false;
+        return true;
+      });
+      
+      return filtered.length > 0 ? filtered : recipeList;
+    };
+    
+    // Выбор блюда с учётом дня
+    const pickRecipe = (type) => {
+      const list = filterRecipe(recipes[type] || recipes.snack, type);
+      const idx = (dayIndex + Math.floor(Math.random() * 3)) % list.length;
+      return list[idx];
+    };
+    
+    const mealsHtml = meals.map(meal => {
+      const recipe = pickRecipe(meal.type);
+      return `
+        <div class="meal-item">
+          <div class="meal-time">${meal.time}</div>
+          <div class="meal-content">
+            <div class="meal-name">${recipe.name}</div>
+            <div class="meal-desc">${recipe.desc}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    return `
+      <div class="meal-plan-day">
+        <div style="font-size: 16px; font-weight: 700; color: var(--dark); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          <span>📅</span>
+          <span>${day}</span>
+        </div>
+        ${mealsHtml}
+      </div>
+    `;
   }
 
-  loadSavedData();
+  // Сохранение плана
+  window.savePlan = async function() {
+    const plan = {
+      date: new Date().toISOString(),
+      survey: survey,
+      generated: true
+    };
+    
+    // Сохраняем в localStorage
+    try {
+      const history = JSON.parse(localStorage.getItem('nutrition_history_v1') || '[]');
+      history.push(plan);
+      localStorage.setItem('nutrition_history_v1', JSON.stringify(history));
+      localStorage.setItem('nutrition_plan_current_v1', JSON.stringify(plan));
+    } catch(e) {}
+    
+    // Supabase (если авторизован)
+    if (window.SupabaseDB) {
+      try {
+        const user = await window.SupabaseDB.getCurrentUser();
+        if (user) {
+          await window.SupabaseDB.saveDiaryEntry({
+            metricType: 'nutrition_plan',
+            value: plan
+          });
+        }
+      } catch(e) {
+        console.warn('Supabase save error:', e);
+      }
+    }
+    
+    showToast('План сохранён!', '✅');
+    setTimeout(() => {
+      window.location.href = 'index.html';
+    }, 1000);
+  };
+
+  // Рестарт
+  window.restartSurvey = function() {
+    survey.goal = null;
+    survey.meals = null;
+    survey.likes = [];
+    survey.dislikes = [];
+    survey.appliances = [];
+    survey.cooking = null;
+    currentStep = 1;
+    
+    document.querySelectorAll('.option-card.selected').forEach(c => c.classList.remove('selected'));
+    updateUI();
+  };
+
+  // Запуск
+  updateUI();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
