@@ -1,12 +1,21 @@
 /**
- * AI Medical Assistant v3.0
- * Полная база database.js + RAG + Groq
+ * AI Medical Assistant v3.1
+ * Полный контекст database.js + RAG + Groq + Supabase чат
  */
 (function() {
   'use strict';
 
   const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
+
+  // ✅ Создаём свой Supabase клиент
+  const sb = window.supabase && window.supabase.createClient
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  if (!sb) {
+    console.warn('⚠️ Supabase client not available. Chat sync disabled.');
+  }
 
   const LOCAL_STORAGE_KEY = 'ai_chat_history_v1';
   const MAX_HISTORY = 50;
@@ -39,29 +48,24 @@
 Если вопрос НЕ медицинский — вежливо предложи задать медицинский вопрос.`;
 
   // ═══════════════════════════════════════
-  //  КОМПАКТНАЯ СВОДКА ВСЕЙ БАЗЫ (для Groq)
-  //  Передаёт ВСЕ тесты, правила и рекомендации в сжатом виде
+  //  КОМПАКТНАЯ СВОДКА ВСЕЙ БАЗЫ
   // ═══════════════════════════════════════
   function buildCompactDatabaseSummary() {
     const sections = [];
 
-    // 1. ВСЕ лабораторные тесты (компактный формат)
     if (window.labTests && Array.isArray(window.labTests)) {
       const testsByCategory = {};
       window.labTests.forEach(test => {
         const cat = test.category || 'Другое';
         if (!testsByCategory[cat]) testsByCategory[cat] = [];
-        
-        // Компактная запись: "Название (единицы): норма"
         const ref = test.references && test.references[0];
         const normStr = ref 
           ? `${ref.min}-${ref.max} ${ref.unit || ''}`.trim()
           : '—';
-        
         testsByCategory[cat].push(`${test.canonicalName.trim()} [${test.shortName.trim()}]: ${normStr}`);
       });
 
-      let testsList = '🧪 ПОЛНАЯ БАЗА ЛАБОРАТОРНЫХ ТЕСТОВ (используй эти названия в ответах):\n';
+      let testsList = '🧪 ПОЛНАЯ БАЗА ЛАБОРАТОРНЫХ ТЕСТОВ:\n';
       Object.keys(testsByCategory).sort().forEach(cat => {
         testsList += `\n【${cat}】\n`;
         testsList += testsByCategory[cat].map(t => `• ${t}`).join('\n');
@@ -69,9 +73,8 @@
       sections.push(testsList);
     }
 
-    // 2. ВСЕ диагностические правила
     if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
-      let rulesList = '\n\n🏥 ДИАГНОСТИЧЕСКИЕ ПРАВИЛА (связь отклонений с состояниями):\n';
+      let rulesList = '\n\n🏥 ДИАГНОСТИЧЕСКИЕ ПРАВИЛА:\n';
       window.diagnosticRules.forEach(rule => {
         const testsStr = Object.entries(rule.results)
           .map(([test, status]) => `${test.trim()} ${status === 'high' ? '↑' : '↓'}`)
@@ -81,7 +84,6 @@
       sections.push(rulesList);
     }
 
-    // 3. ВСЕ рекомендации по добавкам (компактно)
     if (window.supplementMap && typeof window.supplementMap === 'object') {
       let supplementsList = '\n\n💊 РЕКОМЕНДАЦИИ ПРИ ОТКЛОНЕНИЯХ:\n';
       Object.entries(window.supplementMap).forEach(([test, data]) => {
@@ -93,7 +95,6 @@
       sections.push(supplementsList);
     }
 
-    // 4. Профилактические рекомендации
     if (window.preventiveRecommendations && Array.isArray(window.preventiveRecommendations)) {
       let preventive = '\n\n🛡 ПРОФИЛАКТИЧЕСКИЕ РЕКОМЕНДАЦИИ:\n';
       window.preventiveRecommendations.forEach(rec => {
@@ -106,18 +107,16 @@
   }
 
   // ═══════════════════════════════════════
-  //  ДЕТАЛЬНЫЙ RAG: релевантные данные для конкретного вопроса
+  //  ДЕТАЛЬНЫЙ RAG
   // ═══════════════════════════════════════
   function buildRelevantContext(userMessage, userProfile) {
     const context = [];
     const lowerMsg = userMessage.toLowerCase();
 
-    // 1. Профиль пользователя
     if (userProfile) {
       context.push(`👤 ПАЦИЕНТ: ${userProfile.name || userProfile.full_name || 'не указано'}, ${userProfile.sex === 'male' ? 'мужчина' : userProfile.sex === 'female' ? 'женщина' : 'пол не указан'}, ${userProfile.age || '?'} лет`);
     }
 
-    // 2. Релевантные тесты (по совпадениям)
     if (window.labTests && Array.isArray(window.labTests)) {
       const relevant = [];
       for (const test of window.labTests) {
@@ -138,7 +137,6 @@
       }
     }
 
-    // 3. Релевантные диагностические правила
     if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
       const relevantRules = [];
       for (const rule of window.diagnosticRules) {
@@ -158,7 +156,6 @@
       }
     }
 
-    // 4. Последние анализы пользователя из localStorage
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       if (history.length > 0) {
@@ -183,7 +180,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  ПРОВЕРКА АВТОРИЗАЦИИ
+  //  ПРОВЕРКА АВТОРИЗАЦИИ (через SupabaseDB API)
   // ═══════════════════════════════════════
   async function checkAuth() {
     if (!window.SupabaseDB) {
@@ -207,12 +204,12 @@
   }
 
   // ═══════════════════════════════════════
-  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE
+  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE (используем sb)
   // ═══════════════════════════════════════
   async function loadHistoryFromSupabase() {
-    if (!isUserAuthenticated || !window.supabase) return false;
+    if (!isUserAuthenticated || !sb) return false;
     try {
-      const { data, error } = await window.supabase
+      const { data, error } = await sb
         .from('chat_messages')
         .select('role, content, source, created_at')
         .eq('user_id', currentUserId)
@@ -231,7 +228,7 @@
       }
       return false;
     } catch (e) {
-      console.warn('Supabase history load failed:', e);
+      console.warn('Supabase history load failed:', e.message);
       return false;
     }
   }
@@ -254,20 +251,29 @@
     } catch(e) {}
   }
 
+  // ═══════════════════════════════════════
+  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE
+  // ═══════════════════════════════════════
   async function saveMessageToSupabase(role, content, source = null) {
-    if (!isUserAuthenticated || !window.supabase || !currentUserId) return false;
+    if (!isUserAuthenticated || !sb || !currentUserId) return false;
     try {
-      await window.supabase.from('chat_messages').insert({
+      await sb.from('chat_messages').insert({
         user_id: currentUserId,
         role, content, source,
         metadata: {}
       });
       return true;
-    } catch (e) { return false; }
+    } catch (e) { 
+      console.warn('Failed to save message to Supabase:', e.message);
+      return false; 
+    }
   }
 
+  // ═══════════════════════════════════════
+  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ В SUPABASE
+  // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
-    if (!isUserAuthenticated || !window.supabase) return;
+    if (!isUserAuthenticated || !sb) return;
     const localHistory = chatHistory.filter(msg => !msg.synced);
     if (localHistory.length === 0) return;
     try {
@@ -280,11 +286,14 @@
       }));
       for (let i = 0; i < messagesToInsert.length; i += 20) {
         const batch = messagesToInsert.slice(i, i + 20);
-        await window.supabase.from('chat_messages').insert(batch);
+        await sb.from('chat_messages').insert(batch);
       }
       chatHistory.forEach(msg => { msg.synced = true; });
       saveToLocalStorage();
-    } catch (e) { console.warn('Migration failed:', e); }
+      console.log(`✅ Migrated ${localHistory.length} messages to Supabase`);
+    } catch (e) { 
+      console.warn('Migration failed:', e.message); 
+    }
   }
 
   async function loadHistory() {
@@ -333,7 +342,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  FALLBACK: локальный ответ
+  //  FALLBACK
   // ═══════════════════════════════════════
   function generateFallbackResponse(userMessage, userProfile) {
     const lowerMsg = userMessage.toLowerCase();
@@ -380,7 +389,6 @@
 
     await checkAuth();
 
-    // Загружаем профиль
     let userProfile = null;
     try {
       if (window.PatientProfile && window.PatientProfile.get) {
@@ -388,7 +396,6 @@
       }
     } catch(e) {}
 
-    // Добавляем сообщение пользователя
     const userMsg = {
       role: 'user',
       content: userMessage,
@@ -399,13 +406,9 @@
     saveToLocalStorage();
     saveMessageToSupabase('user', userMessage, null);
 
-    // ═══════ НОВОЕ: полная сводка базы (компактная) ═══════
     const databaseSummary = buildCompactDatabaseSummary();
-
-    // ═══════ НОВОЕ: детальный RAG по запросу ═══════
     const relevantContext = buildRelevantContext(userMessage, userProfile);
 
-    // Формируем system prompt с полной базой
     const fullSystemPrompt = [
       SYSTEM_PROMPT,
       '\n\n═══════════════════════════════════',
@@ -413,10 +416,9 @@
       '═══════════════════════════════════',
       databaseSummary,
       relevantContext ? '\n\n═══════════════════════════════════\nКОНТЕКСТ ПО ТЕКУЩЕМУ ЗАПРОСУ:\n═══════════════════════════════════\n' + relevantContext : '',
-      '\n\nВАЖНО: Отвечай ТОЛЬКО на основе базы выше. Используй точные названия тестов из базы. Если вопрос не связан с базой — честно скажи об этом.'
+      '\n\nВАЖНО: Отвечай ТОЛЬКО на основе базы выше. Используй точные названия тестов из базы.'
     ].join('\n');
 
-    // Формируем сообщения для LLM
     const messages = [
       { role: 'system', content: fullSystemPrompt },
       ...chatHistory.slice(-MAX_CONTEXT_MESSAGES).map(m => ({
@@ -438,7 +440,6 @@
       source = 'local';
     }
 
-    // Добавляем ответ
     const assistantMsg = {
       role: 'assistant',
       content: reply,
@@ -464,23 +465,26 @@
   async function clearHistory() {
     chatHistory = [];
     localStorage.removeItem(LOCAL_STORAGE_KEY);
-    if (isUserAuthenticated && window.supabase && currentUserId) {
+    if (isUserAuthenticated && sb && currentUserId) {
       try {
-        await window.supabase.rpc('clear_chat_history');
+        await sb.rpc('clear_chat_history');
       } catch (e) {
         try {
-          await window.supabase.from('chat_messages').delete().eq('user_id', currentUserId);
+          await sb.from('chat_messages').delete().eq('user_id', currentUserId);
         } catch (e2) {}
       }
     }
   }
 
   // ═══════════════════════════════════════
-  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ
+  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ (используем sb)
   // ═══════════════════════════════════════
   function setupAuthListener() {
-    if (!window.supabase) return;
-    window.supabase.auth.onAuthStateChange(async (event) => {
+    if (!sb || !sb.auth) {
+      console.warn('⚠️ Auth listener not available');
+      return;
+    }
+    sb.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_IN') {
         await loadHistory();
         window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {
@@ -502,8 +506,9 @@
   async function init() {
     await loadHistory();
     setupAuthListener();
-    console.log('🤖 AI Assistant v3.0 initialized (Full DB + RAG + Groq)');
-    console.log(`📚 Database loaded: ${window.labTests?.length || 0} tests, ${window.diagnosticRules?.length || 0} rules, ${Object.keys(window.supplementMap || {}).length} supplements`);
+    console.log('🤖 AI Assistant v3.1 initialized');
+    console.log(`📚 Database: ${window.labTests?.length || 0} tests, ${window.diagnosticRules?.length || 0} rules, ${Object.keys(window.supplementMap || {}).length} supplements`);
+    console.log(`☁️ Supabase client: ${sb ? '✓ connected' : '✗ disabled'}`);
   }
 
   init();
@@ -523,7 +528,8 @@
       supplements: Object.keys(window.supplementMap || {}).length,
       preventive: window.preventiveRecommendations?.length || 0
     }),
-    version: '3.0.0'
+    isSupabaseConnected: () => !!sb,
+    version: '3.1.0'
   };
 
   window.addEventListener('load', () => {
