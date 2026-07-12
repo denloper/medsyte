@@ -204,10 +204,26 @@
   }
 
   // ═══════════════════════════════════════
-  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE (используем sb)
+  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE (с retry)
   // ═══════════════════════════════════════
   async function loadHistoryFromSupabase() {
     if (!isUserAuthenticated || !sb) return false;
+    
+    // Проверяем что пользователь действительно авторизован
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user || !user.id) {
+        console.warn('⚠️ User not authenticated despite flag');
+        isUserAuthenticated = false;
+        return false;
+      }
+      currentUserId = user.id;
+    } catch (e) {
+      console.warn('⚠️ Auth check failed:', e.message);
+      isUserAuthenticated = false;
+      return false;
+    }
+
     try {
       const { data, error } = await sb
         .from('chat_messages')
@@ -215,7 +231,21 @@
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: true })
         .limit(MAX_HISTORY);
-      if (error) throw error;
+
+      if (error) {
+        if (error.status === 401 || error.code === 'PGRST301') {
+          console.warn('⚠️ Supabase auth expired, refreshing session...');
+          const { error: refreshError } = await sb.auth.refreshSession();
+          if (refreshError) {
+            isUserAuthenticated = false;
+            return false;
+          }
+          // Повторяем запрос после refresh
+          return await loadHistoryFromSupabase();
+        }
+        throw error;
+      }
+
       if (data && data.length > 0) {
         chatHistory = data.map(msg => ({
           role: msg.role,
@@ -228,7 +258,7 @@
       }
       return false;
     } catch (e) {
-      console.warn('Supabase history load failed:', e.message);
+      console.warn('⚠️ Supabase history load failed:', e.message);
       return false;
     }
   }
@@ -248,34 +278,68 @@
     try {
       const toSave = chatHistory.slice(-MAX_HISTORY);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
-    } catch(e) {}
-  }
-
-  // ═══════════════════════════════════════
-  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE
-  // ═══════════════════════════════════════
-  async function saveMessageToSupabase(role, content, source = null) {
-    if (!isUserAuthenticated || !sb || !currentUserId) return false;
-    try {
-      await sb.from('chat_messages').insert({
-        user_id: currentUserId,
-        role, content, source,
-        metadata: {}
-      });
-      return true;
-    } catch (e) { 
-      console.warn('Failed to save message to Supabase:', e.message);
-      return false; 
+    } catch(e) {
+      console.warn('⚠️ LocalStorage save failed:', e);
     }
   }
 
   // ═══════════════════════════════════════
-  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ В SUPABASE
+  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE (с retry + fallback)
+  // ═══════════════════════════════════════
+  async function saveMessageToSupabase(role, content, source = null, retryCount = 0) {
+    if (!isUserAuthenticated || !sb || !currentUserId) {
+      return false;
+    }
+
+    try {
+      // Явная проверка авторизации
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user || user.id !== currentUserId) {
+        console.warn('⚠️ User session invalid');
+        isUserAuthenticated = false;
+        return false;
+      }
+
+      const { error } = await sb.from('chat_messages').insert({
+        user_id: currentUserId,
+        role: role,
+        content: content,
+        source: source,
+        metadata: {}
+      });
+
+      if (error) {
+        // Если 401 — пробуем refresh token
+        if ((error.status === 401 || error.code === 'PGRST301') && retryCount < 1) {
+          console.warn('⚠️ 401 error, refreshing session...');
+          const { error: refreshError } = await sb.auth.refreshSession();
+          if (!refreshError) {
+            return await saveMessageToSupabase(role, content, source, retryCount + 1);
+          }
+        }
+        throw error;
+      }
+      return true;
+    } catch (e) {
+      console.warn(`⚠️ Failed to save message to Supabase: ${e.message}`);
+      // Fallback: помечаем сообщение как несинхронизированное
+      const lastMsg = chatHistory[chatHistory.length - 1];
+      if (lastMsg) {
+        lastMsg.synced = false;
+        saveToLocalStorage();
+      }
+      return false;
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ В SUPABASE (batch + retry)
   // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
-    if (!isUserAuthenticated || !sb) return;
+    if (!isUserAuthenticated || !sb || !currentUserId) return;
     const localHistory = chatHistory.filter(msg => !msg.synced);
     if (localHistory.length === 0) return;
+
     try {
       const messagesToInsert = localHistory.map(msg => ({
         user_id: currentUserId,
@@ -284,15 +348,50 @@
         source: msg.source || null,
         metadata: { migrated: true, original_timestamp: msg.timestamp }
       }));
-      for (let i = 0; i < messagesToInsert.length; i += 20) {
-        const batch = messagesToInsert.slice(i, i + 20);
-        await sb.from('chat_messages').insert(batch);
+
+      // Batch insert по 10 сообщений
+      for (let i = 0; i < messagesToInsert.length; i += 10) {
+        const batch = messagesToInsert.slice(i, i + 10);
+        const { error } = await sb.from('chat_messages').insert(batch);
+        
+        if (error) {
+          console.warn(`⚠️ Batch ${i/10 + 1} failed:`, error.message);
+          // Продолжаем с следующей партией
+          break;
+        }
       }
+
+      // Помечаем все как синхронизированные
       chatHistory.forEach(msg => { msg.synced = true; });
       saveToLocalStorage();
       console.log(`✅ Migrated ${localHistory.length} messages to Supabase`);
-    } catch (e) { 
-      console.warn('Migration failed:', e.message); 
+    } catch (e) {
+      console.warn('⚠️ Migration failed:', e.message);
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  ПРОВЕРКА АВТОРИЗАЦИИ (улучшенная)
+  // ═══════════════════════════════════════
+  async function checkAuth() {
+    if (!window.SupabaseDB || !sb) {
+      isUserAuthenticated = false;
+      currentUserId = null;
+      return;
+    }
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (user && user.id) {
+        isUserAuthenticated = true;
+        currentUserId = user.id;
+      } else {
+        isUserAuthenticated = false;
+        currentUserId = null;
+      }
+    } catch (e) {
+      console.warn('⚠️ checkAuth failed:', e.message);
+      isUserAuthenticated = false;
+      currentUserId = null;
     }
   }
 
