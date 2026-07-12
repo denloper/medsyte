@@ -86,8 +86,13 @@
   </div>
 
   <!-- ═══════ МЕДИЦИНСКИЙ АГЕНТ ИИ ═══════ -->
-  <div class="sec-hd">
+  <div class="sec-hd" style="display: flex; justify-content: space-between; align-items: center;">
     <h2>Медицинский агент ИИ</h2>
+    <button onclick="clearChatHistory()" style="background: none; border: none; color: var(--text-3); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s;" 
+            onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--red)'"
+            onmouseout="this.style.background='none'; this.style.color='var(--text-3)'">
+      🗑 Очистить
+    </button>
   </div>
 
   <div class="chat-wrap" id="chatWrap" style="max-height: 400px; overflow-y: auto; margin-bottom: 12px; background: var(--surface); border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(28,43,28,0.06);">
@@ -485,7 +490,6 @@
     const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     
     const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-    // getDay() возвращает 0 (Вс) - 6 (Сб), преобразуем к Пн-Вс
     const daysOfWeek = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
     
     const currentDate = `${now.getDate()} ${months[now.getMonth()]} (${daysOfWeek[now.getDay()]})`;
@@ -507,7 +511,7 @@
 
   // ═══════ ОЧИСТКА КЕША (DEV TOOL) ═══════
   window.clearAppCache = async function() {
-    if (!confirm('🧹 Очистить кеш и профиль?\n\nБудут удалены:\n• Все кеши Service Worker\n• Сохранённый профиль пациента\n\nСтраница перезагрузится.')) {
+    if (!confirm('🧹 Очистить кеш и профиль?\n\nБудут удалены:\n• Все кеши Service Worker\n• Сохранённый профиль пациента\n• История чата\n\nСтраница перезагрузится.')) {
       return;
     }
 
@@ -573,6 +577,75 @@
       .replace(/\n/g, '<br>');
   }
 
+  // ═══════ ФОРМАТИРОВАНИЕ ВРЕМЕНИ ═══════
+  function formatTime(timestamp) {
+    if (!timestamp) return 'сейчас';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMin = Math.floor(diffMs / 60000);
+    
+    if (diffMin < 1) return 'только что';
+    if (diffMin < 60) return `${diffMin} мин назад`;
+    if (diffMin < 1440) return `${Math.floor(diffMin / 60)} ч назад`;
+    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  }
+
+  // ═══════ ЗАГРУЗКА ИСТОРИИ ЧАТА ПРИ ОТКРЫТИИ ═══════
+  async function renderChatHistory() {
+    if (!window.AIAssistant) return;
+    
+    const chatMessages = document.getElementById('chatMessages');
+    if (!chatMessages) return;
+    
+    chatMessages.innerHTML = '';
+    
+    const history = window.AIAssistant.getHistory();
+    const isAuth = window.AIAssistant.isAuthenticated();
+    
+    if (history.length === 0) {
+      if (isAuth) {
+        const hint = document.createElement('div');
+        hint.style.cssText = 'text-align: center; padding: 20px; color: var(--text-3); font-size: 13px;';
+        hint.innerHTML = '💾 История чата синхронизируется с облаком<br>Доступна на всех ваших устройствах';
+        chatMessages.appendChild(hint);
+      }
+      return;
+    }
+    
+    history.forEach(msg => {
+      if (msg.role === 'user') {
+        const userMsg = document.createElement('div');
+        userMsg.className = 'chat-user-msg';
+        userMsg.innerHTML = `${msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}<div class="time">${formatTime(msg.timestamp)}</div>`;
+        chatMessages.appendChild(userMsg);
+      } else if (msg.role === 'assistant') {
+        const sourceLabel = msg.source === 'gemini' ? '🤖 AI (Gemini)' : '💾 Локальная база';
+        const sourceClass = msg.source === 'gemini' ? 'gemini' : 'local';
+        
+        const aiMsg = document.createElement('div');
+        aiMsg.className = 'chat-ai-msg';
+        aiMsg.innerHTML = `
+          <div class="chat-source-badge ${sourceClass}">${sourceLabel}</div>
+          <div style="line-height: 1.6;">${formatAIResponse(msg.content)}</div>
+          <div class="time">${formatTime(msg.timestamp)}</div>
+        `;
+        chatMessages.appendChild(aiMsg);
+      }
+    });
+    
+    const chatWrap = document.getElementById('chatWrap');
+    if (chatWrap) {
+      setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 100);
+    }
+  }
+  
+  window.addEventListener('chatHistoryLoaded', () => {
+    renderChatHistory();
+  });
+  
+  setTimeout(renderChatHistory, 500);
+
   // ═══════ БЫСТРЫЙ ВОПРОС ═══════
   window.quickQuestion = function(text) {
     document.getElementById('chatInputField').value = text;
@@ -616,6 +689,19 @@
     };
   };
 
+  // ═══════ ОЧИСТКА ИСТОРИИ ЧАТА ═══════
+  window.clearChatHistory = async function() {
+    if (!confirm('🗑 Очистить всю историю чата?\n\nЭто действие нельзя отменить.')) {
+      return;
+    }
+    
+    if (window.AIAssistant) {
+      await window.AIAssistant.clearHistory();
+      renderChatHistory();
+      showToast('История чата очищена', '✓');
+    }
+  };
+
   // ═══════ ОТПРАВКА СООБЩЕНИЯ В AI ═══════
   window.sendChatMessage = async function() {
     const input = document.getElementById('chatInputField');
@@ -624,6 +710,10 @@
     
     const chatMessages = document.getElementById('chatMessages');
     const chatWrap = document.getElementById('chatWrap');
+    
+    // Очищаем подсказки
+    const hints = chatMessages.querySelectorAll('[style*="text-align: center"]');
+    hints.forEach(h => h.remove());
     
     // Сообщение пользователя
     const userMsg = document.createElement('div');
@@ -649,9 +739,8 @@
     setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 200);
     
     try {
-      // Проверяем наличие AI Assistant
       if (!window.AIAssistant) {
-        throw new Error('AI Assistant не загружен. Проверьте подключение ai-assistant.js');
+        throw new Error('AI Assistant не загружен');
       }
 
       const result = await window.AIAssistant.sendMessage(text);
@@ -671,6 +760,15 @@
       chatMessages.appendChild(aiMsg);
       
       setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 100);
+      
+      // Уведомление о синхронизации
+      if (window.AIAssistant.isAuthenticated()) {
+        const syncBadge = document.createElement('div');
+        syncBadge.style.cssText = 'text-align: center; font-size: 11px; color: var(--text-3); margin-top: 4px;';
+        syncBadge.innerHTML = '☁️ Сохранено в облаке';
+        chatMessages.appendChild(syncBadge);
+        setTimeout(() => syncBadge.remove(), 3000);
+      }
       
     } catch (e) {
       typing.remove();

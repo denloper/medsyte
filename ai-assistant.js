@@ -1,7 +1,6 @@
 /**
- * AI Medical Assistant v1.0
- * Гибридный RAG (database.js) + Gemini (через Supabase Edge Function)
- * С fallback на локальные ответы если Edge Function недоступна
+ * AI Medical Assistant v2.0
+ * С синхронизацией истории чата через Supabase
  */
 (function() {
   'use strict';
@@ -9,15 +8,18 @@
   const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
-  const STORAGE_KEY = 'ai_chat_history_v1';
-  const MAX_HISTORY = 20;
+  const LOCAL_STORAGE_KEY = 'ai_chat_history_v1';
+  const MAX_HISTORY = 50;
+  const MAX_CONTEXT_MESSAGES = 10;
 
   let chatHistory = [];
+  let isUserAuthenticated = false;
+  let currentUserId = null;
 
   // ═══════════════════════════════════════
-  //  СИСТЕМНЫЙ ПРОМПТ (медицинский контекст)
+  //  СИСТЕМНЫЙ ПРОМПТ
   // ═══════════════════════════════════════
-  const SYSTEM_PROMPT = `Ты — медицинский AI-ассистент в приложении "Семейный доктор". 
+  const SYSTEM_PROMPT = `Ты — медицинский AI-ассистент в приложении "Семейный доктор".
 
 ВАЖНЫЕ ПРАВИЛА:
 1. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
@@ -40,13 +42,13 @@
 Используй markdown: **жирный**, *курсив*, списки через •.`;
 
   // ═══════════════════════════════════════
-  //  RAG: Формирование контекста из базы database.js
+  //  RAG: Формирование контекста из базы
   // ═══════════════════════════════════════
   function buildContextFromDatabase(userMessage, userProfile) {
     const context = [];
     const lowerMsg = userMessage.toLowerCase();
 
-    // 1. Контекст профиля пользователя
+    // 1. Профиль пользователя
     if (userProfile) {
       context.push(`👤 ПРОФИЛЬ ПАЦИЕНТА:
 - Имя: ${userProfile.name || userProfile.full_name || 'не указано'}
@@ -55,7 +57,7 @@
 - Дата рождения: ${userProfile.birth_date || 'не указана'}`);
     }
 
-    // 2. Поиск релевантных тестов из window.labTests
+    // 2. Поиск релевантных тестов
     if (window.labTests && Array.isArray(window.labTests)) {
       const relevantTests = [];
       for (const test of window.labTests) {
@@ -79,7 +81,7 @@ ${relevantTests.map(t => `- ${t.name} (${t.short}): норма ${t.ref}`).join('
       }
     }
 
-    // 3. Поиск диагностических правил
+    // 3. Диагностические правила
     if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
       const relevantRules = [];
       for (const rule of window.diagnosticRules) {
@@ -94,11 +96,11 @@ ${relevantTests.map(t => `- ${t.name} (${t.short}): норма ${t.ref}`).join('
 
       if (relevantRules.length > 0) {
         context.push(`🏥 ВОЗМОЖНЫЕ СОСТОЯНИЯ ИЗ БАЗЫ:
-${relevantRules.map(r => `- ${r.name.trim()} (уровень опасности: ${r.danger}) — врачи: ${r.doctors.map(d => d.trim()).join(', ')}`).join('\n')}`);
+${relevantRules.map(r => `- ${r.name.trim()} (опасность: ${r.danger}) — врачи: ${r.doctors.map(d => d.trim()).join(', ')}`).join('\n')}`);
       }
     }
 
-    // 4. Поиск рекомендаций из supplementMap
+    // 4. Рекомендации из supplementMap
     if (window.supplementMap && typeof window.supplementMap === 'object') {
       const relevantSupplements = [];
       for (const testName in window.supplementMap) {
@@ -106,21 +108,18 @@ ${relevantRules.map(r => `- ${r.name.trim()} (уровень опасности:
           const data = window.supplementMap[testName];
           const rec = data.low || data.high || Object.values(data)[0];
           if (rec && relevantSupplements.length < 3) {
-            relevantSupplements.push({
-              test: testName.trim(),
-              rec: rec
-            });
+            relevantSupplements.push({ test: testName.trim(), rec });
           }
         }
       }
 
       if (relevantSupplements.length > 0) {
         context.push(`💊 РЕКОМЕНДАЦИИ ИЗ БАЗЫ:
-${relevantSupplements.map(s => `- При отклонении "${s.test}": ${s.rec.supplement || 'консультация врача'}. Длительность: ${s.rec.duration || 'не указана'}. Врачи: ${(s.rec.doctors || []).map(d => d.trim()).join(', ')}`).join('\n')}`);
+${relevantSupplements.map(s => `- При отклонении "${s.test}": ${s.rec.supplement || 'консультация врача'}. Врачи: ${(s.rec.doctors || []).map(d => d.trim()).join(', ')}`).join('\n')}`);
       }
     }
 
-    // 5. Последние анализы из localStorage
+    // 5. Последние анализы пользователя
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       if (history.length > 0) {
@@ -132,18 +131,205 @@ ${relevantSupplements.map(s => `- При отклонении "${s.test}": ${s.r
             .slice(0, 5);
           
           if (abnormalTests.length > 0) {
-            context.push(`📊 ПОСЛЕДНИЕ ОТКЛОНЕНИЯ В АНАЛИЗАХ ПАЦИЕНТА:
+            context.push(`📊 ПОСЛЕДНИЕ ОТКЛОНЕНИЯ В АНАЛИЗАХ:
 ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.status === 'high' ? '↑ повышено' : '↓ понижено'})`).join('\n')}`);
           }
         }
       }
-    } catch(e) {
-      console.warn('Failed to load analysis history:', e);
-    }
+    } catch(e) {}
 
     return context.length > 0 
-      ? `\n\nКОНТЕКСТ ИЗ БАЗЫ ДАННЫХ (используй для ответа):\n${context.join('\n\n')}\n\nИспользуй этот контекст для персонализированного ответа.`
+      ? `\n\nКОНТЕКСТ ИЗ БАЗЫ ДАННЫХ:\n${context.join('\n\n')}\n\nИспользуй этот контекст для персонализированного ответа.`
       : '';
+  }
+
+  // ═══════════════════════════════════════
+  //  Проверка авторизации
+  // ═══════════════════════════════════════
+  async function checkAuth() {
+    if (!window.SupabaseDB) {
+      isUserAuthenticated = false;
+      currentUserId = null;
+      return;
+    }
+
+    try {
+      const user = await window.SupabaseDB.getCurrentUser();
+      if (user && user.id) {
+        isUserAuthenticated = true;
+        currentUserId = user.id;
+      } else {
+        isUserAuthenticated = false;
+        currentUserId = null;
+      }
+    } catch (e) {
+      console.warn('Auth check failed:', e);
+      isUserAuthenticated = false;
+      currentUserId = null;
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  Загрузка истории из Supabase
+  // ═══════════════════════════════════════
+  async function loadHistoryFromSupabase() {
+    if (!isUserAuthenticated || !window.supabase) {
+      return false;
+    }
+
+    try {
+      const { data, error } = await window.supabase
+        .from('chat_messages')
+        .select('role, content, source, created_at')
+        .eq('user_id', currentUserId)
+        .order('created_at', { ascending: true })
+        .limit(MAX_HISTORY);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        chatHistory = data.map(msg => ({
+          role: msg.role,
+          content: msg.content,
+          source: msg.source,
+          timestamp: new Date(msg.created_at).getTime(),
+          synced: true
+        }));
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.warn('Failed to load chat history from Supabase:', e);
+      return false;
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  Загрузка истории из localStorage
+  // ═══════════════════════════════════════
+  function loadHistoryFromLocalStorage() {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        chatHistory = JSON.parse(saved);
+        return true;
+      }
+    } catch(e) {
+      chatHistory = [];
+    }
+    return false;
+  }
+
+  // ═══════════════════════════════════════
+  //  Сохранение в localStorage (как резерв)
+  // ═══════════════════════════════════════
+  function saveToLocalStorage() {
+    try {
+      // Сохраняем только последние MAX_HISTORY сообщений
+      const toSave = chatHistory.slice(-MAX_HISTORY);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
+    } catch(e) {
+      console.warn('Failed to save to localStorage:', e);
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  Сохранение сообщения в Supabase
+  // ═══════════════════════════════════════
+  async function saveMessageToSupabase(role, content, source = null) {
+    if (!isUserAuthenticated || !window.supabase || !currentUserId) {
+      return false;
+    }
+
+    try {
+      const { error } = await window.supabase
+        .from('chat_messages')
+        .insert({
+          user_id: currentUserId,
+          role: role,
+          content: content,
+          source: source,
+          metadata: {}
+        });
+
+      if (error) {
+        console.warn('Failed to save message to Supabase:', error);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn('Supabase save error:', e);
+      return false;
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  Миграция локальной истории в Supabase
+  // ═══════════════════════════════════════
+  async function migrateLocalHistoryToSupabase() {
+    if (!isUserAuthenticated || !window.supabase) return;
+
+    const localHistory = chatHistory.filter(msg => !msg.synced);
+    if (localHistory.length === 0) return;
+
+    try {
+      const messagesToInsert = localHistory.map(msg => ({
+        user_id: currentUserId,
+        role: msg.role,
+        content: msg.content,
+        source: msg.source || null,
+        metadata: { migrated: true, original_timestamp: msg.timestamp }
+      }));
+
+      // Вставляем батчами по 20 сообщений
+      for (let i = 0; i < messagesToInsert.length; i += 20) {
+        const batch = messagesToInsert.slice(i, i + 20);
+        const { error } = await window.supabase
+          .from('chat_messages')
+          .insert(batch);
+
+        if (error) {
+          console.warn('Migration batch failed:', error);
+          break;
+        }
+      }
+
+      // Помечаем сообщения как синхронизированные
+      chatHistory.forEach(msg => { msg.synced = true; });
+      saveToLocalStorage();
+      
+      console.log(`✅ Migrated ${localHistory.length} messages to Supabase`);
+    } catch (e) {
+      console.warn('Migration failed:', e);
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  Главная функция загрузки истории
+  // ═══════════════════════════════════════
+  async function loadHistory() {
+    await checkAuth();
+
+    if (isUserAuthenticated) {
+      // Пробуем загрузить из Supabase
+      const loaded = await loadHistoryFromSupabase();
+      
+      if (!loaded) {
+        // Если в Supabase пусто — загружаем из localStorage и мигрируем
+        loadHistoryFromLocalStorage();
+        await migrateLocalHistoryToSupabase();
+      }
+    } else {
+      // Для неавторизованных — только localStorage
+      loadHistoryFromLocalStorage();
+    }
+
+    // Ограничиваем историю
+    if (chatHistory.length > MAX_HISTORY) {
+      chatHistory = chatHistory.slice(-MAX_HISTORY);
+    }
+
+    console.log(`📜 Chat history loaded: ${chatHistory.length} messages (auth: ${isUserAuthenticated})`);
   }
 
   // ═══════════════════════════════════════
@@ -151,7 +337,7 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
   // ═══════════════════════════════════════
   async function callEdgeFunction(messages) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30 сек таймаут
+    const timeout = setTimeout(() => controller.abort(), 30000);
 
     try {
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
@@ -182,89 +368,46 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
   }
 
   // ═══════════════════════════════════════
-  //  FALLBACK: Локальный ответ на основе базы
+  //  Fallback: локальный ответ
   // ═══════════════════════════════════════
   function generateFallbackResponse(userMessage, userProfile) {
     const lowerMsg = userMessage.toLowerCase();
     const responses = [];
 
-    // 1. Экстренные симптомы
-    const emergencyKeywords = ['боль в груди', 'одышка', 'потеря сознания', 'судороги', 'кровь', 'слабость в руке', 'скорая', 'задыхаюсь'];
+    // Экстренные симптомы
+    const emergencyKeywords = ['боль в груди', 'одышка', 'потеря сознания', 'судороги', 'кровь', 'слабость в руке'];
     if (emergencyKeywords.some(k => lowerMsg.includes(k))) {
       return `🚨 **ВНИМАНИЕ! Это может быть экстренная ситуация.**
 
 Немедленно звоните **112** или обратитесь в скорую помощь!
 
-${userProfile ? `Пациент: ${userProfile.name || userProfile.full_name || ''}, ${userProfile.age || ''} лет.` : ''}
-
-**Что делать:**
-• Не паникуйте
-• Вызовите скорую (112)
-• До приезда — покой, не ешьте, не пейте
-• Если есть назначенные препараты — примите их
+${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age || ''} лет.` : ''}
 
 ⚠️ **Это не медицинская консультация** — требуется срочная помощь врача.`;
     }
 
-    // 2. Анализ конкретных симптомов
-    if (lowerMsg.includes('голов') || lowerMsg.includes('мигрен') || lowerMsg.includes('болит голова')) {
-      responses.push('Головная боль может быть вызвана множеством причин: стресс, обезвоживание, недосып, проблемы с давлением, мигрень или более серьёзные состояния.');
-      responses.push('**Что делать:**\n• Измерьте артериальное давление\n• Выпейте воды (стакан)\n• Отдохните в тёмной тихой комнате\n• Исключите яркие экраны');
-      responses.push('**Рекомендуемые анализы:**\n• Общий анализ крови\n• ТТГ (щитовидная железа)\n• Ферритин (исключение анемии)');
-      responses.push('**К какому врачу:** терапевт → невролог');
-    } else if (lowerMsg.includes('температур') || lowerMsg.includes('лихорадк') || lowerMsg.includes('жар')) {
-      responses.push('Повышенная температура — признак воспалительного процесса или инфекции.');
-      responses.push('**Что делать:**\n• Измерьте температуру точно\n• Пейте больше жидкости\n• При t > 38.5 — жаропонижающее (парацетамол)');
-      responses.push('**Рекомендуемые анализы:**\n• Общий анализ крови\n• С-реактивный белок (СРБ)\n• Лейкоцитарная формула');
-      responses.push('**К какому врачу:** терапевт');
-    } else if (lowerMsg.includes('устал') || lowerMsg.includes('слабост') || lowerMsg.includes('утомл') || lowerMsg.includes('нет сил')) {
-      responses.push('Хроническая усталость может быть признаком дефицита витаминов, анемии, проблем с щитовидной железой или стресса.');
-      responses.push('**Рекомендуемые анализы:**\n• Ферритин (скрытый железодефицит)\n• Витамин D (25-OH)\n• Витамин B12\n• ТТГ (щитовидная железа)\n• Общий анализ крови');
-      responses.push('**Что делать:**\n• Нормализуйте сон (7-9 часов)\n• Физическая активность 30 мин/день\n• Исключите стресс');
-      responses.push('**К какому врачу:** терапевт → эндокринолог');
-    } else if (lowerMsg.includes('желуд') || lowerMsg.includes('живот') || lowerMsg.includes('тошнот') || lowerMsg.includes('изжог')) {
-      responses.push('Проблемы с ЖКТ требуют дифференциальной диагностики.');
-      responses.push('**Рекомендуемые анализы:**\n• АЛТ, АСТ (печень)\n• Амилаза, Липаза (поджелудочная)\n• H. pylori антиген в кале\n• Кальпротектин в кале (воспаление)');
-      responses.push('**К какому врачу:** терапевт → гастроэнтеролог');
-    } else if (lowerMsg.includes('кашл') || lowerMsg.includes('горл') || lowerMsg.includes('насморк') || lowerMsg.includes('простуд')) {
-      responses.push('Симптомы ОРВИ обычно проходят за 7-10 дней. При ухудшении — обратитесь к врачу.');
-      responses.push('**Рекомендуемые анализы:**\n• Общий анализ крови\n• С-реактивный белок (СРБ)');
-      responses.push('**Что делать:**\n• Обильное питьё\n• Покой\n• Промывание носа солевым раствором');
-      responses.push('**К какому врачу:** терапевт');
-    } else if (lowerMsg.includes('давлен') || lowerMsg.includes('сердц') || lowerMsg.includes('гипертон')) {
-      responses.push('Проблемы с давлением требуют регулярного контроля и обследования.');
-      responses.push('**Рекомендуемые анализы:**\n• Липидограмма (холестерин, ЛПНП, ЛПВП, триглицериды)\n• Глюкоза натощак\n• Креатинин (почки)');
-      responses.push('**Что делать:**\n• Ведите дневник давления\n• Ограничьте соль (< 5 г/сут)\n• Физическая активность');
-      responses.push('**К какому врачу:** терапевт → кардиолог');
+    if (lowerMsg.includes('голов') || lowerMsg.includes('мигрен')) {
+      responses.push('Головная боль может быть вызвана: стресс, обезвоживание, недосып, проблемы с давлением.');
+      responses.push('**Что делать:**\n• Измерьте давление\n• Выпейте воды\n• Отдохните в тёмной комнате');
+      responses.push('**Анализы:** Общий анализ крови, ТТГ, Ферритин');
+      responses.push('**Врач:** терапевт → невролог');
+    } else if (lowerMsg.includes('температур')) {
+      responses.push('Повышенная температура — признак воспаления или инфекции.');
+      responses.push('**Анализы:** Общий анализ крови, СРБ');
+      responses.push('**Врач:** терапевт');
+    } else if (lowerMsg.includes('устал') || lowerMsg.includes('слабост')) {
+      responses.push('Хроническая усталость может быть признаком дефицита витаминов или анемии.');
+      responses.push('**Анализы:** Ферритин, Витамин D, B12, ТТГ');
+      responses.push('**Врач:** терапевт → эндокринолог');
     }
 
-    // 3. Поиск по базе database.js
-    if (responses.length === 0 && window.labTests) {
-      const matchedTests = window.labTests.filter(test => {
-        if (!test.aliases) return false;
-        return test.aliases.some(alias => lowerMsg.includes(alias.toLowerCase().trim()));
-      }).slice(0, 3);
-
-      if (matchedTests.length > 0) {
-        responses.push(`**По вашему вопросу релевантны следующие анализы:**\n`);
-        responses.push(matchedTests.map(t => {
-          const ref = t.references && t.references[0];
-          const refStr = ref ? `Норма: ${ref.min}-${ref.max} ${ref.unit}` : '';
-          return `• **${t.canonicalName.trim()}** (${t.shortName})\n  ${refStr}`;
-        }).join('\n\n'));
-        responses.push('Рекомендую сдать эти анализы и проконсультироваться с врачом для интерпретации результатов.');
-      }
-    }
-
-    // 4. Общий ответ если ничего не нашли
     if (responses.length === 0) {
-      responses.push('Я могу помочь вам с медицинскими вопросами:');
-      responses.push('• 🔬 **Расшифровка анализов** — объясню значения показателей\n• 🩺 **Анализ симптомов** — подскажу возможные причины и обследования\n• 💊 **Интерпретация отклонений** — что значит повышенный/пониженный показатель\n• 👨‍⚕️ **Подбор специалистов** — к какому врачу обратиться\n• 📋 **Рекомендации** — какие анализы сдать в вашей ситуации');
-      responses.push('\n**Попробуйте спросить:**\n• "Болит голова третий день"\n• "Расшифруй повышенный холестерин"\n• "Какие анализы сдать при усталости?"\n• "Что значит низкий ферритин?"');
+      responses.push('Я могу помочь с:');
+      responses.push('• 🔬 Расшифровкой анализов\n• 🩺 Анализом симптомов\n• 💊 Интерпретацией отклонений\n• 👨‍⚕️ Подбором специалистов');
+      responses.push('\n**Примеры вопросов:**\n• "Болит голова третий день"\n• "Что значит повышенный холестерин?"\n• "Какие анализы сдать при усталости?"');
     }
 
-    responses.push('\n⚠️ **Это не медицинская консультация.** Для точного диагноза и лечения обратитесь к врачу.');
-    
+    responses.push('\n⚠️ **Это не медицинская консультация.** Обратитесь к врачу.');
     return responses.join('\n\n');
   }
 
@@ -276,6 +419,9 @@ ${userProfile ? `Пациент: ${userProfile.name || userProfile.full_name || 
       throw new Error('Пустое сообщение');
     }
 
+    // Проверяем авторизацию перед каждым запросом
+    await checkAuth();
+
     // Загружаем профиль
     let userProfile = null;
     try {
@@ -284,24 +430,26 @@ ${userProfile ? `Пациент: ${userProfile.name || userProfile.full_name || 
       }
     } catch(e) {}
 
-    // Добавляем в историю
-    chatHistory.push({
+    // Добавляем сообщение пользователя в историю
+    const userMsg = {
       role: 'user',
       content: userMessage,
-      timestamp: Date.now()
-    });
+      timestamp: Date.now(),
+      synced: false
+    };
+    chatHistory.push(userMsg);
 
-    if (chatHistory.length > MAX_HISTORY) {
-      chatHistory = chatHistory.slice(-MAX_HISTORY);
-    }
+    // Сохраняем сообщение пользователя
+    saveToLocalStorage();
+    saveMessageToSupabase('user', userMessage, null);
 
     // Формируем контекст
     const dbContext = buildContextFromDatabase(userMessage, userProfile);
 
-    // Формируем сообщения для LLM
+    // Формируем сообщения для LLM (ограничиваем контекст)
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT + dbContext },
-      ...chatHistory.slice(-10).map(m => ({
+      ...chatHistory.slice(-MAX_CONTEXT_MESSAGES).map(m => ({
         role: m.role,
         content: m.content
       }))
@@ -311,61 +459,104 @@ ${userProfile ? `Пациент: ${userProfile.name || userProfile.full_name || 
     let source;
 
     try {
-      // Пробуем Edge Function
       const result = await callEdgeFunction(messages);
       reply = result.reply;
       source = 'gemini';
     } catch (e) {
       console.warn('Edge Function failed, using fallback:', e.message);
-      // Fallback на локальные ответы
       reply = generateFallbackResponse(userMessage, userProfile);
       source = 'local';
     }
 
-    // Добавляем ответ в историю
-    chatHistory.push({
+    // Добавляем ответ ассистента в историю
+    const assistantMsg = {
       role: 'assistant',
       content: reply,
       source: source,
-      timestamp: Date.now()
-    });
+      timestamp: Date.now(),
+      synced: false
+    };
+    chatHistory.push(assistantMsg);
 
-    saveHistory();
+    // Ограничиваем историю
+    if (chatHistory.length > MAX_HISTORY) {
+      chatHistory = chatHistory.slice(-MAX_HISTORY);
+    }
+
+    // Сохраняем ответ
+    saveToLocalStorage();
+    saveMessageToSupabase('assistant', reply, source);
 
     return { reply, source };
   }
 
   // ═══════════════════════════════════════
-  //  Сохранение и загрузка истории
+  //  Очистка истории
   // ═══════════════════════════════════════
-  function saveHistory() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(chatHistory));
-    } catch(e) {
-      console.warn('Failed to save chat history:', e);
-    }
-  }
-
-  function loadHistory() {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        chatHistory = JSON.parse(saved);
-      }
-    } catch(e) {
-      chatHistory = [];
-    }
-  }
-
-  function clearHistory() {
+  async function clearHistory() {
     chatHistory = [];
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+
+    if (isUserAuthenticated && window.supabase && currentUserId) {
+      try {
+        // Вызываем серверную функцию очистки
+        await window.supabase.rpc('clear_chat_history');
+        console.log('✅ Chat history cleared from Supabase');
+      } catch (e) {
+        console.warn('Failed to clear Supabase history:', e);
+        // Fallback: удаляем напрямую
+        try {
+          await window.supabase
+            .from('chat_messages')
+            .delete()
+            .eq('user_id', currentUserId);
+        } catch (e2) {
+          console.warn('Direct delete also failed:', e2);
+        }
+      }
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  Слушатель изменений авторизации
+  // ═══════════════════════════════════════
+  function setupAuthListener() {
+    if (!window.supabase) return;
+
+    window.supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔐 Auth state changed:', event);
+      
+      if (event === 'SIGNED_IN') {
+        // При входе — загружаем историю из Supabase
+        await loadHistory();
+        
+        // Уведомляем UI о смене
+        window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {
+          detail: { history: chatHistory, authenticated: true }
+        }));
+      } else if (event === 'SIGNED_OUT') {
+        // При выходе — очищаем и переключаемся на localStorage
+        chatHistory = [];
+        await loadHistory();
+        
+        window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {
+          detail: { history: chatHistory, authenticated: false }
+        }));
+      }
+    });
   }
 
   // ═══════════════════════════════════════
   //  Инициализация
   // ═══════════════════════════════════════
-  loadHistory();
+  async function init() {
+    await loadHistory();
+    setupAuthListener();
+    
+    console.log('🤖 AI Assistant v2.0 initialized (with Supabase sync)');
+  }
+
+  init();
 
   // ═══════════════════════════════════════
   //  Экспорт API
@@ -374,8 +565,15 @@ ${userProfile ? `Пациент: ${userProfile.name || userProfile.full_name || 
     sendMessage,
     getHistory: () => [...chatHistory],
     clearHistory,
-    version: '1.0.0'
+    isAuthenticated: () => isUserAuthenticated,
+    reloadHistory: loadHistory,
+    version: '2.0.0'
   };
 
-  console.log('🤖 AI Assistant v1.0 initialized (RAG + Edge Function + Fallback)');
+  // Публичное событие для UI
+  window.addEventListener('load', () => {
+    window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {
+      detail: { history: chatHistory, authenticated: isUserAuthenticated }
+    }));
+  });
 })();
