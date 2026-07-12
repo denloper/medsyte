@@ -360,11 +360,6 @@
     }
   }
 
-  if (!messages || (Array.isArray(messages) && messages.length === 0)) {
-    console.warn('Пустой массив сообщений – запрос не отправлен');
-    return { reply: 'Пожалуйста, введите текст сообщения.', source: 'fallback' };
-  }
-
   // ═══════════════════════════════════════
   //  ВЫЗОВ EDGE FUNCTION (GROQ)
   // ═══════════════════════════════════════
@@ -433,6 +428,48 @@
 
     responses.push('\n⚠️ **Это не медицинская консультация.** Обратитесь к врачу.');
     return responses.join('\n\n');
+  }
+
+  // ═══════════════════════════════════════
+  //  РАБОТА С LOCALSTORAGE
+  // ═══════════════════════════════════════
+  function loadHistoryFromLocalStorage() {
+    try {
+      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          chatHistory = parsed;
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse localStorage history:', e);
+    }
+    chatHistory = [];
+  }
+
+  function saveToLocalStorage() {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(chatHistory));
+    } catch (e) {
+      console.warn('Failed to save to localStorage:', e);
+    }
+  }
+
+  async function loadHistory() {
+    // 1. Сначала загружаем локальную (быстро)
+    loadHistoryFromLocalStorage();
+
+    // 2. Если авторизованы – пытаемся загрузить из Supabase (перезаписывает)
+    if (isUserAuthenticated && sb && currentUserId) {
+      const loaded = await loadHistoryFromSupabase();
+      if (loaded) {
+        // После загрузки из Supabase сохраняем в localStorage,
+        // чтобы локальная копия была актуальной
+        saveToLocalStorage();
+      }
+    }
   }
 
   // ═══════════════════════════════════════
