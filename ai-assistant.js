@@ -180,20 +180,29 @@
   }
 
   // ═══════════════════════════════════════
-  //  ПРОВЕРКА АВТОРИЗАЦИИ
+  //  ПРОВЕРКА АВТОРИЗАЦИИ (с детальным логом)
   // ═══════════════════════════════════════
   async function checkAuth() {
     if (!sb) {
+      console.warn('⚠️ Supabase client not available');
       isUserAuthenticated = false;
       currentUserId = null;
       return;
     }
     try {
-      const { data: { user } } = await sb.auth.getUser();
+      const { data: { user }, error } = await sb.auth.getUser();
+      if (error) {
+        console.warn('⚠️ Auth error:', error.message);
+        isUserAuthenticated = false;
+        currentUserId = null;
+        return;
+      }
       if (user && user.id) {
         isUserAuthenticated = true;
         currentUserId = user.id;
+        console.log(`✅ User authenticated: ${user.id}`);
       } else {
+        console.warn('⚠️ No user in session');
         isUserAuthenticated = false;
         currentUserId = null;
       }
@@ -205,26 +214,77 @@
   }
 
   // ═══════════════════════════════════════
-  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE (с retry)
+  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE (с детальным логом)
   // ═══════════════════════════════════════
-  async function loadHistoryFromSupabase() {
-    if (!isUserAuthenticated || !sb) return false;
-    
-    try {
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user || !user.id) {
-        console.warn('⚠️ User not authenticated despite flag');
-        isUserAuthenticated = false;
-        return false;
-      }
-      currentUserId = user.id;
-    } catch (e) {
-      console.warn('⚠️ Auth check failed:', e.message);
-      isUserAuthenticated = false;
+  async function saveMessageToSupabase(role, content, source = null) {
+    if (!isUserAuthenticated || !sb || !currentUserId) {
+      console.log('⏭ Skipping Supabase save (not authenticated)');
       return false;
     }
 
     try {
+      // Проверяем сессию перед INSERT
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        console.warn('⚠️ No active session, skipping save');
+        return false;
+      }
+
+      console.log(`💾 Saving message to Supabase:`, {
+        user_id: currentUserId,
+        role,
+        content_preview: content.slice(0, 50),
+        source
+      });
+
+      const { data, error } = await sb.from('chat_messages').insert({
+        user_id: currentUserId,
+        role: role,
+        content: content,
+        source: source,
+        metadata: {}
+      }).select();
+
+      if (error) {
+        console.error('❌ Supabase INSERT error:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        
+        // Если 401 — пробуем refresh
+        if (error.code === 'PGRST301' || error.message.includes('JWT')) {
+          console.log('🔄 Refreshing session...');
+          const { error: refreshError } = await sb.auth.refreshSession();
+          if (!refreshError) {
+            console.log('✅ Session refreshed, retrying...');
+            return await saveMessageToSupabase(role, content, source);
+          }
+        }
+        return false;
+      }
+
+      console.log('✅ Message saved to Supabase:', data);
+      return true;
+    } catch (e) {
+      console.error('❌ Exception saving message:', e);
+      return false;
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE
+  // ═══════════════════════════════════════
+  async function loadHistoryFromSupabase() {
+    if (!isUserAuthenticated || !sb || !currentUserId) {
+      console.log('⏭ Skipping Supabase load (not authenticated)');
+      return false;
+    }
+
+    try {
+      console.log(`📥 Loading chat history for user: ${currentUserId}`);
+      
       const { data, error } = await sb
         .from('chat_messages')
         .select('role, content, source, created_at')
@@ -233,16 +293,8 @@
         .limit(MAX_HISTORY);
 
       if (error) {
-        if (error.status === 401 || error.code === 'PGRST301') {
-          console.warn('⚠️ Supabase auth expired, refreshing session...');
-          const { error: refreshError } = await sb.auth.refreshSession();
-          if (refreshError) {
-            isUserAuthenticated = false;
-            return false;
-          }
-          return await loadHistoryFromSupabase();
-        }
-        throw error;
+        console.error('❌ Supabase SELECT error:', error);
+        return false;
       }
 
       if (data && data.length > 0) {
@@ -253,88 +305,31 @@
           timestamp: new Date(msg.created_at).getTime(),
           synced: true
         }));
+        console.log(`✅ Loaded ${data.length} messages from Supabase`);
         return true;
       }
+      
+      console.log('📭 No messages in Supabase');
       return false;
     } catch (e) {
-      console.warn('⚠️ Supabase history load failed:', e.message);
-      return false;
-    }
-  }
-
-  function loadHistoryFromLocalStorage() {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        chatHistory = JSON.parse(saved);
-        return true;
-      }
-    } catch(e) { chatHistory = []; }
-    return false;
-  }
-
-  function saveToLocalStorage() {
-    try {
-      const toSave = chatHistory.slice(-MAX_HISTORY);
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
-    } catch(e) {
-      console.warn('⚠️ LocalStorage save failed:', e);
-    }
-  }
-
-  // ═══════════════════════════════════════
-  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE (с retry)
-  // ═══════════════════════════════════════
-  async function saveMessageToSupabase(role, content, source = null, retryCount = 0) {
-    if (!isUserAuthenticated || !sb || !currentUserId) {
-      return false;
-    }
-
-    try {
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user || user.id !== currentUserId) {
-        console.warn('⚠️ User session invalid');
-        isUserAuthenticated = false;
-        return false;
-      }
-
-      const { error } = await sb.from('chat_messages').insert({
-        user_id: currentUserId,
-        role: role,
-        content: content,
-        source: source,
-        metadata: {}
-      });
-
-      if (error) {
-        if ((error.status === 401 || error.code === 'PGRST301') && retryCount < 1) {
-          console.warn('⚠️ 401 error, refreshing session...');
-          const { error: refreshError } = await sb.auth.refreshSession();
-          if (!refreshError) {
-            return await saveMessageToSupabase(role, content, source, retryCount + 1);
-          }
-        }
-        throw error;
-      }
-      return true;
-    } catch (e) {
-      console.warn(`⚠️ Failed to save message to Supabase: ${e.message}`);
-      const lastMsg = chatHistory[chatHistory.length - 1];
-      if (lastMsg) {
-        lastMsg.synced = false;
-        saveToLocalStorage();
-      }
+      console.error('❌ Exception loading history:', e);
       return false;
     }
   }
 
   // ═══════════════════════════════════════
-  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ В SUPABASE
+  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ
   // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
     if (!isUserAuthenticated || !sb || !currentUserId) return;
+    
     const localHistory = chatHistory.filter(msg => !msg.synced);
-    if (localHistory.length === 0) return;
+    if (localHistory.length === 0) {
+      console.log('⏭ No local messages to migrate');
+      return;
+    }
+
+    console.log(`🔄 Migrating ${localHistory.length} local messages to Supabase...`);
 
     try {
       const messagesToInsert = localHistory.map(msg => ({
@@ -345,37 +340,23 @@
         metadata: { migrated: true, original_timestamp: msg.timestamp }
       }));
 
-      for (let i = 0; i < messagesToInsert.length; i += 10) {
-        const batch = messagesToInsert.slice(i, i + 10);
+      // Batch insert по 5 сообщений для отладки
+      for (let i = 0; i < messagesToInsert.length; i += 5) {
+        const batch = messagesToInsert.slice(i, i + 5);
         const { error } = await sb.from('chat_messages').insert(batch);
         
         if (error) {
-          console.warn(`⚠️ Batch ${i/10 + 1} failed:`, error.message);
+          console.error(`❌ Batch ${i/5 + 1} failed:`, error);
           break;
         }
+        console.log(`✅ Batch ${i/5 + 1} migrated (${batch.length} messages)`);
       }
 
       chatHistory.forEach(msg => { msg.synced = true; });
       saveToLocalStorage();
-      console.log(`✅ Migrated ${localHistory.length} messages to Supabase`);
+      console.log(`✅ Migration complete`);
     } catch (e) {
-      console.warn('⚠️ Migration failed:', e.message);
-    }
-  }
-
-  async function loadHistory() {
-    await checkAuth();
-    if (isUserAuthenticated) {
-      const loaded = await loadHistoryFromSupabase();
-      if (!loaded) {
-        loadHistoryFromLocalStorage();
-        await migrateLocalHistoryToSupabase();
-      }
-    } else {
-      loadHistoryFromLocalStorage();
-    }
-    if (chatHistory.length > MAX_HISTORY) {
-      chatHistory = chatHistory.slice(-MAX_HISTORY);
+      console.error('❌ Migration failed:', e);
     }
   }
 
