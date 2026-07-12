@@ -85,43 +85,8 @@
   </div>
 
   <!-- ═══════ МЕДИЦИНСКИЙ АГЕНТ ИИ ═══════ -->
-  <div class="sec-hd" style="display: flex; justify-content: space-between; align-items: center;">
+  <div class="sec-hd">
     <h2>Медицинский агент ИИ</h2>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <button onclick="clearChatHistory()" style="background: none; border: none; color: var(--text-3); font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: all 0.2s;" 
-              onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--red)'"
-              onmouseout="this.style.background='none'; this.style.color='var(--text-3)'">
-        🗑 Очистить
-      </button>
-      <a href="chat.html" style="background: var(--green); color: white; padding: 6px 14px; border-radius: 16px; font-size: 13px; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(61, 139, 78, 0.3); transition: all 0.2s;"
-         onmouseover="this.style.background='var(--green-light, #5BAD6F)'"
-         onmouseout="this.style.background='var(--green)'">
-        💬 Полный чат →
-      </a>
-    </div>
-  </div>
-
-  <div class="chat-wrap" id="chatWrap" style="max-height: 400px; overflow-y: auto; margin-bottom: 12px; background: var(--surface); border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(28,43,28,0.06);">
-    <div class="chat-bubble ai" style="background: var(--surface-2); padding: 12px 16px; border-radius: 14px; margin-bottom: 10px;">
-      <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px; color: var(--dark);">🤖 Медицинский AI-ассистент</div>
-      <div style="font-size: 14px; color: var(--text-1); line-height: 1.5;">
-        Здравствуйте! Я помогу разобраться с анализами и симптомами. Опишите, что вас беспокоит.
-      </div>
-      <div class="chat-disclaimer">
-        ⚠️ Я не заменяю врача. При экстренных симптомах звоните <strong>112</strong>.
-      </div>
-      <div style="font-size: 11px; color: var(--text-3); margin-top: 6px;">сейчас</div>
-    </div>
-    
-    <div id="chatMessages"></div>
-  </div>
-
-  <!-- Быстрые вопросы -->
-  <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-    <button onclick="quickQuestion('Болит голова третий день')" class="quick-question-btn">😣 Болит голова</button>
-    <button onclick="quickQuestion('Расшифруй повышенный холестерин')" class="quick-question-btn">🩸 Холестерин</button>
-    <button onclick="quickQuestion('Какие анализы сдать при усталости?')" class="quick-question-btn">😴 Усталость</button>
-    <button onclick="quickQuestion('Что делать при температуре 38?')" class="quick-question-btn">🤒 Температура</button>
   </div>
 
   <!-- Поле ввода -->
@@ -209,6 +174,21 @@
       </div>
     </a>
   </div>
+
+    <!-- ═══════ УПРАВЛЕНИЕ БАЗОЙ ЗНАНИЙ ═══════ -->
+  <div class="sec-hd" style="margin-top: 8px;">
+    <h2>📚 База медицинских знаний</h2>
+    <a href="import.html" class="see-all">Управлять →</a>
+  </div>
+
+  <a href="import.html" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 16px; padding: 20px; text-decoration: none; color: white; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3); margin-bottom: 20px;">
+    <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0;">📄</div>
+    <div style="flex: 1;">
+      <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">Загрузить медицинские PDF</div>
+      <div style="font-size: 13px; opacity: 0.9; line-height: 1.4;">Импортируйте медицинские документы — ИИ будет использовать их при ответах</div>
+    </div>
+    <span style="font-size: 22px;">→</span>
+  </a>
 
   <!-- Персональные рекомендации -->
   <a href="recommendations.html" style="background: linear-gradient(135deg, var(--green) 0%, var(--green-light, #5BAD6F) 100%); border-radius: 16px; padding: 24px; text-decoration: none; color: white; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(61, 139, 78, 0.3); margin-bottom: 20px;">
@@ -489,18 +469,18 @@
 (function(){
   'use strict';
 
-  // ═══════ ВРЕМЯ И ДАТА (+ ДЕНЬ НЕДЕЛИ) ═══════
+  // ═══════ ВРЕМЯ И ДАТА ═══════
   function updateTime() {
     const now = new Date();
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
     
-    const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-    const daysOfWeek = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 
+                    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+    const daysOfWeek = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 
+                        'Четверг', 'Пятница', 'Суббота'];
     
-    const currentDate = `${now.getDate()} ${months[now.getMonth()]} (${daysOfWeek[now.getDay()]})`;
-    const nextWeekDate = `${nextWeek.getDate()} ${months[nextWeek.getMonth()]} (${daysOfWeek[nextWeek.getDay()]})`;
+    const currentDate = `${now.getDate()} ${months[now.getMonth()]} ${daysOfWeek[now.getDay()]}`;
     
-    document.getElementById('currentDate').textContent = `${currentDate} + ${nextWeekDate}`;
+    document.getElementById('currentDate').textContent = currentDate;
   }
   updateTime();
   setInterval(updateTime, 60000);
@@ -566,97 +546,6 @@
     });
   });
 
-  // ═══════ ФОРМАТИРОВАНИЕ ОТВЕТА AI ═══════
-  function formatAIResponse(text) {
-    if (!text) return '';
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      .replace(/`(.+?)`/g, '<code style="background:var(--surface-2);padding:2px 6px;border-radius:4px;font-family:monospace;">$1</code>')
-      .replace(/^• (.+)$/gm, '<div style="padding-left:16px;margin:2px 0;">• $1</div>')
-      .replace(/^- (.+)$/gm, '<div style="padding-left:16px;margin:2px 0;">• $1</div>')
-      .replace(/\n\n/g, '</p><p style="margin:10px 0;">')
-      .replace(/\n/g, '<br>');
-  }
-
-  // ═══════ ФОРМАТИРОВАНИЕ ВРЕМЕНИ ═══════
-  function formatTime(timestamp) {
-    if (!timestamp) return 'сейчас';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMin = Math.floor(diffMs / 60000);
-    
-    if (diffMin < 1) return 'только что';
-    if (diffMin < 60) return `${diffMin} мин назад`;
-    if (diffMin < 1440) return `${Math.floor(diffMin / 60)} ч назад`;
-    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-  }
-
-  // ═══════ ЗАГРУЗКА ИСТОРИИ ЧАТА ПРИ ОТКРЫТИИ ═══════
-  async function renderChatHistory() {
-    if (!window.AIAssistant) return;
-    
-    const chatMessages = document.getElementById('chatMessages');
-    if (!chatMessages) return;
-    
-    chatMessages.innerHTML = '';
-    
-    const history = window.AIAssistant.getHistory();
-    const isAuth = window.AIAssistant.isAuthenticated();
-    
-    if (history.length === 0) {
-      if (isAuth) {
-        const hint = document.createElement('div');
-        hint.style.cssText = 'text-align: center; padding: 20px; color: var(--text-3); font-size: 13px;';
-        hint.innerHTML = '💾 История чата синхронизируется с облаком<br>Доступна на всех ваших устройствах';
-        chatMessages.appendChild(hint);
-      }
-      return;
-    }
-    
-    history.forEach(msg => {
-      if (msg.role === 'user') {
-        const userMsg = document.createElement('div');
-        userMsg.className = 'chat-user-msg';
-        userMsg.innerHTML = `${msg.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}<div class="time">${formatTime(msg.timestamp)}</div>`;
-        chatMessages.appendChild(userMsg);
-      } else if (msg.role === 'assistant') {
-        const sourceLabel = msg.source === 'gemini' ? '🤖 AI (Gemini)' : '💾 Локальная база';
-        const sourceClass = msg.source === 'gemini' ? 'gemini' : 'local';
-        
-        const aiMsg = document.createElement('div');
-        aiMsg.className = 'chat-ai-msg';
-        aiMsg.innerHTML = `
-          <div class="chat-source-badge ${sourceClass}">${sourceLabel}</div>
-          <div style="line-height: 1.6;">${formatAIResponse(msg.content)}</div>
-          <div class="time">${formatTime(msg.timestamp)}</div>
-        `;
-        chatMessages.appendChild(aiMsg);
-      }
-    });
-    
-    const chatWrap = document.getElementById('chatWrap');
-    if (chatWrap) {
-      setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 100);
-    }
-  }
-  
-  window.addEventListener('chatHistoryLoaded', () => {
-    renderChatHistory();
-  });
-  
-  setTimeout(renderChatHistory, 500);
-
-  // ═══════ БЫСТРЫЙ ВОПРОС ═══════
-  window.quickQuestion = function(text) {
-    document.getElementById('chatInputField').value = text;
-    window.sendChatMessage();
-  };
-
   // ═══════ ГОЛОСОВОЙ ВВОД ═══════
   window.startVoiceInput = function() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -694,95 +583,17 @@
     };
   };
 
-  // ═══════ ОЧИСТКА ИСТОРИИ ЧАТА ═══════
-  window.clearChatHistory = async function() {
-    if (!confirm('🗑 Очистить всю историю чата?\n\nЭто действие нельзя отменить.')) {
-      return;
-    }
-    
-    if (window.AIAssistant) {
-      await window.AIAssistant.clearHistory();
-      renderChatHistory();
-      showToast('История чата очищена', '✓');
-    }
-  };
-
-  // ═══════ ОТПРАВКА СООБЩЕНИЯ В AI ═══════
-  window.sendChatMessage = async function() {
+  // ═══════ ОТПРАВКА СООБЩЕНИЯ — ПЕРЕХОД В ПОЛНЫЙ ЧАТ ═══════
+  window.sendChatMessage = function() {
     const input = document.getElementById('chatInputField');
     const text = input.value.trim();
     if (!text) return;
     
-    const chatMessages = document.getElementById('chatMessages');
-    const chatWrap = document.getElementById('chatWrap');
+    // Сохраняем сообщение в sessionStorage
+    sessionStorage.setItem('pending_chat_message', text);
     
-    const hints = chatMessages.querySelectorAll('[style*="text-align: center"]');
-    hints.forEach(h => h.remove());
-    
-    const userMsg = document.createElement('div');
-    userMsg.className = 'chat-user-msg';
-    userMsg.innerHTML = `${text.replace(/</g, '&lt;').replace(/>/g, '&gt;')}<div class="time">сейчас</div>`;
-    chatMessages.appendChild(userMsg);
-    
-    input.value = '';
-    input.disabled = true;
-    
-    setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 100);
-    
-    const typing = document.createElement('div');
-    typing.id = 'chatTyping';
-    typing.style.cssText = 'display: flex; gap: 4px; padding: 12px 16px; background: var(--surface-2); border-radius: 14px; margin-bottom: 10px; margin-right: 40px; width: fit-content;';
-    typing.innerHTML = `
-      <div style="width: 8px; height: 8px; background: var(--text-3); border-radius: 50%; animation: typingBounce 1.4s infinite ease-in-out;"></div>
-      <div style="width: 8px; height: 8px; background: var(--text-3); border-radius: 50%; animation: typingBounce 1.4s infinite ease-in-out 0.2s;"></div>
-      <div style="width: 8px; height: 8px; background: var(--text-3); border-radius: 50%; animation: typingBounce 1.4s infinite ease-in-out 0.4s;"></div>
-    `;
-    chatMessages.appendChild(typing);
-    setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 200);
-    
-    try {
-      if (!window.AIAssistant) {
-        throw new Error('AI Assistant не загружен');
-      }
-
-      const result = await window.AIAssistant.sendMessage(text);
-      
-      typing.remove();
-      
-      const sourceLabel = result.source === 'gemini' ? '🤖 AI (Gemini)' : '💾 Локальная база';
-      const sourceClass = result.source === 'gemini' ? 'gemini' : 'local';
-      
-      const aiMsg = document.createElement('div');
-      aiMsg.className = 'chat-ai-msg';
-      aiMsg.innerHTML = `
-        <div class="chat-source-badge ${sourceClass}">${sourceLabel}</div>
-        <div style="line-height: 1.6;">${formatAIResponse(result.reply)}</div>
-        <div class="time">сейчас</div>
-      `;
-      chatMessages.appendChild(aiMsg);
-      
-      setTimeout(() => chatWrap.scrollTop = chatWrap.scrollHeight, 100);
-      
-      if (window.AIAssistant.isAuthenticated && window.AIAssistant.isAuthenticated()) {
-        const syncBadge = document.createElement('div');
-        syncBadge.style.cssText = 'text-align: center; font-size: 11px; color: var(--text-3); margin-top: 4px;';
-        syncBadge.innerHTML = '☁️ Сохранено в облаке';
-        chatMessages.appendChild(syncBadge);
-        setTimeout(() => syncBadge.remove(), 3000);
-      }
-      
-    } catch (e) {
-      typing.remove();
-      showToast('Ошибка: ' + e.message, '❌');
-      
-      const errorMsg = document.createElement('div');
-      errorMsg.className = 'chat-error-msg';
-      errorMsg.innerHTML = `❌ Не удалось получить ответ. Попробуйте <a href="#" onclick="document.getElementById('symptomsText').value='${text.replace(/'/g, "\\'")}'; openModal('symptomsModal'); return false;">симптом-чекер</a>.`;
-      chatMessages.appendChild(errorMsg);
-    } finally {
-      input.disabled = false;
-      input.focus();
-    }
+    // Переходим на страницу полного чата
+    window.location.href = 'chat.html';
   };
 
   // ═══════ МОДАЛКА ВСЕХ БЫСТРЫХ ДЕЙСТВИЙ ═══════

@@ -19,12 +19,7 @@ serve(async (req) => {
       throw new Error('GROQ_API_KEY не настроен');
     }
 
-    // Формируем сообщения для Groq (OpenAI-совместимый формат)
-    const groqMessages = messages.map((m) => ({
-      role: m.role,
-      content: m.content
-    }));
-
+    // Groq использует OpenAI-совместимый API
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -33,9 +28,12 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'llama-3.3-70b-versatile',
-        messages: groqMessages,
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: m.content
+        })),
         temperature: 0.7,
-        max_tokens: 1024,
+        max_tokens: 2048,
         top_p: 0.95
       })
     });
@@ -55,7 +53,7 @@ serve(async (req) => {
       || 'Извините, не удалось сгенерировать ответ.';
 
     return new Response(
-      JSON.stringify({ reply, success: true }),
+      JSON.stringify({ reply, success: true, source: 'groq' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Импорт медицинских знаний</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    .import-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .drop-zone {
+      border: 3px dashed var(--green);
+      border-radius: 16px;
+      padding: 60px 20px;
+      text-align: center;
+      background: rgba(61, 139, 78, 0.05);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      background: rgba(61, 139, 78, 0.1);
+      border-color: var(--green-light);
+    }
+    .drop-zone .icon { font-size: 64px; margin-bottom: 16px; }
+    .drop-zone .title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .drop-zone .subtitle { font-size: 14px; color: var(--text-2); }
+    .file-list { margin-top: 20px; }
+    .file-item {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .file-item .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .file-item .name { font-weight: 700; }
+    .file-item .status { font-size: 12px; padding: 4px 8px; border-radius: 8px; }
+    .status.processing { background: #fef3c7; color: #92400e; }
+    .status.done { background: #d1fae5; color: #065f46; }
+    .status.error { background: #fee2e2; color: #991b1b; }
+    .progress {
+      height: 6px;
+      background: var(--surface-2);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--green);
+      transition: width 0.3s;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      background: var(--surface);
+      padding: 16px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--green);
+    }
+    .stat-card .label {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 4px;
+    }
+    .extracted-data {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .category-title {
+      font-weight: 700;
+      color: var(--green);
+      margin: 12px 0 8px;
+      font-size: 14px;
+    }
+    .data-item {
+      padding: 8px;
+      background: var(--surface-2);
+      border-radius: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-primary { background: var(--green); color: white; }
+    .btn-secondary { background: var(--surface-2); color: var(--text-1); }
+  </style>
+</head>
+<body>
+
+<div class="import-container">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1 style="margin: 0;">📚 Импорт медицинских знаний</h1>
+    <a href="index.html" style="color: var(--text-2); text-decoration: none;">← Назад</a>
+  </div>
+
+  <!-- Статистика базы -->
+  <div class="stats" id="statsBlock"></div>
+
+  <!-- Drop zone -->
+  <div class="drop-zone" id="dropZone">
+    <div class="icon">📄</div>
+    <div class="title">Перетащите PDF файлы сюда</div>
+    <div class="subtitle">или нажмите для выбора (можно несколько файлов)</div>
+    <input type="file" id="fileInput" accept="application/pdf" multiple style="display: none;">
+  </div>
+
+  <!-- Список файлов -->
+  <div class="file-list" id="fileList"></div>
+
+  <!-- Кнопки действий -->
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="exportKnowledge()">📤 Экспорт JSON</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('importJsonInput').click()">📥 Импорт JSON</button>
+    <button class="btn btn-primary" onclick="clearAll()">🗑 Очистить базу</button>
+    <input type="file" id="importJsonInput" accept=".json" style="display: none;" onchange="importKnowledge(event)">
+  </div>
+
+</div>
+
+<script src="knowledge-base.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const fileList = document.getElementById('fileList');
+
+  // ═══════ ОБНОВЛЕНИЕ СТАТИСТИКИ ═══════
+  function updateStats() {
+    const stats = window.MedicalKnowledgeBase.getStats();
+    const statsBlock = document.getElementById('statsBlock');
+    statsBlock.innerHTML = `
+      <div class="stat-card">
+        <div class="value">${stats.documents}</div>
+        <div class="label">Документов</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">${stats.tests}</div>
+        <div class="label">Тестов</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">${stats.diagnoses}</div>
+        <div class="label">Диагнозов</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">${stats.treatments}</div>
+        <div class="label">Лечений</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">${stats.drugs}</div>
+        <div class="label">Лекарств</div>
+      </div>
+      <div class="stat-card">
+        <div class="value">${stats.guidelines}</div>
+        <div class="label">Рекомендаций</div>
+      </div>
+    `;
+  }
+
+  // ═══════ DRAG & DROP ═══════
+  dropZone.addEventListener('click', () => fileInput.click());
+  
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  });
+  
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('dragover');
+  });
+  
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'application/pdf');
+    processFiles(files);
+  });
+  
+  fileInput.addEventListener('change', (e) => {
+    processFiles(Array.from(e.target.files));
+  });
+
+  // ═══════ ОБРАБОТКА ФАЙЛОВ ═══════
+  async function processFiles(files) {
+    for (const file of files) {
+      await processFile(file);
+    }
+  }
+
+  async function processFile(file) {
+    const fileId = 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
+    // Создаём элемент файла
+    const fileItem = document.createElement('div');
+    fileItem.className = 'file-item';
+    fileItem.id = fileId;
+    fileItem.innerHTML = `
+      <div class="header">
+        <div class="name">📄 ${file.name}</div>
+        <div class="status processing">⏳ Обработка</div>
+      </div>
+      <div style="font-size: 12px; color: var(--text-3);">${(file.size / 1024).toFixed(1)} KB</div>
+      <div class="progress">
+        <div class="progress-bar" style="width: 0%"></div>
+      </div>
+      <div class="extracted-data" style="display: none;"></div>
+    `;
+    fileList.appendChild(fileItem);
+
+    try {
+      // Извлекаем текст из PDF
+      const text = await extractTextFromPDF(file, (progress) => {
+        const bar = fileItem.querySelector('.progress-bar');
+        bar.style.width = `${progress * 100}%`;
+      });
+
+      // Парсим медицинскую информацию
+      const extractedData = parseMedicalContent(text, file.name);
+      
+      // Сохраняем в базу знаний
+      const docId = window.MedicalKnowledgeBase.addFromPDF({
+        fileName: file.name,
+        content: text,
+        ...extractedData
+      });
+
+      // Обновляем UI
+      const status = fileItem.querySelector('.status');
+      status.className = 'status done';
+      status.textContent = `✓ Добавлено`;
+
+      const extractedDiv = fileItem.querySelector('.extracted-data');
+      extractedDiv.style.display = 'block';
+      extractedDiv.innerHTML = renderExtractedData(extractedData);
+
+      updateStats();
+
+    } catch (error) {
+      console.error('Error processing file:', error);
+      const status = fileItem.querySelector('.status');
+      status.className = 'status error';
+      status.textContent = `❌ Ошибка`;
+    }
+  }
+
+  // ═══════ ИЗВЛЕЧЕНИЕ ТЕКСТА ИЗ PDF ═══════
+  async function extractTextFromPDF(file, onProgress) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    const totalPages = pdf.numPages;
+
+    for (let i = 1; i <= totalPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      fullText += pageText + '\n\n';
+      
+      if (onProgress) onProgress(i / totalPages);
+    }
+
+    return fullText;
+  }
+
+  // ═══════ ПАРСИНГ МЕДИЦИНСКОГО КОНТЕНТА ═══════
+  function parseMedicalContent(text, fileName) {
+    const result = {
+      tests: [],
+      diagnoses: [],
+      treatments: [],
+      drugs: [],
+      guidelines: []
+    };
+
+    const lowerText = text.toLowerCase();
+
+    // 1. Ищем лабораторные тесты (используем существующую базу labTests как словарь)
+    if (window.labTests && Array.isArray(window.labTests)) {
+      window.labTests.forEach(test => {
+        const found = test.aliases.some(alias => 
+          lowerText.includes(alias.toLowerCase().trim())
+        );
+        if (found) {
+          // Пытаемся извлечь значение из текста
+          const value = extractValueFromText(text, test);
+          result.tests.push({
+            id: test.id,
+            name: test.canonicalName,
+            aliases: test.aliases,
+            category: test.category,
+            description: `Тест из категории "${test.category}"`,
+            norms: test.references,
+            extractedValue: value
+          });
+        }
+      });
+    }
+
+    // 2. Ищем диагнозы (ключевые слова)
+    const diagnosisKeywords = [
+      { keywords: ['анемия', 'anemia'], name: 'Анемия', description: 'Снижение уровня гемоглобина' },
+      { keywords: ['диабет', 'diabetes'], name: 'Сахарный диабет', description: 'Нарушение углеводного обмена' },
+      { keywords: ['гипотиреоз', 'hypothyroidism'], name: 'Гипотиреоз', description: 'Снижение функции щитовидной железы' },
+      { keywords: ['гипертиреоз', 'hyperthyroidism'], name: 'Гипертиреоз', description: 'Повышение функции щитовидной железы' },
+      { keywords: ['гепатит', 'hepatitis'], name: 'Гепатит', description: 'Воспаление печени' },
+      { keywords: ['панкреатит', 'pancreatitis'], name: 'Панкреатит', description: 'Воспаление поджелудочной железы' },
+      { keywords: ['гастрит', 'gastritis'], name: 'Гастрит', description: 'Воспаление слизистой желудка' },
+      { keywords: ['язва', 'ulcer'], name: 'Язвенная болезнь', description: 'Дефект слизистой ЖКТ' },
+      { keywords: ['гипертония', 'hypertension'], name: 'Артериальная гипертензия', description: 'Повышенное давление' },
+      { keywords: ['ишемическая болезнь', 'coronary artery'], name: 'ИБС', description: 'Ишемическая болезнь сердца' }
+    ];
+
+    diagnosisKeywords.forEach(d => {
+      if (d.keywords.some(k => lowerText.includes(k))) {
+        result.diagnoses.push({
+          id: 'diag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          name: d.name,
+          description: d.description
+        });
+      }
+    });
+
+    // 3. Ищем лекарства (по характерным словам)
+    const drugKeywords = [
+      'метформин', 'левотироксин', 'омепразол', 'пантопразол',
+      'амлодипин', 'лизиноприл', 'аторвастатин', 'розувастатин',
+      'аспирин', 'клопидогрел', 'варфарин', 'ибупрофен',
+      'парацетамол', 'диклофенак', 'преднизолон', 'инсулин'
+    ];
+
+    drugKeywords.forEach(drugName => {
+      if (lowerText.includes(drugName)) {
+        result.drugs.push({
+          id: 'drug_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          name: drugName.charAt(0).toUpperCase() + drugName.slice(1),
+          description: `Лекарственный препарат, упомянутый в ${fileName}`
+        });
+      }
+    });
+
+    // 4. Ищем клинические рекомендации (разделы "Рекомендации", "Лечение")
+    const sections = text.split(/\n{2,}/);
+    sections.forEach(section => {
+      const lower = section.toLowerCase();
+      if (lower.includes('рекомендац') || lower.includes('лечение') || lower.includes('терапия')) {
+        if (section.length > 50 && section.length < 1000) {
+          result.guidelines.push({
+            id: 'guide_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            title: section.split('\n')[0].slice(0, 100),
+            content: section
+          });
+        }
+      }
+    });
+
+    return result;
+  }
+
+  // ═══════ ИЗВЛЕЧЕНИЕ ЗНАЧЕНИЯ ТЕСТА ═══════
+  function extractValueFromText(text, test) {
+    const regex = new RegExp(`(${test.aliases.map(a => a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})[^\d]*(\d+[.,]?\d*)`, 'i');
+    const match = text.match(regex);
+    return match ? parseFloat(match[2].replace(',', '.')) : null;
+  }
+
+  // ═══════ РЕНДЕР ИЗВЛЕЧЁННЫХ ДАННЫХ ═══════
+  function renderExtractedData(data) {
+    let html = '';
+    
+    if (data.tests.length > 0) {
+      html += `<div class="category-title">🧪 Тесты (${data.tests.length})</div>`;
+      data.tests.slice(0, 10).forEach(t => {
+        html += `<div class="data-item"><strong>${t.name}</strong> ${t.extractedValue ? `= ${t.extractedValue}` : ''}</div>`;
+      });
+      if (data.tests.length > 10) html += `<div class="data-item">... и ещё ${data.tests.length - 10}</div>`;
+    }
+    
+    if (data.diagnoses.length > 0) {
+      html += `<div class="category-title">🏥 Диагнозы (${data.diagnoses.length})</div>`;
+      data.diagnoses.forEach(d => {
+        html += `<div class="data-item"><strong>${d.name}</strong> — ${d.description}</div>`;
+      });
+    }
+    
+    if (data.drugs.length > 0) {
+      html += `<div class="category-title">💊 Лекарства (${data.drugs.length})</div>`;
+      data.drugs.forEach(d => {
+        html += `<div class="data-item">${d.name}</div>`;
+      });
+    }
+    
+    if (data.guidelines.length > 0) {
+      html += `<div class="category-title">📋 Рекомендации (${data.guidelines.length})</div>`;
+      data.guidelines.slice(0, 3).forEach(g => {
+        html += `<div class="data-item"><strong>${g.title}</strong></div>`;
+      });
+    }
+    
+    if (!html) {
+      html = '<div class="data-item">Медицинские данные не найдены</div>';
+    }
+    
+    return html;
+  }
+
+  // ═══════ ЭКСПОРТ / ИМПОРТ ═══════
+  window.exportKnowledge = function() {
+    const json = window.MedicalKnowledgeBase.exportJSON();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `medical-knowledge-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  window.importKnowledge = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (window.MedicalKnowledgeBase.importJSON(e.target.result)) {
+        alert('✓ База знаний импортирована!');
+        updateStats();
+      } else {
+        alert('❌ Ошибка импорта');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  window.clearAll = function() {
+    if (!confirm('Удалить все данные из базы знаний?')) return;
+    window.MedicalKnowledgeBase.clear();
+    fileList.innerHTML = '';
+    updateStats();
+  };
+
+  // Инициализация
+  updateStats();
+})();
+</script>
+
+</body>
+</html>

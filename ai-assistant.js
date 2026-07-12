@@ -1,6 +1,6 @@
 /**
- * AI Medical Assistant v2.0
- * С синхронизацией истории чата через Supabase
+ * AI Medical Assistant v3.0
+ * Полная база database.js + RAG + Groq
  */
 (function() {
   'use strict';
@@ -21,67 +21,124 @@
   // ═══════════════════════════════════════
   const SYSTEM_PROMPT = `Ты — медицинский AI-ассистент в приложении "Семейный доктор".
 
-ВАЖНЫЕ ПРАВИЛА:
+СТРОГИЕ ПРАВИЛА:
 1. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
-2. ВСЕГДА добавляй: "Это не медицинская консультация. Обратитесь к врачу."
-3. Используй предоставленные данные из базы (анализы, симптомы)
-4. Отвечай на русском языке, кратко и понятно
-5. Для тревожных симптомов немедленно советуй вызвать скорую (112)
-6. Рекомендуй конкретных специалистов из базы данных
-7. Объясняй значения анализов простым языком
-8. НЕ назначай лечение и лекарства — только общие рекомендации
+2. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
+3. Для тревожных симптомов (боль в груди, одышка, потеря сознания) — немедленно советуй вызвать 112
+4. НЕ назначай лечение и лекарства — только общие рекомендации и направления к специалистам
+5. Отвечай на русском языке, кратко и понятно
+6. Используй markdown: **жирный** для важного, • для списков
 
 ФОРМАТ ОТВЕТА:
 - Краткий анализ ситуации (2-3 предложения)
 - Возможные причины (список через •)
-- Что делать (конкретные шаги)
+- Рекомендуемые анализы из базы (конкретные названия)
 - К какому врачу обратиться
 - Дисклеймер в конце
 
-Если вопрос НЕ медицинский — вежливо предложи задать медицинский вопрос.
-Используй markdown: **жирный**, *курсив*, списки через •.`;
+Если вопрос НЕ медицинский — вежливо предложи задать медицинский вопрос.`;
 
   // ═══════════════════════════════════════
-  //  RAG: Формирование контекста из базы
+  //  КОМПАКТНАЯ СВОДКА ВСЕЙ БАЗЫ (для Groq)
+  //  Передаёт ВСЕ тесты, правила и рекомендации в сжатом виде
   // ═══════════════════════════════════════
-  function buildContextFromDatabase(userMessage, userProfile) {
+  function buildCompactDatabaseSummary() {
+    const sections = [];
+
+    // 1. ВСЕ лабораторные тесты (компактный формат)
+    if (window.labTests && Array.isArray(window.labTests)) {
+      const testsByCategory = {};
+      window.labTests.forEach(test => {
+        const cat = test.category || 'Другое';
+        if (!testsByCategory[cat]) testsByCategory[cat] = [];
+        
+        // Компактная запись: "Название (единицы): норма"
+        const ref = test.references && test.references[0];
+        const normStr = ref 
+          ? `${ref.min}-${ref.max} ${ref.unit || ''}`.trim()
+          : '—';
+        
+        testsByCategory[cat].push(`${test.canonicalName.trim()} [${test.shortName.trim()}]: ${normStr}`);
+      });
+
+      let testsList = '🧪 ПОЛНАЯ БАЗА ЛАБОРАТОРНЫХ ТЕСТОВ (используй эти названия в ответах):\n';
+      Object.keys(testsByCategory).sort().forEach(cat => {
+        testsList += `\n【${cat}】\n`;
+        testsList += testsByCategory[cat].map(t => `• ${t}`).join('\n');
+      });
+      sections.push(testsList);
+    }
+
+    // 2. ВСЕ диагностические правила
+    if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
+      let rulesList = '\n\n🏥 ДИАГНОСТИЧЕСКИЕ ПРАВИЛА (связь отклонений с состояниями):\n';
+      window.diagnosticRules.forEach(rule => {
+        const testsStr = Object.entries(rule.results)
+          .map(([test, status]) => `${test.trim()} ${status === 'high' ? '↑' : '↓'}`)
+          .join(', ');
+        rulesList += `• ${rule.name.trim()} [${rule.danger}] → ${testsStr} → врачи: ${rule.doctors.map(d => d.trim()).join(', ')}\n`;
+      });
+      sections.push(rulesList);
+    }
+
+    // 3. ВСЕ рекомендации по добавкам (компактно)
+    if (window.supplementMap && typeof window.supplementMap === 'object') {
+      let supplementsList = '\n\n💊 РЕКОМЕНДАЦИИ ПРИ ОТКЛОНЕНИЯХ:\n';
+      Object.entries(window.supplementMap).forEach(([test, data]) => {
+        Object.entries(data).forEach(([status, rec]) => {
+          const statusRu = status === 'high' ? '↑ повышен' : '↓ понижен';
+          supplementsList += `• ${test.trim()} (${statusRu}): ${rec.supplement || 'консультация врача'} → ${rec.doctors ? rec.doctors.map(d => d.trim()).join(', ') : 'терапевт'}\n`;
+        });
+      });
+      sections.push(supplementsList);
+    }
+
+    // 4. Профилактические рекомендации
+    if (window.preventiveRecommendations && Array.isArray(window.preventiveRecommendations)) {
+      let preventive = '\n\n🛡 ПРОФИЛАКТИЧЕСКИЕ РЕКОМЕНДАЦИИ:\n';
+      window.preventiveRecommendations.forEach(rec => {
+        preventive += `• ${rec.supplement} (${rec.duration}) — ${rec.note}\n`;
+      });
+      sections.push(preventive);
+    }
+
+    return sections.join('\n');
+  }
+
+  // ═══════════════════════════════════════
+  //  ДЕТАЛЬНЫЙ RAG: релевантные данные для конкретного вопроса
+  // ═══════════════════════════════════════
+  function buildRelevantContext(userMessage, userProfile) {
     const context = [];
     const lowerMsg = userMessage.toLowerCase();
 
     // 1. Профиль пользователя
     if (userProfile) {
-      context.push(`👤 ПРОФИЛЬ ПАЦИЕНТА:
-- Имя: ${userProfile.name || userProfile.full_name || 'не указано'}
-- Пол: ${userProfile.sex === 'male' ? 'мужской' : userProfile.sex === 'female' ? 'женский' : 'не указан'}
-- Возраст: ${userProfile.age || 'не указан'} лет
-- Дата рождения: ${userProfile.birth_date || 'не указана'}`);
+      context.push(`👤 ПАЦИЕНТ: ${userProfile.name || userProfile.full_name || 'не указано'}, ${userProfile.sex === 'male' ? 'мужчина' : userProfile.sex === 'female' ? 'женщина' : 'пол не указан'}, ${userProfile.age || '?'} лет`);
     }
 
-    // 2. Поиск релевантных тестов
+    // 2. Релевантные тесты (по совпадениям)
     if (window.labTests && Array.isArray(window.labTests)) {
-      const relevantTests = [];
+      const relevant = [];
       for (const test of window.labTests) {
         if (!test.aliases) continue;
         const matched = test.aliases.some(alias => 
           lowerMsg.includes(alias.toLowerCase().trim())
         );
-        if (matched && relevantTests.length < 5) {
-          const ref = test.references && test.references[0];
-          relevantTests.push({
-            name: test.canonicalName,
-            short: test.shortName,
-            ref: ref ? `${ref.min}-${ref.max} ${ref.unit}` : 'нет данных'
-          });
+        if (matched && relevant.length < 5) {
+          relevant.push(test);
         }
       }
-
-      if (relevantTests.length > 0) {
-        context.push(`🧪 РЕЛЕВАНТНЫЕ АНАЛИЗЫ ИЗ БАЗЫ:
-${relevantTests.map(t => `- ${t.name} (${t.short}): норма ${t.ref}`).join('\n')}`);
+      if (relevant.length > 0) {
+        context.push(`\n🎯 РЕЛЕВАНТНЫЕ ТЕСТЫ ПО ЗАПРОСУ:`);
+        relevant.forEach(t => {
+          const ref = t.references && t.references[0];
+          context.push(`• ${t.canonicalName.trim()} (${t.shortName.trim()}): норма ${ref ? `${ref.min}-${ref.max} ${ref.unit}` : '—'}`);
+        });
       }
     }
 
-    // 3. Диагностические правила
+    // 3. Релевантные диагностические правила
     if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
       const relevantRules = [];
       for (const rule of window.diagnosticRules) {
@@ -93,58 +150,40 @@ ${relevantTests.map(t => `- ${t.name} (${t.short}): норма ${t.ref}`).join('
           relevantRules.push(rule);
         }
       }
-
       if (relevantRules.length > 0) {
-        context.push(`🏥 ВОЗМОЖНЫЕ СОСТОЯНИЯ ИЗ БАЗЫ:
-${relevantRules.map(r => `- ${r.name.trim()} (опасность: ${r.danger}) — врачи: ${r.doctors.map(d => d.trim()).join(', ')}`).join('\n')}`);
+        context.push(`\n🔍 ВОЗМОЖНЫЕ СОСТОЯНИЯ:`);
+        relevantRules.forEach(r => {
+          context.push(`• ${r.name.trim()} (уровень: ${r.danger}) → ${r.doctors.map(d => d.trim()).join(', ')}`);
+        });
       }
     }
 
-    // 4. Рекомендации из supplementMap
-    if (window.supplementMap && typeof window.supplementMap === 'object') {
-      const relevantSupplements = [];
-      for (const testName in window.supplementMap) {
-        if (lowerMsg.includes(testName.toLowerCase().trim())) {
-          const data = window.supplementMap[testName];
-          const rec = data.low || data.high || Object.values(data)[0];
-          if (rec && relevantSupplements.length < 3) {
-            relevantSupplements.push({ test: testName.trim(), rec });
-          }
-        }
-      }
-
-      if (relevantSupplements.length > 0) {
-        context.push(`💊 РЕКОМЕНДАЦИИ ИЗ БАЗЫ:
-${relevantSupplements.map(s => `- При отклонении "${s.test}": ${s.rec.supplement || 'консультация врача'}. Врачи: ${(s.rec.doctors || []).map(d => d.trim()).join(', ')}`).join('\n')}`);
-      }
-    }
-
-    // 5. Последние анализы пользователя
+    // 4. Последние анализы пользователя из localStorage
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       if (history.length > 0) {
         const lastAnalysis = history[history.length - 1];
         const results = lastAnalysis.results || (lastAnalysis.value && lastAnalysis.value.results);
         if (results && typeof results === 'object') {
-          const abnormalTests = Object.entries(results)
+          const abnormal = Object.entries(results)
             .filter(([_, r]) => r && (r.status === 'high' || r.status === 'low'))
             .slice(0, 5);
           
-          if (abnormalTests.length > 0) {
-            context.push(`📊 ПОСЛЕДНИЕ ОТКЛОНЕНИЯ В АНАЛИЗАХ:
-${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.status === 'high' ? '↑ повышено' : '↓ понижено'})`).join('\n')}`);
+          if (abnormal.length > 0) {
+            context.push(`\n📊 ПОСЛЕДНИЕ ОТКЛОНЕНИЯ У ПАЦИЕНТА:`);
+            abnormal.forEach(([name, r]) => {
+              context.push(`• ${name}: ${r.value} ${r.unit || ''} (${r.status === 'high' ? '↑ повышено' : '↓ понижено'})`);
+            });
           }
         }
       }
     } catch(e) {}
 
-    return context.length > 0 
-      ? `\n\nКОНТЕКСТ ИЗ БАЗЫ ДАННЫХ:\n${context.join('\n\n')}\n\nИспользуй этот контекст для персонализированного ответа.`
-      : '';
+    return context.length > 0 ? context.join('\n') : '';
   }
 
   // ═══════════════════════════════════════
-  //  Проверка авторизации
+  //  ПРОВЕРКА АВТОРИЗАЦИИ
   // ═══════════════════════════════════════
   async function checkAuth() {
     if (!window.SupabaseDB) {
@@ -152,7 +191,6 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
       currentUserId = null;
       return;
     }
-
     try {
       const user = await window.SupabaseDB.getCurrentUser();
       if (user && user.id) {
@@ -163,20 +201,16 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
         currentUserId = null;
       }
     } catch (e) {
-      console.warn('Auth check failed:', e);
       isUserAuthenticated = false;
       currentUserId = null;
     }
   }
 
   // ═══════════════════════════════════════
-  //  Загрузка истории из Supabase
+  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE
   // ═══════════════════════════════════════
   async function loadHistoryFromSupabase() {
-    if (!isUserAuthenticated || !window.supabase) {
-      return false;
-    }
-
+    if (!isUserAuthenticated || !window.supabase) return false;
     try {
       const { data, error } = await window.supabase
         .from('chat_messages')
@@ -184,9 +218,7 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
         .eq('user_id', currentUserId)
         .order('created_at', { ascending: true })
         .limit(MAX_HISTORY);
-
       if (error) throw error;
-
       if (data && data.length > 0) {
         chatHistory = data.map(msg => ({
           role: msg.role,
@@ -199,14 +231,11 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
       }
       return false;
     } catch (e) {
-      console.warn('Failed to load chat history from Supabase:', e);
+      console.warn('Supabase history load failed:', e);
       return false;
     }
   }
 
-  // ═══════════════════════════════════════
-  //  Загрузка истории из localStorage
-  // ═══════════════════════════════════════
   function loadHistoryFromLocalStorage() {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -214,64 +243,33 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
         chatHistory = JSON.parse(saved);
         return true;
       }
-    } catch(e) {
-      chatHistory = [];
-    }
+    } catch(e) { chatHistory = []; }
     return false;
   }
 
-  // ═══════════════════════════════════════
-  //  Сохранение в localStorage (как резерв)
-  // ═══════════════════════════════════════
   function saveToLocalStorage() {
     try {
-      // Сохраняем только последние MAX_HISTORY сообщений
       const toSave = chatHistory.slice(-MAX_HISTORY);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
-    } catch(e) {
-      console.warn('Failed to save to localStorage:', e);
-    }
+    } catch(e) {}
   }
 
-  // ═══════════════════════════════════════
-  //  Сохранение сообщения в Supabase
-  // ═══════════════════════════════════════
   async function saveMessageToSupabase(role, content, source = null) {
-    if (!isUserAuthenticated || !window.supabase || !currentUserId) {
-      return false;
-    }
-
+    if (!isUserAuthenticated || !window.supabase || !currentUserId) return false;
     try {
-      const { error } = await window.supabase
-        .from('chat_messages')
-        .insert({
-          user_id: currentUserId,
-          role: role,
-          content: content,
-          source: source,
-          metadata: {}
-        });
-
-      if (error) {
-        console.warn('Failed to save message to Supabase:', error);
-        return false;
-      }
+      await window.supabase.from('chat_messages').insert({
+        user_id: currentUserId,
+        role, content, source,
+        metadata: {}
+      });
       return true;
-    } catch (e) {
-      console.warn('Supabase save error:', e);
-      return false;
-    }
+    } catch (e) { return false; }
   }
 
-  // ═══════════════════════════════════════
-  //  Миграция локальной истории в Supabase
-  // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
     if (!isUserAuthenticated || !window.supabase) return;
-
     const localHistory = chatHistory.filter(msg => !msg.synced);
     if (localHistory.length === 0) return;
-
     try {
       const messagesToInsert = localHistory.map(msg => ({
         user_id: currentUserId,
@@ -280,65 +278,37 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
         source: msg.source || null,
         metadata: { migrated: true, original_timestamp: msg.timestamp }
       }));
-
-      // Вставляем батчами по 20 сообщений
       for (let i = 0; i < messagesToInsert.length; i += 20) {
         const batch = messagesToInsert.slice(i, i + 20);
-        const { error } = await window.supabase
-          .from('chat_messages')
-          .insert(batch);
-
-        if (error) {
-          console.warn('Migration batch failed:', error);
-          break;
-        }
+        await window.supabase.from('chat_messages').insert(batch);
       }
-
-      // Помечаем сообщения как синхронизированные
       chatHistory.forEach(msg => { msg.synced = true; });
       saveToLocalStorage();
-      
-      console.log(`✅ Migrated ${localHistory.length} messages to Supabase`);
-    } catch (e) {
-      console.warn('Migration failed:', e);
-    }
+    } catch (e) { console.warn('Migration failed:', e); }
   }
 
-  // ═══════════════════════════════════════
-  //  Главная функция загрузки истории
-  // ═══════════════════════════════════════
   async function loadHistory() {
     await checkAuth();
-
     if (isUserAuthenticated) {
-      // Пробуем загрузить из Supabase
       const loaded = await loadHistoryFromSupabase();
-      
       if (!loaded) {
-        // Если в Supabase пусто — загружаем из localStorage и мигрируем
         loadHistoryFromLocalStorage();
         await migrateLocalHistoryToSupabase();
       }
     } else {
-      // Для неавторизованных — только localStorage
       loadHistoryFromLocalStorage();
     }
-
-    // Ограничиваем историю
     if (chatHistory.length > MAX_HISTORY) {
       chatHistory = chatHistory.slice(-MAX_HISTORY);
     }
-
-    console.log(`📜 Chat history loaded: ${chatHistory.length} messages (auth: ${isUserAuthenticated})`);
   }
 
   // ═══════════════════════════════════════
-  //  Вызов Supabase Edge Function (Gemini)
+  //  ВЫЗОВ EDGE FUNCTION (GROQ)
   // ═══════════════════════════════════════
   async function callEdgeFunction(messages) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
-
     try {
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
         method: 'POST',
@@ -349,16 +319,11 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
         body: JSON.stringify({ messages }),
         signal: controller.signal
       });
-
       clearTimeout(timeout);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (data.success && data.reply) {
-        return { reply: data.reply, source: 'gemini' };
+        return { reply: data.reply, source: 'groq' };
       }
       throw new Error(data.error || 'Empty response');
     } catch (e) {
@@ -368,43 +333,37 @@ ${abnormalTests.map(([name, r]) => `- ${name}: ${r.value} ${r.unit || ''} (${r.s
   }
 
   // ═══════════════════════════════════════
-  //  Fallback: локальный ответ
+  //  FALLBACK: локальный ответ
   // ═══════════════════════════════════════
   function generateFallbackResponse(userMessage, userProfile) {
     const lowerMsg = userMessage.toLowerCase();
     const responses = [];
 
-    // Экстренные симптомы
     const emergencyKeywords = ['боль в груди', 'одышка', 'потеря сознания', 'судороги', 'кровь', 'слабость в руке'];
     if (emergencyKeywords.some(k => lowerMsg.includes(k))) {
-      return `🚨 **ВНИМАНИЕ! Это может быть экстренная ситуация.**
-
-Немедленно звоните **112** или обратитесь в скорую помощь!
-
-${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age || ''} лет.` : ''}
-
-⚠️ **Это не медицинская консультация** — требуется срочная помощь врача.`;
+      return `🚨 **ВНИМАНИЕ! Экстренная ситуация.**\n\nНемедленно звоните **112**!\n\n⚠️ Это не медицинская консультация.`;
     }
 
     if (lowerMsg.includes('голов') || lowerMsg.includes('мигрен')) {
       responses.push('Головная боль может быть вызвана: стресс, обезвоживание, недосып, проблемы с давлением.');
-      responses.push('**Что делать:**\n• Измерьте давление\n• Выпейте воды\n• Отдохните в тёмной комнате');
-      responses.push('**Анализы:** Общий анализ крови, ТТГ, Ферритин');
+      responses.push('**Рекомендуемые анализы:**\n• Общий анализ крови\n• ТТГ\n• Ферритин');
       responses.push('**Врач:** терапевт → невролог');
     } else if (lowerMsg.includes('температур')) {
       responses.push('Повышенная температура — признак воспаления или инфекции.');
-      responses.push('**Анализы:** Общий анализ крови, СРБ');
+      responses.push('**Рекомендуемые анализы:**\n• Общий анализ крови\n• С-реактивный белок (СРБ)\n• Лейкоциты');
       responses.push('**Врач:** терапевт');
     } else if (lowerMsg.includes('устал') || lowerMsg.includes('слабост')) {
-      responses.push('Хроническая усталость может быть признаком дефицита витаминов или анемии.');
-      responses.push('**Анализы:** Ферритин, Витамин D, B12, ТТГ');
+      responses.push('Хроническая усталость — частый признак дефицитов.');
+      responses.push('**Рекомендуемые анализы:**\n• Ферритин\n• Витамин D (25-OH)\n• Витамин B12\n• ТТГ\n• Гемоглобин');
       responses.push('**Врач:** терапевт → эндокринолог');
+    } else if (lowerMsg.includes('анализ') || lowerMsg.includes('какие')) {
+      responses.push('В моей базе есть следующие категории анализов:\n• ОАК (общий анализ крови)\n• Биохимия\n• Липидограмма\n• Печёночные ферменты\n• Гормоны щитовидной железы\n• Витамины\n• Электролиты\n• Онкомаркеры\n• Иммунология');
+      responses.push('Опишите симптомы — я подскажу конкретные анализы.');
     }
 
     if (responses.length === 0) {
-      responses.push('Я могу помочь с:');
-      responses.push('• 🔬 Расшифровкой анализов\n• 🩺 Анализом симптомов\n• 💊 Интерпретацией отклонений\n• 👨‍⚕️ Подбором специалистов');
-      responses.push('\n**Примеры вопросов:**\n• "Болит голова третий день"\n• "Что значит повышенный холестерин?"\n• "Какие анализы сдать при усталости?"');
+      responses.push('Я могу помочь с:\n• 🔬 Расшифровкой анализов\n• 🩺 Анализом симптомов\n• 💊 Рекомендациями при отклонениях\n• 👨‍⚕️ Подбором специалистов');
+      responses.push('\n**Примеры:**\n• "Болит голова"\n• "Какие анализы сдать при усталости?"\n• "Что значит повышенный холестерин?"');
     }
 
     responses.push('\n⚠️ **Это не медицинская консультация.** Обратитесь к врачу.');
@@ -412,14 +371,13 @@ ${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age ||
   }
 
   // ═══════════════════════════════════════
-  //  Главная функция отправки сообщения
+  //  ГЛАВНАЯ ФУНКЦИЯ: ОТПРАВКА СООБЩЕНИЯ
   // ═══════════════════════════════════════
   async function sendMessage(userMessage) {
     if (!userMessage || !userMessage.trim()) {
       throw new Error('Пустое сообщение');
     }
 
-    // Проверяем авторизацию перед каждым запросом
     await checkAuth();
 
     // Загружаем профиль
@@ -430,7 +388,7 @@ ${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age ||
       }
     } catch(e) {}
 
-    // Добавляем сообщение пользователя в историю
+    // Добавляем сообщение пользователя
     const userMsg = {
       role: 'user',
       content: userMessage,
@@ -438,17 +396,29 @@ ${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age ||
       synced: false
     };
     chatHistory.push(userMsg);
-
-    // Сохраняем сообщение пользователя
     saveToLocalStorage();
     saveMessageToSupabase('user', userMessage, null);
 
-    // Формируем контекст
-    const dbContext = buildContextFromDatabase(userMessage, userProfile);
+    // ═══════ НОВОЕ: полная сводка базы (компактная) ═══════
+    const databaseSummary = buildCompactDatabaseSummary();
 
-    // Формируем сообщения для LLM (ограничиваем контекст)
+    // ═══════ НОВОЕ: детальный RAG по запросу ═══════
+    const relevantContext = buildRelevantContext(userMessage, userProfile);
+
+    // Формируем system prompt с полной базой
+    const fullSystemPrompt = [
+      SYSTEM_PROMPT,
+      '\n\n═══════════════════════════════════',
+      'БАЗА МЕДИЦИНСКИХ ЗНАНИЙ (используй для ответов):',
+      '═══════════════════════════════════',
+      databaseSummary,
+      relevantContext ? '\n\n═══════════════════════════════════\nКОНТЕКСТ ПО ТЕКУЩЕМУ ЗАПРОСУ:\n═══════════════════════════════════\n' + relevantContext : '',
+      '\n\nВАЖНО: Отвечай ТОЛЬКО на основе базы выше. Используй точные названия тестов из базы. Если вопрос не связан с базой — честно скажи об этом.'
+    ].join('\n');
+
+    // Формируем сообщения для LLM
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT + dbContext },
+      { role: 'system', content: fullSystemPrompt },
       ...chatHistory.slice(-MAX_CONTEXT_MESSAGES).map(m => ({
         role: m.role,
         content: m.content
@@ -461,14 +431,14 @@ ${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age ||
     try {
       const result = await callEdgeFunction(messages);
       reply = result.reply;
-      source = 'gemini';
+      source = 'groq';
     } catch (e) {
       console.warn('Edge Function failed, using fallback:', e.message);
       reply = generateFallbackResponse(userMessage, userProfile);
       source = 'local';
     }
 
-    // Добавляем ответ ассистента в историю
+    // Добавляем ответ
     const assistantMsg = {
       role: 'assistant',
       content: reply,
@@ -478,12 +448,10 @@ ${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age ||
     };
     chatHistory.push(assistantMsg);
 
-    // Ограничиваем историю
     if (chatHistory.length > MAX_HISTORY) {
       chatHistory = chatHistory.slice(-MAX_HISTORY);
     }
 
-    // Сохраняем ответ
     saveToLocalStorage();
     saveMessageToSupabase('assistant', reply, source);
 
@@ -491,54 +459,36 @@ ${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age ||
   }
 
   // ═══════════════════════════════════════
-  //  Очистка истории
+  //  ОЧИСТКА ИСТОРИИ
   // ═══════════════════════════════════════
   async function clearHistory() {
     chatHistory = [];
     localStorage.removeItem(LOCAL_STORAGE_KEY);
-
     if (isUserAuthenticated && window.supabase && currentUserId) {
       try {
-        // Вызываем серверную функцию очистки
         await window.supabase.rpc('clear_chat_history');
-        console.log('✅ Chat history cleared from Supabase');
       } catch (e) {
-        console.warn('Failed to clear Supabase history:', e);
-        // Fallback: удаляем напрямую
         try {
-          await window.supabase
-            .from('chat_messages')
-            .delete()
-            .eq('user_id', currentUserId);
-        } catch (e2) {
-          console.warn('Direct delete also failed:', e2);
-        }
+          await window.supabase.from('chat_messages').delete().eq('user_id', currentUserId);
+        } catch (e2) {}
       }
     }
   }
 
   // ═══════════════════════════════════════
-  //  Слушатель изменений авторизации
+  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ
   // ═══════════════════════════════════════
   function setupAuthListener() {
     if (!window.supabase) return;
-
-    window.supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔐 Auth state changed:', event);
-      
+    window.supabase.auth.onAuthStateChange(async (event) => {
       if (event === 'SIGNED_IN') {
-        // При входе — загружаем историю из Supabase
         await loadHistory();
-        
-        // Уведомляем UI о смене
         window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {
           detail: { history: chatHistory, authenticated: true }
         }));
       } else if (event === 'SIGNED_OUT') {
-        // При выходе — очищаем и переключаемся на localStorage
         chatHistory = [];
         await loadHistory();
-        
         window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {
           detail: { history: chatHistory, authenticated: false }
         }));
@@ -547,19 +497,19 @@ ${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age ||
   }
 
   // ═══════════════════════════════════════
-  //  Инициализация
+  //  ИНИЦИАЛИЗАЦИЯ
   // ═══════════════════════════════════════
   async function init() {
     await loadHistory();
     setupAuthListener();
-    
-    console.log('🤖 AI Assistant v2.0 initialized (with Supabase sync)');
+    console.log('🤖 AI Assistant v3.0 initialized (Full DB + RAG + Groq)');
+    console.log(`📚 Database loaded: ${window.labTests?.length || 0} tests, ${window.diagnosticRules?.length || 0} rules, ${Object.keys(window.supplementMap || {}).length} supplements`);
   }
 
   init();
 
   // ═══════════════════════════════════════
-  //  Экспорт API
+  //  ЭКСПОРТ API
   // ═══════════════════════════════════════
   window.AIAssistant = {
     sendMessage,
@@ -567,10 +517,15 @@ ${userProfile ? `Пациент: ${userProfile.name || ''}, ${userProfile.age ||
     clearHistory,
     isAuthenticated: () => isUserAuthenticated,
     reloadHistory: loadHistory,
-    version: '2.0.0'
+    getDatabaseStats: () => ({
+      tests: window.labTests?.length || 0,
+      rules: window.diagnosticRules?.length || 0,
+      supplements: Object.keys(window.supplementMap || {}).length,
+      preventive: window.preventiveRecommendations?.length || 0
+    }),
+    version: '3.0.0'
   };
 
-  // Публичное событие для UI
   window.addEventListener('load', () => {
     window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {
       detail: { history: chatHistory, authenticated: isUserAuthenticated }
