@@ -1,10 +1,6 @@
 /**
- * AI Medical Assistant v4.0
- * Гибридная архитектура:
- * - Приоритет 1: Внутренняя база знаний (database.js)
- * - Приоритет 2: Импортированные PDF документы
- * - Приоритет 3: Поиск в интернете (только медицинские запросы)
- * - OpenRouter с приоритетом google/gemma-4-26b-a4b-it:free
+ * AI Medical Assistant v4.1
+ * Гибридная архитектура: DB + PDF + Internet fallback
  */
 (function() {
   'use strict';
@@ -12,13 +8,45 @@
   const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
-  // ✅ Используем единый Supabase клиент из supabase-client.js
-  const sb = window.supabaseClient || null;
+  // ═══════════════════════════════════════
+  //  ЛЕНИВАЯ ИНИЦИАЛИЗАЦИЯ SUPABASE КЛИЕНТА
+  // ═══════════════════════════════════════
+  let sb = null;
 
-  if (!sb) {
-    console.warn('⚠️ Supabase client not available. Chat sync disabled.');
+  function getSupabaseClient() {
+    // Если уже есть — возвращаем
+    if (sb) return sb;
+    
+    // Пробуем получить из глобального клиента
+    if (window.supabaseClient) {
+      sb = window.supabaseClient;
+      console.log('✅ AI Assistant: подключён к общему Supabase клиенту');
+      return sb;
+    }
+    
+    // Если глобального нет — создаём свой
+    if (window.supabase && window.supabase.createClient) {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+      console.log('✅ AI Assistant: создан собственный Supabase клиент');
+      return sb;
+    }
+    
+    console.warn('⚠️ Supabase client not available');
+    return null;
+  }
+
+  // Проверяем доступность клиента сразу
+  const initialClient = getSupabaseClient();
+  if (initialClient) {
+    console.log('✅ AI Assistant: Supabase клиент доступен при инициализации');
   } else {
-    console.log('✅ AI Assistant: using shared Supabase client');
+    console.warn('⚠️ AI Assistant: Supabase клиент недоступен, будет проверяться позже');
   }
 
   const LOCAL_STORAGE_KEY = 'ai_chat_history_v1';
@@ -294,13 +322,14 @@
   //  ПРОВЕРКА АВТОРИЗАЦИИ
   // ═══════════════════════════════════════
   async function checkAuth() {
-    if (!sb) {
+    const client = getSupabaseClient();  // ✅ получаем актуальный клиент
+    if (!client) {
       isUserAuthenticated = false;
       currentUserId = null;
       return;
     }
     try {
-      const { data: { user }, error } = await sb.auth.getUser();
+      const { data: { user }, error } = await client.auth.getUser();  // ✅
       if (error) {
         console.warn('⚠️ Auth error:', error.message);
         isUserAuthenticated = false;
@@ -762,6 +791,44 @@
   }
 
   init();
+
+  // Диагностика состояния Supabase клиента
+  window.diagnoseSupabaseClient = async function() {
+    console.log('═══════════════════════════════════════');
+    console.log('🔍 ДИАГНОСТИКА SUPABASE КЛИЕНТА');
+    console.log('═══════════════════════════════════════');
+    
+    const client = getSupabaseClient();
+    console.log('1. Client exists:', !!client);
+    
+    if (!client) {
+      console.log('   window.supabaseClient:', !!window.supabaseClient);
+      console.log('   window.supabase:', !!window.supabase);
+      console.log('   window.SupabaseDB:', !!window.SupabaseDB);
+      console.log('═══════════════════════════════════════');
+      return;
+    }
+    
+    console.log('2. client.auth exists:', !!client.auth);
+    
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      console.log('3. Session exists:', !!session);
+      console.log('4. User email:', session?.user?.email || 'none');
+      console.log('5. Access token:', session?.access_token ? '✓ present' : '✗ missing');
+    } catch (e) {
+      console.error('❌ Session check failed:', e.message);
+    }
+    
+    try {
+      const { data: { user } } = await client.auth.getUser();
+      console.log('6. User (getUser):', user?.email || 'none');
+    } catch (e) {
+      console.error('❌ getUser failed:', e.message);
+    }
+    
+    console.log('═══════════════════════════════════════');
+  };
 
   // ═══════════════════════════════════════
   //  ЭКСПОРТ API
