@@ -1,6 +1,6 @@
 /**
- * AI Medical Assistant v3.2
- * Полная база database.js + RAG + Groq + Supabase чат + Auth listener
+ * AI Medical Assistant v3.3
+ * OpenRouter (tencent/hy3:free) + RAG + Supabase чат
  */
 (function() {
   'use strict';
@@ -8,13 +8,13 @@
   const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
-  // ✅ Создаём свой Supabase клиент
-  const sb = window.supabase && window.supabase.createClient
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
+  // ✅ Используем ОБЩИЙ клиент из supabase-client.js
+  const sb = window.supabaseClient || null;
 
   if (!sb) {
-    console.warn('⚠️ Supabase client not available. Chat sync disabled.');
+    console.warn('⚠️ Supabase client not available. Waiting for initialization...');
+  } else {
+    console.log('✅ AI Assistant: using shared Supabase client');
   }
 
   const LOCAL_STORAGE_KEY = 'ai_chat_history_v1';
@@ -28,20 +28,20 @@
   // ═══════════════════════════════════════
   //  СИСТЕМНЫЙ ПРОМПТ
   // ═══════════════════════════════════════
-  const SYSTEM_PROMPT = `Ты — медицинский AI-ассистент в приложении "Семейный доктор".
+  const SYSTEM_PROMPT = `Ты — медицинский AI-ассистент в приложении "Семейный доктор". Отвечай ТОЛЬКО на русском языке.
 
 СТРОГИЕ ПРАВИЛА:
 1. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
 2. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
-3. Для тревожных симптомов (боль в груди, одышка, потеря сознания) — немедленно советуй вызвать 112
-4. НЕ назначай лечение и лекарства — только общие рекомендации и направления к специалистам
-5. Отвечай на русском языке, кратко и понятно
-6. Используй markdown: **жирный** для важного, • для списков
+3. Для тревожных симптомов (боль в груди, одышка, потеря сознания, кровь) — немедленно советуй вызвать 112
+4. НЕ назначай лечение и лекарства без консультации врача — только общие рекомендации
+5. Используй markdown: **жирный** для важного, • для списков
+6. Ссылайся на конкретные тесты из базы знаний по их точным названиям
 
 ФОРМАТ ОТВЕТА:
 - Краткий анализ ситуации (2-3 предложения)
 - Возможные причины (список через •)
-- Рекомендуемые анализы из базы (конкретные названия)
+- Рекомендуемые анализы из базы (конкретные названия с нормами)
 - К какому врачу обратиться
 - Дисклеймер в конце
 
@@ -53,6 +53,7 @@
   function buildCompactDatabaseSummary() {
     const sections = [];
 
+    // 1. Лабораторные тесты (по категориям)
     if (window.labTests && Array.isArray(window.labTests)) {
       const testsByCategory = {};
       window.labTests.forEach(test => {
@@ -73,6 +74,7 @@
       sections.push(testsList);
     }
 
+    // 2. Диагностические правила
     if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
       let rulesList = '\n\n🏥 ДИАГНОСТИЧЕСКИЕ ПРАВИЛА:\n';
       window.diagnosticRules.forEach(rule => {
@@ -84,17 +86,20 @@
       sections.push(rulesList);
     }
 
+    // 3. Рекомендации по добавкам
     if (window.supplementMap && typeof window.supplementMap === 'object') {
       let supplementsList = '\n\n💊 РЕКОМЕНДАЦИИ ПРИ ОТКЛОНЕНИЯХ:\n';
       Object.entries(window.supplementMap).forEach(([test, data]) => {
         Object.entries(data).forEach(([status, rec]) => {
           const statusRu = status === 'high' ? '↑ повышен' : '↓ понижен';
-          supplementsList += `• ${test.trim()} (${statusRu}): ${rec.supplement || 'консультация врача'} → ${rec.doctors ? rec.doctors.map(d => d.trim()).join(', ') : 'терапевт'}\n`;
+          const docs = rec.doctors ? rec.doctors.map(d => d.trim()).join(', ') : 'терапевт';
+          supplementsList += `• ${test.trim()} (${statusRu}): ${rec.supplement || 'консультация врача'} → ${docs}\n`;
         });
       });
       sections.push(supplementsList);
     }
 
+    // 4. Профилактические рекомендации
     if (window.preventiveRecommendations && Array.isArray(window.preventiveRecommendations)) {
       let preventive = '\n\n🛡 ПРОФИЛАКТИЧЕСКИЕ РЕКОМЕНДАЦИИ:\n';
       window.preventiveRecommendations.forEach(rec => {
@@ -107,16 +112,18 @@
   }
 
   // ═══════════════════════════════════════
-  //  ДЕТАЛЬНЫЙ RAG
+  //  ДЕТАЛЬНЫЙ RAG по запросу
   // ═══════════════════════════════════════
   function buildRelevantContext(userMessage, userProfile) {
     const context = [];
     const lowerMsg = userMessage.toLowerCase();
 
+    // Профиль пациента
     if (userProfile) {
       context.push(`👤 ПАЦИЕНТ: ${userProfile.name || userProfile.full_name || 'не указано'}, ${userProfile.sex === 'male' ? 'мужчина' : userProfile.sex === 'female' ? 'женщина' : 'пол не указан'}, ${userProfile.age || '?'} лет`);
     }
 
+    // Релевантные тесты
     if (window.labTests && Array.isArray(window.labTests)) {
       const relevant = [];
       for (const test of window.labTests) {
@@ -137,6 +144,7 @@
       }
     }
 
+    // Релевантные диагностические правила
     if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
       const relevantRules = [];
       for (const rule of window.diagnosticRules) {
@@ -156,6 +164,7 @@
       }
     }
 
+    // Последние анализы пользователя
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       if (history.length > 0) {
@@ -180,7 +189,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  ПРОВЕРКА АВТОРИЗАЦИИ (с детальным логом)
+  //  ПРОВЕРКА АВТОРИЗАЦИИ
   // ═══════════════════════════════════════
   async function checkAuth() {
     if (!sb) {
@@ -189,22 +198,6 @@
       return;
     }
     try {
-      // 1. Сначала пробуем получить сессию напрямую
-      const { data: { session }, error: sessionError } = await sb.auth.getSession();
-      if (sessionError) {
-        console.warn('⚠️ Session error:', sessionError.message);
-        isUserAuthenticated = false;
-        currentUserId = null;
-        return;
-      }
-      if (session && session.user) {
-        isUserAuthenticated = true;
-        currentUserId = session.user.id;
-        console.log(`✅ User authenticated via session: ${currentUserId}`);
-        return;
-      }
-
-      // 2. Если сессии нет, пробуем getUser (может обновить токен)
       const { data: { user }, error } = await sb.auth.getUser();
       if (error) {
         console.warn('⚠️ Auth error:', error.message);
@@ -215,7 +208,6 @@
       if (user && user.id) {
         isUserAuthenticated = true;
         currentUserId = user.id;
-        console.log(`✅ User authenticated via getUser: ${currentUserId}`);
       } else {
         isUserAuthenticated = false;
         currentUserId = null;
@@ -228,77 +220,24 @@
   }
 
   // ═══════════════════════════════════════
-  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE (с детальным логом)
-  // ═══════════════════════════════════════
-  async function saveMessageToSupabase(role, content, source = null) {
-    if (!isUserAuthenticated || !sb || !currentUserId) {
-      console.log('⏭ Skipping Supabase save (not authenticated)');
-      return false;
-    }
-
-    try {
-      // Проверяем сессию перед INSERT
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) {
-        console.warn('⚠️ No active session, skipping save');
-        return false;
-      }
-
-      console.log(`💾 Saving message to Supabase:`, {
-        user_id: currentUserId,
-        role,
-        content_preview: content.slice(0, 50),
-        source
-      });
-
-      const { data, error } = await sb.from('chat_messages').insert({
-        user_id: currentUserId,
-        role: role,
-        content: content,
-        source: source,
-        metadata: {}
-      }).select();
-
-      if (error) {
-        console.error('❌ Supabase INSERT error:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        });
-        
-        // Если 401 — пробуем refresh
-        if (error.code === 'PGRST301' || error.message.includes('JWT')) {
-          console.log('🔄 Refreshing session...');
-          const { error: refreshError } = await sb.auth.refreshSession();
-          if (!refreshError) {
-            console.log('✅ Session refreshed, retrying...');
-            return await saveMessageToSupabase(role, content, source);
-          }
-        }
-        return false;
-      }
-
-      console.log('✅ Message saved to Supabase:', data);
-      return true;
-    } catch (e) {
-      console.error('❌ Exception saving message:', e);
-      return false;
-    }
-  }
-
-  // ═══════════════════════════════════════
   //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE
   // ═══════════════════════════════════════
   async function loadHistoryFromSupabase() {
-    if (!isUserAuthenticated || !sb || !currentUserId) {
-      console.log('⏭ Skipping Supabase load (not authenticated)');
+    if (!isUserAuthenticated || !sb || !currentUserId) return false;
+
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user || !user.id) {
+        isUserAuthenticated = false;
+        return false;
+      }
+      currentUserId = user.id;
+    } catch (e) {
+      isUserAuthenticated = false;
       return false;
     }
 
     try {
-      console.log(`📥 Loading chat history for user: ${currentUserId}`);
-      
       const { data, error } = await sb
         .from('chat_messages')
         .select('role, content, source, created_at')
@@ -307,8 +246,15 @@
         .limit(MAX_HISTORY);
 
       if (error) {
-        console.error('❌ Supabase SELECT error:', error);
-        return false;
+        if (error.status === 401 || error.code === 'PGRST301') {
+          const { error: refreshError } = await sb.auth.refreshSession();
+          if (refreshError) {
+            isUserAuthenticated = false;
+            return false;
+          }
+          return await loadHistoryFromSupabase();
+        }
+        throw error;
       }
 
       if (data && data.length > 0) {
@@ -319,14 +265,72 @@
           timestamp: new Date(msg.created_at).getTime(),
           synced: true
         }));
-        console.log(`✅ Loaded ${data.length} messages from Supabase`);
         return true;
       }
-      
-      console.log('📭 No messages in Supabase');
       return false;
     } catch (e) {
-      console.error('❌ Exception loading history:', e);
+      console.warn('⚠️ Supabase history load failed:', e.message);
+      return false;
+    }
+  }
+
+  function loadHistoryFromLocalStorage() {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        chatHistory = JSON.parse(saved);
+        return true;
+      }
+    } catch(e) { chatHistory = []; }
+    return false;
+  }
+
+  function saveToLocalStorage() {
+    try {
+      const toSave = chatHistory.slice(-MAX_HISTORY);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(toSave));
+    } catch(e) {}
+  }
+
+  // ═══════════════════════════════════════
+  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE
+  // ═══════════════════════════════════════
+  async function saveMessageToSupabase(role, content, source = null, retryCount = 0) {
+    if (!isUserAuthenticated || !sb || !currentUserId) return false;
+
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user || user.id !== currentUserId) {
+        isUserAuthenticated = false;
+        return false;
+      }
+
+      const { error } = await sb.from('chat_messages').insert({
+        user_id: currentUserId,
+        role: role,
+        content: content,
+        source: source,
+        metadata: {}
+      });
+
+      if (error) {
+        if ((error.status === 401 || error.code === 'PGRST301') && retryCount < 1) {
+          const { error: refreshError } = await sb.auth.refreshSession();
+          if (!refreshError) {
+            return await saveMessageToSupabase(role, content, source, retryCount + 1);
+          }
+        }
+        console.warn(`⚠️ Failed to save to Supabase: ${error.message}`);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.warn(`⚠️ Exception saving to Supabase: ${e.message}`);
+      const lastMsg = chatHistory[chatHistory.length - 1];
+      if (lastMsg) {
+        lastMsg.synced = false;
+        saveToLocalStorage();
+      }
       return false;
     }
   }
@@ -336,14 +340,8 @@
   // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
     if (!isUserAuthenticated || !sb || !currentUserId) return;
-    
     const localHistory = chatHistory.filter(msg => !msg.synced);
-    if (localHistory.length === 0) {
-      console.log('⏭ No local messages to migrate');
-      return;
-    }
-
-    console.log(`🔄 Migrating ${localHistory.length} local messages to Supabase...`);
+    if (localHistory.length === 0) return;
 
     try {
       const messagesToInsert = localHistory.map(msg => ({
@@ -354,36 +352,46 @@
         metadata: { migrated: true, original_timestamp: msg.timestamp }
       }));
 
-      // Batch insert по 5 сообщений для отладки
-      for (let i = 0; i < messagesToInsert.length; i += 5) {
-        const batch = messagesToInsert.slice(i, i + 5);
+      for (let i = 0; i < messagesToInsert.length; i += 10) {
+        const batch = messagesToInsert.slice(i, i + 10);
         const { error } = await sb.from('chat_messages').insert(batch);
-        
         if (error) {
-          console.error(`❌ Batch ${i/5 + 1} failed:`, error);
+          console.warn(`⚠️ Batch ${i/10 + 1} failed:`, error.message);
           break;
         }
-        console.log(`✅ Batch ${i/5 + 1} migrated (${batch.length} messages)`);
       }
 
       chatHistory.forEach(msg => { msg.synced = true; });
       saveToLocalStorage();
-      console.log(`✅ Migration complete`);
+      console.log(`✅ Migrated ${localHistory.length} messages to Supabase`);
     } catch (e) {
-      console.error('❌ Migration failed:', e);
+      console.warn('⚠️ Migration failed:', e.message);
+    }
+  }
+
+  async function loadHistory() {
+    await checkAuth();
+    if (isUserAuthenticated) {
+      const loaded = await loadHistoryFromSupabase();
+      if (!loaded) {
+        loadHistoryFromLocalStorage();
+        await migrateLocalHistoryToSupabase();
+      }
+    } else {
+      loadHistoryFromLocalStorage();
+    }
+    if (chatHistory.length > MAX_HISTORY) {
+      chatHistory = chatHistory.slice(-MAX_HISTORY);
     }
   }
 
   // ═══════════════════════════════════════
-  //  ВЫЗОВ EDGE FUNCTION (GROQ)
+  //  ВЫЗОВ EDGE FUNCTION (OpenRouter)
   // ═══════════════════════════════════════
   async function callEdgeFunction(messages) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    const timeout = setTimeout(() => controller.abort(), 45000);
     try {
-      const payload = { messages };
-      console.log('Отправляемый payload:', payload);
-      console.log('Размер JSON:', JSON.stringify(payload).length);
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
         method: 'POST',
         headers: {
@@ -397,7 +405,7 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (data.success && data.reply) {
-        return { reply: data.reply, source: 'groq' };
+        return { reply: data.reply, source: 'openrouter', model: data.model || 'tencent/hy3' };
       }
       throw new Error(data.error || 'Empty response');
     } catch (e) {
@@ -407,7 +415,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  FALLBACK
+  //  FALLBACK: локальный ответ
   // ═══════════════════════════════════════
   function generateFallbackResponse(userMessage, userProfile) {
     const lowerMsg = userMessage.toLowerCase();
@@ -420,15 +428,15 @@
 
     if (lowerMsg.includes('голов') || lowerMsg.includes('мигрен')) {
       responses.push('Головная боль может быть вызвана: стресс, обезвоживание, недосып, проблемы с давлением.');
-      responses.push('**Рекомендуемые анализы:**\n• Общий анализ крови\n• ТТГ\n• Ферритин');
+      responses.push('**Рекомендуемые анализы:**\n• Гемоглобин (HGB): 130-170 г/л (муж) / 120-150 г/л (жен)\n• Тиреотропный гормон (ТТГ): 0.4-4.0 мМЕ/л\n• Ферритин: 30-400 нг/мл (муж) / 15-150 нг/мл (жен)');
       responses.push('**Врач:** терапевт → невролог');
     } else if (lowerMsg.includes('температур')) {
       responses.push('Повышенная температура — признак воспаления или инфекции.');
-      responses.push('**Рекомендуемые анализы:**\n• Общий анализ крови\n• С-реактивный белок (СРБ)\n• Лейкоциты');
+      responses.push('**Рекомендуемые анализы:**\n• Лейкоциты (WBC): 4.0-9.0 ×10⁹/л\n• С-реактивный белок (CRP): 0-5 мг/л\n• СОЭ (ESR): до 15 мм/ч (муж) / до 20 мм/ч (жен)');
       responses.push('**Врач:** терапевт');
     } else if (lowerMsg.includes('устал') || lowerMsg.includes('слабост')) {
       responses.push('Хроническая усталость — частый признак дефицитов.');
-      responses.push('**Рекомендуемые анализы:**\n• Ферритин\n• Витамин D (25-OH)\n• Витамин B12\n• ТТГ\n• Гемоглобин');
+      responses.push('**Рекомендуемые анализы:**\n• Ферритин: 30-400 нг/мл (муж) / 15-150 нг/мл (жен)\n• 25-гидроксивитамин D: 30-100 нг/мл\n• Витамин B12: 200-900 пг/мл\n• ТТГ: 0.4-4.0 мМЕ/л\n• Гемоглобин (HGB)');
       responses.push('**Врач:** терапевт → эндокринолог');
     } else if (lowerMsg.includes('анализ') || lowerMsg.includes('какие')) {
       responses.push('В моей базе есть следующие категории анализов:\n• ОАК (общий анализ крови)\n• Биохимия\n• Липидограмма\n• Печёночные ферменты\n• Гормоны щитовидной железы\n• Витамины\n• Электролиты\n• Онкомаркеры\n• Иммунология');
@@ -445,48 +453,6 @@
   }
 
   // ═══════════════════════════════════════
-  //  РАБОТА С LOCALSTORAGE
-  // ═══════════════════════════════════════
-  function loadHistoryFromLocalStorage() {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          chatHistory = parsed;
-          return;
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to parse localStorage history:', e);
-    }
-    chatHistory = [];
-  }
-
-  function saveToLocalStorage() {
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(chatHistory));
-    } catch (e) {
-      console.warn('Failed to save to localStorage:', e);
-    }
-  }
-
-  async function loadHistory() {
-    // 1. Сначала загружаем локальную (быстро)
-    loadHistoryFromLocalStorage();
-
-    // 2. Если авторизованы – пытаемся загрузить из Supabase (перезаписывает)
-    if (isUserAuthenticated && sb && currentUserId) {
-      const loaded = await loadHistoryFromSupabase();
-      if (loaded) {
-        // После загрузки из Supabase сохраняем в localStorage,
-        // чтобы локальная копия была актуальной
-        saveToLocalStorage();
-      }
-    }
-  }
-
-  // ═══════════════════════════════════════
   //  ГЛАВНАЯ ФУНКЦИЯ: ОТПРАВКА СООБЩЕНИЯ
   // ═══════════════════════════════════════
   async function sendMessage(userMessage) {
@@ -494,7 +460,33 @@
       throw new Error('Пустое сообщение');
     }
 
+    console.log('═══════════════════════════════════════');
+    console.log('📨 sendMessage called:', userMessage.slice(0, 50));
+    console.log('═══════════════════════════════════════');
+
+    // Проверяем авторизацию ПЕРЕД каждым запросом
+    console.log('🔐 Before checkAuth:');
+    console.log('   - sb exists:', !!sb);
+    console.log('   - sb.auth exists:', !!(sb && sb.auth));
+    
     await checkAuth();
+    
+    console.log('🔐 After checkAuth:');
+    console.log('   - isUserAuthenticated:', isUserAuthenticated);
+    console.log('   - currentUserId:', currentUserId);
+
+    // Дополнительная проверка сессии
+    if (sb && sb.auth) {
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        console.log('🔐 Session check:');
+        console.log('   - session exists:', !!session);
+        console.log('   - session.user:', session?.user?.email || 'none');
+        console.log('   - session.access_token:', session?.access_token ? '✓ present' : '✗ missing');
+      } catch (e) {
+        console.error('❌ Session check failed:', e);
+      }
+    }
 
     let userProfile = null;
     try {
@@ -511,7 +503,25 @@
     };
     chatHistory.push(userMsg);
     saveToLocalStorage();
-    saveMessageToSupabase('user', userMessage, null);
+    
+    console.log('💾 Save decision:');
+    console.log('   - isUserAuthenticated:', isUserAuthenticated);
+    console.log('   - sb exists:', !!sb);
+    console.log('   - currentUserId:', currentUserId);
+    console.log('   - Will save to Supabase:', isUserAuthenticated && sb && currentUserId);
+    
+    // Сохраняем в Supabase только если авторизован
+    if (isUserAuthenticated && sb && currentUserId) {
+      console.log('💾 Attempting to save USER message to Supabase...');
+      const saved = await saveMessageToSupabase('user', userMessage, null);
+      console.log('💾 Save result:', saved ? '✓ SUCCESS' : '✗ FAILED');
+    } else {
+      console.warn('⚠️ Skipping Supabase save - user not authenticated');
+      console.warn('   Reasons:');
+      if (!isUserAuthenticated) console.warn('   - isUserAuthenticated = false');
+      if (!sb) console.warn('   - sb (Supabase client) = null');
+      if (!currentUserId) console.warn('   - currentUserId = null');
+    }
 
     const databaseSummary = buildCompactDatabaseSummary();
     const relevantContext = buildRelevantContext(userMessage, userProfile);
@@ -519,12 +529,14 @@
     const fullSystemPrompt = [
       SYSTEM_PROMPT,
       '\n\n═══════════════════════════════════',
-      'БАЗА МЕДИЦИНСКИХ ЗНАНИЙ (используй для ответов):',
+      'БАЗА МЕДИЦИНСКИХ ЗНАНИЙ:',
       '═══════════════════════════════════',
       databaseSummary,
-      relevantContext ? '\n\n═══════════════════════════════════\nКОНТЕКСТ ПО ТЕКУЩЕМУ ЗАПРОСУ:\n═══════════════════════════════════\n' + relevantContext : '',
-      '\n\nВАЖНО: Отвечай ТОЛЬКО на основе базы выше. Используй точные названия тестов из базы.'
+      relevantContext ? '\n\nКОНТЕКСТ ПО ЗАПРОСУ:\n' + relevantContext : '',
+      '\n\nВАЖНО: Отвечай ТОЛЬКО на основе базы. Используй точные названия тестов.'
     ].join('\n');
+
+    console.log('📊 System prompt size:', fullSystemPrompt.length, 'chars (~' + Math.ceil(fullSystemPrompt.length / 4) + ' tokens)');
 
     const messages = [
       { role: 'system', content: fullSystemPrompt },
@@ -538,11 +550,13 @@
     let source;
 
     try {
+      console.log('🤖 Calling Edge Function (OpenRouter)...');
       const result = await callEdgeFunction(messages);
       reply = result.reply;
-      source = 'groq';
+      source = 'openrouter';
+      console.log('✅ OpenRouter response received:', reply.slice(0, 100));
     } catch (e) {
-      console.warn('Edge Function failed, using fallback:', e.message);
+      console.warn('⚠️ Edge Function failed:', e.message);
       reply = generateFallbackResponse(userMessage, userProfile);
       source = 'local';
     }
@@ -561,7 +575,16 @@
     }
 
     saveToLocalStorage();
-    saveMessageToSupabase('assistant', reply, source);
+    
+    if (isUserAuthenticated && sb && currentUserId) {
+      console.log('💾 Attempting to save ASSISTANT message to Supabase...');
+      const saved = await saveMessageToSupabase('assistant', reply, source);
+      console.log('💾 Save result:', saved ? '✓ SUCCESS' : '✗ FAILED');
+    }
+
+    console.log('═══════════════════════════════════════');
+    console.log('✅ sendMessage completed');
+    console.log('═══════════════════════════════════════');
 
     return { reply, source };
   }
@@ -584,7 +607,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ (ШАГ 4)
+  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ
   // ═══════════════════════════════════════
   function setupAuthListener() {
     if (!sb || !sb.auth) {
@@ -595,8 +618,7 @@
     sb.auth.onAuthStateChange(async (event, session) => {
       console.log(`🔐 Auth state changed: ${event}`);
 
-      // ✅ Добавляем INITIAL_SESSION
-      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+      if (event === 'SIGNED_IN' && session?.user) {
         isUserAuthenticated = true;
         currentUserId = session.user.id;
         await loadHistory();
@@ -624,7 +646,7 @@
   async function init() {
     await loadHistory();
     setupAuthListener();
-    console.log('🤖 AI Assistant v3.2 initialized');
+    console.log('🤖 AI Assistant v3.3 initialized (OpenRouter: tencent/hy3:free)');
     console.log(`📚 Database: ${window.labTests?.length || 0} tests, ${window.diagnosticRules?.length || 0} rules, ${Object.keys(window.supplementMap || {}).length} supplements`);
     console.log(`☁️ Supabase client: ${sb ? '✓ connected' : '✗ disabled'}`);
   }
@@ -647,7 +669,7 @@
       preventive: window.preventiveRecommendations?.length || 0
     }),
     isSupabaseConnected: () => !!sb,
-    version: '3.2.0'
+    version: '3.3.0'
   };
 
   window.addEventListener('load', () => {
