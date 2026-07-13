@@ -1,6 +1,10 @@
 /**
- * AI Medical Assistant v3.3
- * OpenRouter (tencent/hy3:free) + RAG + Supabase чат
+ * AI Medical Assistant v4.0
+ * Гибридная архитектура:
+ * - Приоритет 1: Внутренняя база знаний (database.js)
+ * - Приоритет 2: Импортированные PDF документы
+ * - Приоритет 3: Поиск в интернете (только медицинские запросы)
+ * - OpenRouter с приоритетом google/gemma-4-26b-a4b-it:free
  */
 (function() {
   'use strict';
@@ -8,174 +12,262 @@
   const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
-  // ✅ Используем ОБЩИЙ клиент из supabase-client.js
+  // ✅ Используем единый Supabase клиент из supabase-client.js
   const sb = window.supabaseClient || null;
 
   if (!sb) {
-    console.warn('⚠️ Supabase client not available. Waiting for initialization...');
+    console.warn('⚠️ Supabase client not available. Chat sync disabled.');
   } else {
     console.log('✅ AI Assistant: using shared Supabase client');
   }
 
   const LOCAL_STORAGE_KEY = 'ai_chat_history_v1';
+  const IMPORTED_PDFS_KEY = 'imported_medical_pdfs';
   const MAX_HISTORY = 50;
   const MAX_CONTEXT_MESSAGES = 10;
+
+  // Допустимые значения для constraint `source`
+  const ALLOWED_SOURCES = ['gemini', 'groq', 'openrouter', 'local', 'deepseek', 'llama', 'gemma', 'medical-search'];
 
   let chatHistory = [];
   let isUserAuthenticated = false;
   let currentUserId = null;
 
   // ═══════════════════════════════════════
-  //  СИСТЕМНЫЙ ПРОМПТ
+  //  СИСТЕМНЫЙ ПРОМПТ (с приоритетом базы знаний)
   // ═══════════════════════════════════════
-  const SYSTEM_PROMPT = `📌 БАЗА ЗНАНИЙ: Ты имеешь доступ к внутренней базе данных с 71 лабораторным тестом, 17 диагностическими правилами и 27 рекомендациями по добавкам. Все эти данные — твои первоисточники. Никогда не выдумывай нормы или интерпретации. Если информации нет в базе — честно скажи об этом и предложи поиск в авторитетных медицинских источниках (UpToDate, ВОЗ, PubMed).
+  const SYSTEM_PROMPT = `📌 БАЗА ЗНАНИЙ: Ты имеешь доступ к двум источникам медицинских данных:
+1. 📊 **Встроенная база** (database.js) — 71 лабораторный тест, 17 диагностических правил, 27 рекомендаций по добавкам
+2. 📄 **Импортированные PDF** — медицинские учебники, клинические рекомендации, протоколы лечения
 
-Ты — медицинский AI-ассистент в приложении "Семейный доктор". Отвечай ТОЛЬКО на русском языке.
+**ПРИОРИТЕТ ИСТОЧНИКОВ:**
+- 🥇 **ПЕРВЫМ ДЕЛОМ** используй данные из импортированных PDF (помечены 📄 [из PDF])
+- 🥈 **ВТОРЫМ ДЕЛОМ** используй встроенную базу (помечены 📊 [база])
+- 🥉 Если информации нет в обоих источниках — честно скажи: "В моей базе знаний нет данных по этому вопросу. Я могу найти актуальную информацию в медицинских источниках (UpToDate, ВОЗ, PubMed) — хотите?"
 
-СТРОГИЕ ПРАВИЛА:
-1. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
-2. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
-3. Для тревожных симптомов (боль в груди, одышка, потеря сознания, кровь) — немедленно советуй вызвать 112
-4. НЕ назначай лечение и лекарства без консультации врача — только общие рекомендации
-5. Используй markdown: **жирный** для важного, • для списков
-6. Ссылайся на конкретные тесты из базы знаний по их точным названиям
-7. Если вопрос не связан с медициной — вежливо предложи задать медицинский вопрос
+**СТРОГИЕ ПРАВИЛА:**
+1. НИКОГДА не выдумывай нормы, дозировки или диагнозы
+2. ВСЕГДА указывай источник информации (📄 [из PDF] или 📊 [база])
+3. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
+4. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
+5. Для тревожных симптомов (боль в груди, одышка, потеря сознания, кровь) — немедленно советуй вызвать 112
+6. НЕ назначай лечение и лекарства без консультации врача — только общие рекомендации
+7. Отвечай ТОЛЬКО на русском языке
+8. Используй markdown: **жирный** для важного, • для списков
 
-ФОРМАТ ОТВЕТА:
+**ФОРМАТ ОТВЕТА:**
 - 📊 Краткий анализ ситуации (2-3 предложения)
 - 🔍 Возможные причины (список через •)
-- 🧪 Рекомендуемые анализы из базы (конкретные названия с нормами)
+- 🧪 Рекомендуемые анализы (с указанием источника: 📄 или 📊)
+- 💊 Рекомендации по лечению (с указанием источника)
 - 👨‍⚕️ К какому врачу обратиться
 - ⚕️ Дисклеймер в конце
 
-ПРИОРИТЕТ ИСТОЧНИКОВ:
-1. 🥇 Внутренняя база знаний (labTests, diagnosticRules, supplementMap) — ПЕРВИЧНЫЙ ИСТОЧНИК
-2. 🥈 Клинические рекомендации РФ/ЕС/США, UpToDate, ВОЗ — только если в базе нет данных
-3. 🥉 Общие медицинские знания — только как дополнение
-
-Если в базе знаний НЕТ информации по запросу:
-- Честно скажи: "В моей базе знаний нет данных по этому вопросу"
-- Предложи: "Я могу найти актуальную информацию в медицинских источниках — хотите?"
-- НЕ выдумывай нормы, дозировки или диагнозы`;
+**ВАЖНО:** Если вопрос касается конкретного лекарства, протокола лечения или клинической рекомендации — ищи в первую очередь в импортированных PDF документах.`;
 
   // ═══════════════════════════════════════
-  //  КОМПАКТНАЯ СВОДКА ВСЕЙ БАЗЫ
+  //  ОБЪЕДИНЁННАЯ БАЗА ЗНАНИЙ (database.js + импортированные PDF)
   // ═══════════════════════════════════════
-  function buildCompactDatabaseSummary() {
-    const sections = [];
+  function getCombinedKnowledgeBase() {
+    const combined = {
+      tests: [],
+      diagnoses: [],
+      treatments: [],
+      drugs: [],
+      guidelines: [],
+      sources: []
+    };
 
-    // 1. Лабораторные тесты (по категориям)
+    // 1. Встроенная база (database.js)
     if (window.labTests && Array.isArray(window.labTests)) {
-      const testsByCategory = {};
-      window.labTests.forEach(test => {
-        const cat = test.category || 'Другое';
-        if (!testsByCategory[cat]) testsByCategory[cat] = [];
-        const ref = test.references && test.references[0];
-        const normStr = ref 
-          ? `${ref.min}-${ref.max} ${ref.unit || ''}`.trim()
-          : '—';
-        testsByCategory[cat].push(`${test.canonicalName.trim()} [${test.shortName.trim()}]: ${normStr}`);
-      });
-
-      let testsList = '🧪 ПОЛНАЯ БАЗА ЛАБОРАТОРНЫХ ТЕСТОВ:\n';
-      Object.keys(testsByCategory).sort().forEach(cat => {
-        testsList += `\n【${cat}】\n`;
-        testsList += testsByCategory[cat].map(t => `• ${t}`).join('\n');
-      });
-      sections.push(testsList);
+      combined.tests = window.labTests.map(t => ({ ...t, source: 'database.js' }));
     }
-
-    // 2. Диагностические правила
     if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
-      let rulesList = '\n\n🏥 ДИАГНОСТИЧЕСКИЕ ПРАВИЛА:\n';
-      window.diagnosticRules.forEach(rule => {
-        const testsStr = Object.entries(rule.results)
-          .map(([test, status]) => `${test.trim()} ${status === 'high' ? '↑' : '↓'}`)
-          .join(', ');
-        rulesList += `• ${rule.name.trim()} [${rule.danger}] → ${testsStr} → врачи: ${rule.doctors.map(d => d.trim()).join(', ')}\n`;
-      });
-      sections.push(rulesList);
+      combined.diagnoses = window.diagnosticRules.map(r => ({ ...r, source: 'database.js' }));
     }
-
-    // 3. Рекомендации по добавкам
     if (window.supplementMap && typeof window.supplementMap === 'object') {
-      let supplementsList = '\n\n💊 РЕКОМЕНДАЦИИ ПРИ ОТКЛОНЕНИЯХ:\n';
-      Object.entries(window.supplementMap).forEach(([test, data]) => {
-        Object.entries(data).forEach(([status, rec]) => {
-          const statusRu = status === 'high' ? '↑ повышен' : '↓ понижен';
-          const docs = rec.doctors ? rec.doctors.map(d => d.trim()).join(', ') : 'терапевт';
-          supplementsList += `• ${test.trim()} (${statusRu}): ${rec.supplement || 'консультация врача'} → ${docs}\n`;
-        });
-      });
-      sections.push(supplementsList);
+      combined.treatments = Object.entries(window.supplementMap).map(([test, data]) => ({
+        test, recommendations: data, source: 'database.js'
+      }));
     }
 
-    // 4. Профилактические рекомендации
-    if (window.preventiveRecommendations && Array.isArray(window.preventiveRecommendations)) {
-      let preventive = '\n\n🛡 ПРОФИЛАКТИЧЕСКИЕ РЕКОМЕНДАЦИИ:\n';
-      window.preventiveRecommendations.forEach(rec => {
-        preventive += `• ${rec.supplement} (${rec.duration}) — ${rec.note}\n`;
-      });
-      sections.push(preventive);
+    // 2. Импортированные PDF из localStorage
+    try {
+      const importedData = localStorage.getItem(IMPORTED_PDFS_KEY);
+      if (importedData) {
+        const imported = JSON.parse(importedData);
+        if (imported.tests) combined.tests = combined.tests.concat(imported.tests.map(t => ({ ...t, source: 'imported_pdf' })));
+        if (imported.diagnoses) combined.diagnoses = combined.diagnoses.concat(imported.diagnoses.map(d => ({ ...d, source: 'imported_pdf' })));
+        if (imported.treatments) combined.treatments = combined.treatments.concat(imported.treatments.map(t => ({ ...t, source: 'imported_pdf' })));
+        if (imported.drugs) combined.drugs = imported.drugs.map(d => ({ ...d, source: 'imported_pdf' }));
+        if (imported.guidelines) combined.guidelines = imported.guidelines.map(g => ({ ...g, source: 'imported_pdf' }));
+        if (imported.documents) combined.sources = imported.documents;
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to load imported PDFs:', e);
     }
 
-    return sections.join('\n');
+    return combined;
   }
 
   // ═══════════════════════════════════════
-  //  ДЕТАЛЬНЫЙ RAG по запросу
+  //  ПРОВЕРКА: есть ли информация в базе знаний
+  // ═══════════════════════════════════════
+  function hasKnowledgeInDatabase(query) {
+    if (!query) return false;
+    const lowerQuery = query.toLowerCase();
+    const kb = getCombinedKnowledgeBase();
+
+    // Поиск по тестам (database.js + PDF)
+    const testMatch = kb.tests.some(test => {
+      const name = (test.canonicalName || test.name || '').toLowerCase();
+      const short = (test.shortName || '').toLowerCase();
+      const aliases = (test.aliases || []).map(a => a.toLowerCase());
+      return name.includes(lowerQuery) || short.includes(lowerQuery) || 
+             aliases.some(alias => alias.includes(lowerQuery));
+    });
+    if (testMatch) return true;
+
+    // Поиск по диагностическим правилам
+    const ruleMatch = kb.diagnoses.some(rule => {
+      const name = (rule.name || '').toLowerCase();
+      const tests = Object.keys(rule.results || {}).map(k => k.toLowerCase());
+      return name.includes(lowerQuery) || tests.some(t => t.includes(lowerQuery));
+    });
+    if (ruleMatch) return true;
+
+    // Поиск по supplementMap
+    const supplementMatch = kb.treatments.some(t => 
+      (t.test || '').toLowerCase().includes(lowerQuery)
+    );
+    if (supplementMatch) return true;
+
+    // Поиск по лекарствам (из PDF)
+    const drugMatch = kb.drugs.some(d => 
+      (d.name || '').toLowerCase().includes(lowerQuery)
+    );
+    if (drugMatch) return true;
+
+    // Медицинские ключевые слова
+    const medicalKeywords = [
+      'анемия', 'гемоглобин', 'холестерин', 'сахар', 'ттг', 'витамин d',
+      'железо', 'липидограмма', 'почки', 'печень', 'щитовидка', 'тропонин',
+      'соэ', 'лейкоциты', 'эозинофилы', 'алт', 'аст', 'креатинин', 'мочевина',
+      'ферритин', 'билирубин', 'глюкоза', 'инсулин', 'кортизол', 'тестостерон',
+      'гипотиреоз', 'гипертиреоз', 'диабет', 'панкреатит', 'гепатит', 'подагра'
+    ];
+    return medicalKeywords.some(term => lowerQuery.includes(term));
+  }
+
+  // ═══════════════════════════════════════
+  //  ПОСТРОЕНИЕ КОНТЕКСТА ИЗ ОБЪЕДИНЁННОЙ БАЗЫ
   // ═══════════════════════════════════════
   function buildRelevantContext(userMessage, userProfile) {
     const context = [];
     const lowerMsg = userMessage.toLowerCase();
+    const kb = getCombinedKnowledgeBase();
 
-    // Профиль пациента
+    // 1. Профиль пациента
     if (userProfile) {
       context.push(`👤 ПАЦИЕНТ: ${userProfile.name || userProfile.full_name || 'не указано'}, ${userProfile.sex === 'male' ? 'мужчина' : userProfile.sex === 'female' ? 'женщина' : 'пол не указан'}, ${userProfile.age || '?'} лет`);
     }
 
-    // Релевантные тесты
-    if (window.labTests && Array.isArray(window.labTests)) {
-      const relevant = [];
-      for (const test of window.labTests) {
-        if (!test.aliases) continue;
-        const matched = test.aliases.some(alias => 
-          lowerMsg.includes(alias.toLowerCase().trim())
-        );
-        if (matched && relevant.length < 5) {
-          relevant.push(test);
-        }
+    // 2. Источники базы знаний
+    if (kb.sources.length > 0) {
+      context.push(`\n📚 ИСТОЧНИКИ БАЗЫ ЗНАНИЙ (импортированные PDF):`);
+      kb.sources.slice(0, 5).forEach(src => {
+        context.push(`• ${src.fileName || src.title || 'Документ'}`);
+      });
+    }
+
+    // 3. Релевантные тесты (до 10)
+    const relevantTests = [];
+    kb.tests.forEach(test => {
+      const name = (test.canonicalName || test.name || '').toLowerCase();
+      const short = (test.shortName || '').toLowerCase();
+      const aliases = (test.aliases || []).map(a => a.toLowerCase());
+      const matched = name.includes(lowerMsg) || short.includes(lowerMsg) ||
+                      aliases.some(alias => lowerMsg.includes(alias));
+      if (matched && relevantTests.length < 10) {
+        relevantTests.push(test);
       }
-      if (relevant.length > 0) {
-        context.push(`\n🎯 РЕЛЕВАНТНЫЕ ТЕСТЫ ПО ЗАПРОСУ:`);
-        relevant.forEach(t => {
-          const ref = t.references && t.references[0];
-          context.push(`• ${t.canonicalName.trim()} (${t.shortName.trim()}): норма ${ref ? `${ref.min}-${ref.max} ${ref.unit}` : '—'}`);
+    });
+    if (relevantTests.length > 0) {
+      context.push(`\n🧪 РЕЛЕВАНТНЫЕ ТЕСТЫ:`);
+      relevantTests.forEach(t => {
+        const ref = t.references && t.references[0];
+        const tag = t.source === 'imported_pdf' ? '📄 [PDF]' : '📊 [база]';
+        const normStr = ref ? `${ref.min}-${ref.max} ${ref.unit || ''}`.trim() : '—';
+        context.push(`• ${t.canonicalName || t.name} (${t.shortName || ''}): норма ${normStr} ${tag}`);
+      });
+    }
+
+    // 4. Диагностические правила
+    const relevantDiagnoses = [];
+    kb.diagnoses.forEach(rule => {
+      const name = (rule.name || '').toLowerCase();
+      const testsMatch = rule.results && Object.keys(rule.results).some(test => 
+        lowerMsg.includes(test.toLowerCase())
+      );
+      if ((name.includes(lowerMsg) || testsMatch) && relevantDiagnoses.length < 5) {
+        relevantDiagnoses.push(rule);
+      }
+    });
+    if (relevantDiagnoses.length > 0) {
+      context.push(`\n🏥 ВОЗМОЖНЫЕ СОСТОЯНИЯ:`);
+      relevantDiagnoses.forEach(r => {
+        const tag = r.source === 'imported_pdf' ? '📄 [PDF]' : '📊 [база]';
+        context.push(`• ${r.name} (уровень: ${r.danger}) → ${(r.doctors || []).join(', ')} ${tag}`);
+      });
+    }
+
+    // 5. Рекомендации по добавкам
+    const relevantTreatments = [];
+    kb.treatments.forEach(t => {
+      if ((t.test || '').toLowerCase().includes(lowerMsg) && relevantTreatments.length < 5) {
+        relevantTreatments.push(t);
+      }
+    });
+    if (relevantTreatments.length > 0) {
+      context.push(`\n💊 РЕКОМЕНДАЦИИ:`);
+      relevantTreatments.forEach(t => {
+        const tag = t.source === 'imported_pdf' ? '📄 [PDF]' : '📊 [база]';
+        Object.entries(t.recommendations || {}).forEach(([status, rec]) => {
+          const statusRu = status === 'high' ? '↑ повышен' : '↓ понижен';
+          context.push(`• ${t.test} (${statusRu}): ${rec.supplement || 'консультация'} → ${(rec.doctors || []).join(', ')} ${tag}`);
+        });
+      });
+    }
+
+    // 6. Лекарства (из PDF)
+    if (kb.drugs.length > 0) {
+      const relevantDrugs = kb.drugs.filter(d => 
+        (d.name || '').toLowerCase().includes(lowerMsg)
+      ).slice(0, 5);
+      if (relevantDrugs.length > 0) {
+        context.push(`\n💊 ЛЕКАРСТВА:`);
+        relevantDrugs.forEach(d => {
+          context.push(`• ${d.name}: ${d.description || ''} ${d.dosage ? `(доза: ${d.dosage})` : ''} 📄 [PDF]`);
         });
       }
     }
 
-    // Релевантные диагностические правила
-    if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
-      const relevantRules = [];
-      for (const rule of window.diagnosticRules) {
-        const nameMatch = lowerMsg.includes(rule.name.toLowerCase().trim());
-        const testsMatch = rule.results && Object.keys(rule.results).some(test => 
-          lowerMsg.includes(test.toLowerCase().trim())
-        );
-        if ((nameMatch || testsMatch) && relevantRules.length < 3) {
-          relevantRules.push(rule);
-        }
-      }
-      if (relevantRules.length > 0) {
-        context.push(`\n🔍 ВОЗМОЖНЫЕ СОСТОЯНИЯ:`);
-        relevantRules.forEach(r => {
-          context.push(`• ${r.name.trim()} (уровень: ${r.danger}) → ${r.doctors.map(d => d.trim()).join(', ')}`);
+    // 7. Клинические рекомендации (из PDF)
+    if (kb.guidelines.length > 0) {
+      const relevantGuidelines = kb.guidelines.filter(g => {
+        const title = (g.title || '').toLowerCase();
+        const content = (g.content || '').toLowerCase();
+        return title.includes(lowerMsg) || content.includes(lowerMsg);
+      }).slice(0, 3);
+      if (relevantGuidelines.length > 0) {
+        context.push(`\n📋 КЛИНИЧЕСКИЕ РЕКОМЕНДАЦИИ:`);
+        relevantGuidelines.forEach(g => {
+          context.push(`• ${g.title}: ${(g.content || '').slice(0, 300)}... 📄 [PDF]`);
         });
       }
     }
 
-    // Последние анализы пользователя
+    // 8. Последние анализы пользователя из localStorage
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       if (history.length > 0) {
@@ -185,11 +277,10 @@
           const abnormal = Object.entries(results)
             .filter(([_, r]) => r && (r.status === 'high' || r.status === 'low'))
             .slice(0, 5);
-          
           if (abnormal.length > 0) {
             context.push(`\n📊 ПОСЛЕДНИЕ ОТКЛОНЕНИЯ У ПАЦИЕНТА:`);
             abnormal.forEach(([name, r]) => {
-              context.push(`• ${name}: ${r.value} ${r.unit || ''} (${r.status === 'high' ? '↑ повышено' : '↓ понижено'})`);
+              context.push(`• ${name}: ${r.value} ${r.unit || ''} (${r.status === 'high' ? '↑' : '↓'})`);
             });
           }
         }
@@ -235,7 +326,6 @@
   // ═══════════════════════════════════════
   async function loadHistoryFromSupabase() {
     if (!isUserAuthenticated || !sb || !currentUserId) return false;
-
     try {
       const { data: { user } } = await sb.auth.getUser();
       if (!user || !user.id) {
@@ -304,7 +394,7 @@
   }
 
   // ═══════════════════════════════════════
-  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE
+  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE (с retry)
   // ═══════════════════════════════════════
   async function saveMessageToSupabase(role, content, source = null, retryCount = 0) {
     if (!isUserAuthenticated || !sb || !currentUserId) return false;
@@ -316,38 +406,54 @@
         return false;
       }
 
+      // Валидация source под constraint
+      const safeSource = (source && ALLOWED_SOURCES.includes(source)) ? source : null;
+
       const { error } = await sb.from('chat_messages').insert({
         user_id: currentUserId,
         role: role,
         content: content,
-        source: source,
+        source: safeSource,
         metadata: {}
       });
 
       if (error) {
+        // Retry с source = null при constraint error
+        if (error.message && error.message.includes('check constraint') && retryCount === 0) {
+          console.log('🔄 Retrying with source = null...');
+          const { error: retryError } = await sb.from('chat_messages').insert({
+            user_id: currentUserId,
+            role: role,
+            content: content,
+            source: null,
+            metadata: {}
+          });
+          if (retryError) {
+            console.error('❌ Retry failed:', retryError.message);
+            return false;
+          }
+          return true;
+        }
+        
+        // Refresh token при 401
         if ((error.status === 401 || error.code === 'PGRST301') && retryCount < 1) {
           const { error: refreshError } = await sb.auth.refreshSession();
           if (!refreshError) {
             return await saveMessageToSupabase(role, content, source, retryCount + 1);
           }
         }
-        console.warn(`⚠️ Failed to save to Supabase: ${error.message}`);
+        console.warn(`⚠️ Failed to save ${role}:`, error.message);
         return false;
       }
       return true;
     } catch (e) {
-      console.warn(`⚠️ Exception saving to Supabase: ${e.message}`);
-      const lastMsg = chatHistory[chatHistory.length - 1];
-      if (lastMsg) {
-        lastMsg.synced = false;
-        saveToLocalStorage();
-      }
+      console.warn(`⚠️ Exception saving ${role}:`, e.message);
       return false;
     }
   }
 
   // ═══════════════════════════════════════
-  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ
+  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ В SUPABASE
   // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
     if (!isUserAuthenticated || !sb || !currentUserId) return;
@@ -359,7 +465,7 @@
         user_id: currentUserId,
         role: msg.role,
         content: msg.content,
-        source: msg.source || null,
+        source: (msg.source && ALLOWED_SOURCES.includes(msg.source)) ? msg.source : null,
         metadata: { migrated: true, original_timestamp: msg.timestamp }
       }));
 
@@ -404,30 +510,7 @@
     const timeout = setTimeout(() => controller.abort(), 60000);
 
     try {
-      console.log(`🤖 Calling Edge Function (prompt size: ${JSON.stringify(messages).length} chars)...`);
-      
-      // Определяем тип запроса
-      const userMessage = messages.find(m => m.role === 'user')?.content || '';
-      const isMedicalQuery = window.hasKnowledgeInDatabase(userMessage);
-      
-      let systemPrompt = SYSTEM_PROMPT;
-      
-      // Если есть данные в базе — усиливаем приоритет базы
-      if (isMedicalQuery) {
-        systemPrompt += `\n\n📌 ВАЖНО: Вы должны использовать ТОЛЬКО данные из предоставленной базы знаний (labTests, diagnosticRules, supplementMap). Не выдумывайте нормы или интерпретации. Если информации нет — скажите: "В моей базе знаний нет данных по этому вопросу. Я могу найти актуальную информацию в медицинских источниках — хотите?"`;
-      } else {
-        // Если запрос общий — разрешаем поиск в интернете
-        systemPrompt += `\n\n🔍 Если вопрос не относится к конкретным лабораторным тестам или диагностике, вы можете использовать актуальные медицинские источники (UpToDate, WHO, NIH, Cochrane) для поиска. Но всегда указывайте источник и дату публикации.`;
-      }
-
-      // Формируем финальный prompt
-      const fullMessages = [
-        { role: 'system', content: systemPrompt },
-        ...messages.slice(-MAX_CONTEXT_MESSAGES).map(m => ({
-          role: m.role,
-          content: m.content
-        }))
-      ];
+      console.log(`🤖 Calling Edge Function (payload: ${JSON.stringify(messages).length} chars)...`);
 
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
         method: 'POST',
@@ -435,35 +518,26 @@
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
         },
-        body: JSON.stringify({ messages: fullMessages }),
+        body: JSON.stringify({ messages }),
         signal: controller.signal
       });
 
       clearTimeout(timeout);
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || `HTTP ${response.status}`);
       }
-      
+
       if (data.success && data.reply) {
-        // Если ИИ сам запросил уточнение — перенаправляем в чат с предложением поиска
-        if (data.reply.includes('В моей базе знаний нет данных') && 
-            data.reply.includes('Хотите?')) {
-          // Сохраняем в sessionStorage для последующего действия
-          sessionStorage.setItem('pending_medical_search_query', userMessage);
-          sessionStorage.setItem('pending_medical_search_system', systemPrompt);
-        }
-        
-        return { 
-          reply: data.reply, 
+        return {
+          reply: data.reply,
           source: 'openrouter',
-          model: data.model || 'unknown',
-          isMedicalQuery: isMedicalQuery
+          model: data.model || 'unknown'
         };
       }
-      
+
       throw new Error(data.error || 'Пустой ответ от AI');
     } catch (e) {
       clearTimeout(timeout);
@@ -486,24 +560,24 @@
 
     if (lowerMsg.includes('голов') || lowerMsg.includes('мигрен')) {
       responses.push('Головная боль может быть вызвана: стресс, обезвоживание, недосып, проблемы с давлением.');
-      responses.push('**Рекомендуемые анализы:**\n• Гемоглобин (HGB): 130-170 г/л (муж) / 120-150 г/л (жен)\n• Тиреотропный гормон (ТТГ): 0.4-4.0 мМЕ/л\n• Ферритин: 30-400 нг/мл (муж) / 15-150 нг/мл (жен)');
+      responses.push('**Рекомендуемые анализы 📊 [база]:**\n• Гемоглобин (HGB): 130-170 г/л (муж) / 120-150 г/л (жен)\n• ТТГ: 0.4-4.0 мМЕ/л\n• Ферритин: 30-400 нг/мл (муж) / 15-150 нг/мл (жен)');
       responses.push('**Врач:** терапевт → невролог');
     } else if (lowerMsg.includes('температур')) {
       responses.push('Повышенная температура — признак воспаления или инфекции.');
-      responses.push('**Рекомендуемые анализы:**\n• Лейкоциты (WBC): 4.0-9.0 ×10⁹/л\n• С-реактивный белок (CRP): 0-5 мг/л\n• СОЭ (ESR): до 15 мм/ч (муж) / до 20 мм/ч (жен)');
+      responses.push('**Рекомендуемые анализы 📊 [база]:**\n• Лейкоциты (WBC): 4.0-9.0 ×10⁹/л\n• С-реактивный белок (CRP): 0-5 мг/л\n• СОЭ: до 15 мм/ч (муж) / до 20 мм/ч (жен)');
       responses.push('**Врач:** терапевт');
     } else if (lowerMsg.includes('устал') || lowerMsg.includes('слабост')) {
       responses.push('Хроническая усталость — частый признак дефицитов.');
-      responses.push('**Рекомендуемые анализы:**\n• Ферритин: 30-400 нг/мл (муж) / 15-150 нг/мл (жен)\n• 25-гидроксивитамин D: 30-100 нг/мл\n• Витамин B12: 200-900 пг/мл\n• ТТГ: 0.4-4.0 мМЕ/л\n• Гемоглобин (HGB)');
+      responses.push('**Рекомендуемые анализы 📊 [база]:**\n• Ферритин: 30-400 нг/мл (муж) / 15-150 нг/мл (жен)\n• 25(OH)D: 30-100 нг/мл\n• B12: 200-900 пг/мл\n• ТТГ: 0.4-4.0 мМЕ/л');
       responses.push('**Врач:** терапевт → эндокринолог');
     } else if (lowerMsg.includes('анализ') || lowerMsg.includes('какие')) {
-      responses.push('В моей базе есть следующие категории анализов:\n• ОАК (общий анализ крови)\n• Биохимия\n• Липидограмма\n• Печёночные ферменты\n• Гормоны щитовидной железы\n• Витамины\n• Электролиты\n• Онкомаркеры\n• Иммунология');
+      responses.push('В моей базе есть следующие категории анализов 📊 [база]:\n• ОАК (гемоглобин, эритроциты, лейкоциты)\n• Биохимия (глюкоза, АЛТ, АСТ, креатинин)\n• Липидограмма (холестерин, ЛПНП, ЛПВП)\n• Щитовидная железа (ТТГ, Т4, Т3)\n• Витамины (D, B12, фолаты)\n• Электролиты (K, Na, Ca, Mg)');
       responses.push('Опишите симптомы — я подскажу конкретные анализы.');
     }
 
     if (responses.length === 0) {
       responses.push('Я могу помочь с:\n• 🔬 Расшифровкой анализов\n• 🩺 Анализом симптомов\n• 💊 Рекомендациями при отклонениях\n• 👨‍⚕️ Подбором специалистов');
-      responses.push('\n**Примеры:**\n• "Болит голова"\n• "Какие анализы сдать при усталости?"\n• "Что значит повышенный холестерин?"');
+      responses.push('\n**Примеры:**\n• "Болит голова"\n• "Что значит повышенный ферритин?"\n• "Какие анализы сдать при усталости?"');
     }
 
     responses.push('\n⚠️ **Это не медицинская консультация.** Обратитесь к врачу.');
@@ -522,28 +596,10 @@
     console.log('📨 sendMessage called:', userMessage.slice(0, 50));
     console.log('═══════════════════════════════════════');
 
-    // Проверяем авторизацию ПЕРЕД каждым запросом
-    console.log('🔐 Before checkAuth:');
-    console.log('   - sb exists:', !!sb);
-    console.log('   - sb.auth exists:', !!(sb && sb.auth));
-    
     await checkAuth();
-    
-    console.log('🔐 After checkAuth:');
-    console.log('   - isUserAuthenticated:', isUserAuthenticated);
-    console.log('   - currentUserId:', currentUserId);
 
-    // Дополнительная проверка сессии
-    if (sb && sb.auth) {
-      try {
-        const { data: { session } } = await sb.auth.getSession();
-        console.log('🔐 Session check:');
-        console.log('   - session exists:', !!session);
-        console.log('   - session.user:', session?.user?.email || 'none');
-        console.log('   - session.access_token:', session?.access_token ? '✓ present' : '✗ missing');
-      } catch (e) {
-        console.error('❌ Session check failed:', e);
-      }
+    if (!isUserAuthenticated) {
+      console.log('ℹ️ Пользователь не авторизован — история сохраняется только локально');
     }
 
     let userProfile = null;
@@ -553,6 +609,7 @@
       }
     } catch(e) {}
 
+    // Добавляем сообщение пользователя
     const userMsg = {
       role: 'user',
       content: userMessage,
@@ -561,48 +618,39 @@
     };
     chatHistory.push(userMsg);
     saveToLocalStorage();
-    
-    console.log('💾 Save decision:');
-    console.log('   - isUserAuthenticated:', isUserAuthenticated);
-    console.log('   - sb exists:', !!sb);
-    console.log('   - currentUserId:', currentUserId);
-    console.log('   - Will save to Supabase:', isUserAuthenticated && sb && currentUserId);
-    
-    // Сохраняем в Supabase только если авторизован
-    if (isUserAuthenticated && sb && currentUserId) {
-      console.log('💾 Attempting to save USER message to Supabase...');
-      const saved = await saveMessageToSupabase('user', userMessage, null);
-      console.log('💾 Save result:', saved ? '✓ SUCCESS' : '✗ FAILED');
-    } else {
-      console.warn('⚠️ Skipping Supabase save - user not authenticated');
-      console.warn('   Reasons:');
-      if (!isUserAuthenticated) console.warn('   - isUserAuthenticated = false');
-      if (!sb) console.warn('   - sb (Supabase client) = null');
-      if (!currentUserId) console.warn('   - currentUserId = null');
+
+    if (isUserAuthenticated) {
+      saveMessageToSupabase('user', userMessage, null);
     }
 
-    const databaseSummary = buildCompactDatabaseSummary();
+    // Определяем тип запроса
+    const isMedicalQuery = hasKnowledgeInDatabase(userMessage);
+
+    // Строим контекст из объединённой базы
     const relevantContext = buildRelevantContext(userMessage, userProfile);
 
-    const fullSystemPrompt = [
-      SYSTEM_PROMPT,
-      '\n\n═══════════════════════════════════',
-      'БАЗА МЕДИЦИНСКИХ ЗНАНИЙ:',
-      '═══════════════════════════════════',
-      databaseSummary,
-      relevantContext ? '\n\nКОНТЕКСТ ПО ЗАПРОСУ:\n' + relevantContext : '',
-      '\n\nВАЖНО: Отвечай ТОЛЬКО на основе базы. Используй точные названия тестов.'
-    ].join('\n');
+    // Формируем финальный system prompt
+    let finalSystemPrompt = SYSTEM_PROMPT;
+    
+    if (isMedicalQuery) {
+      finalSystemPrompt += `\n\n📌 ВАЖНО: Это медицинский запрос. Вы должны использовать ТОЛЬКО данные из предоставленной базы знаний. Не выдумывайте нормы или интерпретации. Если информации нет в контексте — честно скажите: "В моей базе знаний нет данных по этому вопросу. Я могу найти актуальную информацию в медицинских источниках — хотите?"`;
+    } else {
+      finalSystemPrompt += `\n\n🔍 Это общий вопрос. Если он не относится к медицине — вежливо предложите задать медицинский вопрос. Если вопрос медицинский, но в базе нет данных — используйте актуальные медицинские источники (UpToDate, ВОЗ, NIH, Cochrane, PubMed), но всегда указывайте источник и год публикации.`;
+    }
 
-    console.log('📊 System prompt size:', fullSystemPrompt.length, 'chars (~' + Math.ceil(fullSystemPrompt.length / 4) + ' tokens)');
+    if (relevantContext) {
+      finalSystemPrompt += `\n\n═══════════════════════════════════\nКОНТЕКСТ ИЗ БАЗЫ ЗНАНИЙ:\n═══════════════════════════════════\n${relevantContext}`;
+    }
 
     const messages = [
-      { role: 'system', content: fullSystemPrompt },
+      { role: 'system', content: finalSystemPrompt },
       ...chatHistory.slice(-MAX_CONTEXT_MESSAGES).map(m => ({
         role: m.role,
         content: m.content
       }))
     ];
+
+    console.log('📊 System prompt size:', finalSystemPrompt.length, 'chars (~' + Math.ceil(finalSystemPrompt.length / 4) + ' tokens)');
 
     let reply;
     let source;
@@ -614,11 +662,12 @@
       source = 'openrouter';
       console.log('✅ OpenRouter response received:', reply.slice(0, 100));
     } catch (e) {
-      console.warn('⚠️ Edge Function failed:', e.message);
+      console.warn('⚠️ Edge Function failed, using fallback:', e.message);
       reply = generateFallbackResponse(userMessage, userProfile);
       source = 'local';
     }
 
+    // Добавляем ответ ассистента
     const assistantMsg = {
       role: 'assistant',
       content: reply,
@@ -633,8 +682,8 @@
     }
 
     saveToLocalStorage();
-    
-    if (isUserAuthenticated && sb && currentUserId) {
+
+    if (isUserAuthenticated) {
       console.log('💾 Attempting to save ASSISTANT message to Supabase...');
       const saved = await saveMessageToSupabase('assistant', reply, source);
       console.log('💾 Save result:', saved ? '✓ SUCCESS' : '✗ FAILED');
@@ -663,46 +712,6 @@
       }
     }
   }
-
-  /**
-   * Проверяет, есть ли в базе знаний информация по запросу.
-   * @param {string} query - пользовательский вопрос
-   * @returns {boolean} true если найдено в базе, false — нужно искать в интернете
-   */
-  window.hasKnowledgeInDatabase = function(query) {
-    const lowerQuery = query.toLowerCase();
-    
-    // Поиск по тестам
-    const testMatch = window.labTests.some(test => 
-      test.canonicalName.toLowerCase().includes(lowerQuery) ||
-      test.shortName.toLowerCase().includes(lowerQuery) ||
-      test.aliases.some(alias => alias.toLowerCase().includes(lowerQuery))
-    );
-    if (testMatch) return true;
-
-    // Поиск по диагностическим правилам
-    const ruleMatch = window.diagnosticRules.some(rule => 
-      rule.name.toLowerCase().includes(lowerQuery) ||
-      Object.keys(rule.results).some(key => key.toLowerCase().includes(lowerQuery))
-    );
-    if (ruleMatch) return true;
-
-    // Поиск по добавкам/рекомендациям
-    const supplementMatch = Object.keys(window.supplementMap).some(key =>
-      key.toLowerCase().includes(lowerQuery)
-    );
-    if (supplementMatch) return true;
-
-    // Ключевые медицинские термины (для контекста)
-    const medicalKeywords = [
-      'анемия', 'гемоглобин', 'холестерин', 'сахар', 'ттг', 'витамин d',
-      'железо', 'липидограмма', 'почки', 'печень', 'щитовидка', 'тропонин',
-      'соэ', 'лейкоциты', 'эозинофилы', 'алт', 'аст', 'креатинин', 'мочевина'
-    ];
-    const hasMedicalTerm = medicalKeywords.some(term => lowerQuery.includes(term));
-    
-    return hasMedicalTerm;
-  };
 
   // ═══════════════════════════════════════
   //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ
@@ -744,8 +753,11 @@
   async function init() {
     await loadHistory();
     setupAuthListener();
-    console.log('🤖 AI Assistant v3.3 initialized (OpenRouter: tencent/hy3:free)');
+    
+    const kb = getCombinedKnowledgeBase();
+    console.log('🤖 AI Assistant v4.0 initialized (Hybrid: DB + PDF + Internet)');
     console.log(`📚 Database: ${window.labTests?.length || 0} tests, ${window.diagnosticRules?.length || 0} rules, ${Object.keys(window.supplementMap || {}).length} supplements`);
+    console.log(`📄 Imported PDFs: ${kb.sources.length} docs, ${kb.drugs.length} drugs, ${kb.guidelines.length} guidelines`);
     console.log(`☁️ Supabase client: ${sb ? '✓ connected' : '✗ disabled'}`);
   }
 
@@ -760,15 +772,25 @@
     clearHistory,
     isAuthenticated: () => isUserAuthenticated,
     reloadHistory: loadHistory,
-    getDatabaseStats: () => ({
-      tests: window.labTests?.length || 0,
-      rules: window.diagnosticRules?.length || 0,
-      supplements: Object.keys(window.supplementMap || {}).length,
-      preventive: window.preventiveRecommendations?.length || 0
-    }),
+    hasKnowledgeInDatabase,
+    getCombinedKnowledgeBase,
+    getDatabaseStats: () => {
+      const kb = getCombinedKnowledgeBase();
+      return {
+        builtin_tests: window.labTests?.length || 0,
+        builtin_rules: window.diagnosticRules?.length || 0,
+        builtin_supplements: Object.keys(window.supplementMap || {}).length,
+        imported_documents: kb.sources.length,
+        imported_drugs: kb.drugs.length,
+        imported_guidelines: kb.guidelines.length
+      };
+    },
     isSupabaseConnected: () => !!sb,
-    version: '3.3.0'
+    version: '4.0.0'
   };
+
+  // Глобальный доступ к функции проверки базы
+  window.hasKnowledgeInDatabase = hasKnowledgeInDatabase;
 
   window.addEventListener('load', () => {
     window.dispatchEvent(new CustomEvent('chatHistoryLoaded', {

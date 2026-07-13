@@ -263,6 +263,41 @@
         ...extractedData
       });
 
+  // После обработки всех PDF файлов
+  function saveToLocalStorage(allExtractedData) {
+    try {
+      const existingData = JSON.parse(localStorage.getItem('imported_medical_pdfs') || '{}');
+      
+      const newData = {
+        tests: [...(existingData.tests || []), ...(allExtractedData.tests || [])],
+        diagnoses: [...(existingData.diagnoses || []), ...(allExtractedData.diagnoses || [])],
+        treatments: [...(existingData.treatments || []), ...(allExtractedData.treatments || [])],
+        drugs: [...(existingData.drugs || []), ...(allExtractedData.drugs || [])],
+        guidelines: [...(existingData.guidelines || []), ...(allExtractedData.guidelines || [])],
+        documents: [...(existingData.documents || []), ...(allExtractedData.documents || [])]
+      };
+
+      localStorage.setItem('imported_medical_pdfs', JSON.stringify(newData));
+      
+      console.log('✅ Данные сохранены в localStorage:', {
+        tests: newData.tests.length,
+        diagnoses: newData.diagnoses.length,
+        treatments: newData.treatments.length,
+        drugs: newData.drugs.length,
+        guidelines: newData.guidelines.length,
+        documents: newData.documents.length
+      });
+      
+      return true;
+    } catch (e) {
+      console.error('❌ Ошибка сохранения в localStorage:', e);
+      return false;
+    }
+  }
+
+  // Вызывайте эту функцию после обработки PDF
+  // saveToLocalStorage(extractedData);
+
       // Обновляем UI
       const status = fileItem.querySelector('.status');
       status.className = 'status done';
