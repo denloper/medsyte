@@ -28,7 +28,9 @@
   // ═══════════════════════════════════════
   //  СИСТЕМНЫЙ ПРОМПТ
   // ═══════════════════════════════════════
-  const SYSTEM_PROMPT = `Ты — медицинский AI-ассистент в приложении "Семейный доктор". Отвечай ТОЛЬКО на русском языке.
+  const SYSTEM_PROMPT = `📌 БАЗА ЗНАНИЙ: Ты имеешь доступ к внутренней базе данных с 71 лабораторным тестом, 17 диагностическими правилами и 27 рекомендациями по добавкам. Все эти данные — твои первоисточники. Никогда не выдумывай нормы или интерпретации. Если информации нет в базе — честно скажи об этом и предложи поиск в авторитетных медицинских источниках (UpToDate, ВОЗ, PubMed).
+
+Ты — медицинский AI-ассистент в приложении "Семейный доктор". Отвечай ТОЛЬКО на русском языке.
 
 СТРОГИЕ ПРАВИЛА:
 1. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
@@ -37,15 +39,24 @@
 4. НЕ назначай лечение и лекарства без консультации врача — только общие рекомендации
 5. Используй markdown: **жирный** для важного, • для списков
 6. Ссылайся на конкретные тесты из базы знаний по их точным названиям
+7. Если вопрос не связан с медициной — вежливо предложи задать медицинский вопрос
 
 ФОРМАТ ОТВЕТА:
-- Краткий анализ ситуации (2-3 предложения)
-- Возможные причины (список через •)
-- Рекомендуемые анализы из базы (конкретные названия с нормами)
-- К какому врачу обратиться
-- Дисклеймер в конце
+- 📊 Краткий анализ ситуации (2-3 предложения)
+- 🔍 Возможные причины (список через •)
+- 🧪 Рекомендуемые анализы из базы (конкретные названия с нормами)
+- 👨‍⚕️ К какому врачу обратиться
+- ⚕️ Дисклеймер в конце
 
-Если вопрос НЕ медицинский — вежливо предложи задать медицинский вопрос.`;
+ПРИОРИТЕТ ИСТОЧНИКОВ:
+1. 🥇 Внутренняя база знаний (labTests, diagnosticRules, supplementMap) — ПЕРВИЧНЫЙ ИСТОЧНИК
+2. 🥈 Клинические рекомендации РФ/ЕС/США, UpToDate, ВОЗ — только если в базе нет данных
+3. 🥉 Общие медицинские знания — только как дополнение
+
+Если в базе знаний НЕТ информации по запросу:
+- Честно скажи: "В моей базе знаний нет данных по этому вопросу"
+- Предложи: "Я могу найти актуальную информацию в медицинских источниках — хотите?"
+- НЕ выдумывай нормы, дозировки или диагнозы`;
 
   // ═══════════════════════════════════════
   //  КОМПАКТНАЯ СВОДКА ВСЕЙ БАЗЫ
@@ -390,26 +401,73 @@
   // ═══════════════════════════════════════
   async function callEdgeFunction(messages) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 45000);
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
     try {
+      console.log(`🤖 Calling Edge Function (prompt size: ${JSON.stringify(messages).length} chars)...`);
+      
+      // Определяем тип запроса
+      const userMessage = messages.find(m => m.role === 'user')?.content || '';
+      const isMedicalQuery = window.hasKnowledgeInDatabase(userMessage);
+      
+      let systemPrompt = SYSTEM_PROMPT;
+      
+      // Если есть данные в базе — усиливаем приоритет базы
+      if (isMedicalQuery) {
+        systemPrompt += `\n\n📌 ВАЖНО: Вы должны использовать ТОЛЬКО данные из предоставленной базы знаний (labTests, diagnosticRules, supplementMap). Не выдумывайте нормы или интерпретации. Если информации нет — скажите: "В моей базе знаний нет данных по этому вопросу. Я могу найти актуальную информацию в медицинских источниках — хотите?"`;
+      } else {
+        // Если запрос общий — разрешаем поиск в интернете
+        systemPrompt += `\n\n🔍 Если вопрос не относится к конкретным лабораторным тестам или диагностике, вы можете использовать актуальные медицинские источники (UpToDate, WHO, NIH, Cochrane) для поиска. Но всегда указывайте источник и дату публикации.`;
+      }
+
+      // Формируем финальный prompt
+      const fullMessages = [
+        { role: 'system', content: systemPrompt },
+        ...messages.slice(-MAX_CONTEXT_MESSAGES).map(m => ({
+          role: m.role,
+          content: m.content
+        }))
+      ];
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
         },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages: fullMessages }),
         signal: controller.signal
       });
+
       clearTimeout(timeout);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
       const data = await response.json();
-      if (data.success && data.reply) {
-        return { reply: data.reply, source: 'openrouter', model: data.model || 'tencent/hy3' };
+      
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
       }
-      throw new Error(data.error || 'Empty response');
+      
+      if (data.success && data.reply) {
+        // Если ИИ сам запросил уточнение — перенаправляем в чат с предложением поиска
+        if (data.reply.includes('В моей базе знаний нет данных') && 
+            data.reply.includes('Хотите?')) {
+          // Сохраняем в sessionStorage для последующего действия
+          sessionStorage.setItem('pending_medical_search_query', userMessage);
+          sessionStorage.setItem('pending_medical_search_system', systemPrompt);
+        }
+        
+        return { 
+          reply: data.reply, 
+          source: 'openrouter',
+          model: data.model || 'unknown',
+          isMedicalQuery: isMedicalQuery
+        };
+      }
+      
+      throw new Error(data.error || 'Пустой ответ от AI');
     } catch (e) {
       clearTimeout(timeout);
+      console.error('❌ Edge Function error:', e.message);
       throw e;
     }
   }
@@ -605,6 +663,46 @@
       }
     }
   }
+
+  /**
+   * Проверяет, есть ли в базе знаний информация по запросу.
+   * @param {string} query - пользовательский вопрос
+   * @returns {boolean} true если найдено в базе, false — нужно искать в интернете
+   */
+  window.hasKnowledgeInDatabase = function(query) {
+    const lowerQuery = query.toLowerCase();
+    
+    // Поиск по тестам
+    const testMatch = window.labTests.some(test => 
+      test.canonicalName.toLowerCase().includes(lowerQuery) ||
+      test.shortName.toLowerCase().includes(lowerQuery) ||
+      test.aliases.some(alias => alias.toLowerCase().includes(lowerQuery))
+    );
+    if (testMatch) return true;
+
+    // Поиск по диагностическим правилам
+    const ruleMatch = window.diagnosticRules.some(rule => 
+      rule.name.toLowerCase().includes(lowerQuery) ||
+      Object.keys(rule.results).some(key => key.toLowerCase().includes(lowerQuery))
+    );
+    if (ruleMatch) return true;
+
+    // Поиск по добавкам/рекомендациям
+    const supplementMatch = Object.keys(window.supplementMap).some(key =>
+      key.toLowerCase().includes(lowerQuery)
+    );
+    if (supplementMatch) return true;
+
+    // Ключевые медицинские термины (для контекста)
+    const medicalKeywords = [
+      'анемия', 'гемоглобин', 'холестерин', 'сахар', 'ттг', 'витамин d',
+      'железо', 'липидограмма', 'почки', 'печень', 'щитовидка', 'тропонин',
+      'соэ', 'лейкоциты', 'эозинофилы', 'алт', 'аст', 'креатинин', 'мочевина'
+    ];
+    const hasMedicalTerm = medicalKeywords.some(term => lowerQuery.includes(term));
+    
+    return hasMedicalTerm;
+  };
 
   // ═══════════════════════════════════════
   //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ
