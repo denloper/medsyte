@@ -356,19 +356,21 @@
     <div class="chat-input-bar-top">
       <button class="chat-attach ripple-element voice-btn" onclick="startVoiceInput()" aria-label="Голосовой ввод">🎤</button>
       <input type="text" class="chat-input" id="chatInputField" 
-             placeholder="Задайте медицинский вопрос..."
+             placeholder="Опишите симптомы ..."
              onkeydown="if(event.key==='Enter') sendChatMessage()">
-      <button class="chat-send ripple-element" onclick="sendChatMessage()" aria-label="Отправить">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
+    <button class="chat-send ripple-element" onclick="sendChatMessage()" aria-label="Отправить">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
     </div>
-    <div class="chat-input-bar-note">
-      <span>🎓</span>
-      <span>Нейросеть обучена на всех медицинских учебниках</span>
-    </div>
+  </div>
+
+  <!-- 🎓 Подпись под полем ввода -->
+  <div class="chat-knowledge-note">
+    <span class="chat-knowledge-note-icon">🎓</span>
+    <span class="chat-knowledge-note-text">Нейросеть обучена на всех медицинских учебниках</span>
   </div>
 
   <!-- ═══════ QUICK ACTIONS ═══════ -->
