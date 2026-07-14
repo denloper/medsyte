@@ -754,8 +754,18 @@
                     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
     const daysOfWeek = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 
                         'Четверг', 'Пятница', 'Суббота'];
-    const currentDate = `${now.getDate()} ${months[now.getMonth()]} ${daysOfWeek[now.getDay()]}`;
-    document.getElementById('currentDate').textContent = currentDate;
+    
+    // Верхняя строка (strong): только дата — "14 июля"
+    const currentDate = `${now.getDate()} ${months[now.getMonth()]}`;
+    
+    // Нижняя строка (span): день недели — "Понедельник"
+    const currentDay = daysOfWeek[now.getDay()];
+    
+    const dateEl = document.getElementById('currentDate');
+    const dayEl = document.getElementById('currentDay');
+    
+    if (dateEl) dateEl.textContent = currentDate;
+    if (dayEl) dayEl.textContent = currentDay;
   }
   updateTime();
   setInterval(updateTime, 60000);
