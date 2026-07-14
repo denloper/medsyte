@@ -2044,9 +2044,203 @@ a.v-card:visited {
   }
 }
 
-/* Плавные переходы для сообщений */
-.msg-user, .msg-ai {
+/* ═══════ БАЗОВЫЕ СООБЩЕНИЯ ═══════ */
+.msg-user,
+.msg-ai {
+  position: relative;
   animation: messageSlideIn 0.3s ease;
+}
+
+/* ═══════ ОТСТУПЫ МЕЖДУ РАЗНЫМИ ТИПАМИ СООБЩЕНИЙ ═══════ */
+/* User → AI (большой отступ) */
+.msg-user + .msg-ai {
+  margin-top: 24px;
+}
+
+/* AI → User (большой отступ) */
+.msg-ai + .msg-user {
+  margin-top: 24px;
+}
+
+/* ═══════ ОТСТУПЫ МЕЖДУ СВОИМИ СООБЩЕНИЯМИ (подряд) ═══════ */
+/* User → User (маленький отступ) */
+.msg-user + .msg-user {
+  margin-top: 6px;
+}
+
+/* AI → AI (маленький отступ) */
+.msg-ai + .msg-ai {
+  margin-top: 6px;
+}
+
+/* ═══════ ПЕРВОЕ СООБЩЕНИЕ ═══════ */
+.msg-user:first-child,
+.msg-ai:first-child {
+  margin-top: 16px;
+}
+
+/* ═══════ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ (справа) ═══════ */
+.msg-user {
+  background: var(--green, #3D8B4E);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 18px 18px 4px 18px;
+  align-self: flex-end;
+  max-width: 78%;
+  font-size: 15px;
+  line-height: 1.55;
+  word-wrap: break-word;
+  box-shadow: 0 2px 8px rgba(61, 139, 78, 0.18);
+  margin-left: auto;
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+.msg-user .time { 
+  font-size: 11px; 
+  opacity: 0.85; 
+  margin-top: 6px; 
+  text-align: right; 
+}
+
+/* Если сообщение user идёт после другого user — скругляем верхний правый угол меньше */
+.msg-user + .msg-user {
+  border-top-right-radius: 6px;
+}
+
+/* ═══════ СООБЩЕНИЕ ИИ (слева) ═══════ */
+.msg-ai {
+  background: var(--surface, #fff);
+  padding: 14px 18px;
+  border-radius: 18px 18px 18px 4px;
+  align-self: flex-start;
+  max-width: 85%;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-1, #374151);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-right: auto;
+  margin-left: 4px;
+  margin-bottom: 4px;
+}
+
+.msg-ai .time { 
+  font-size: 11px; 
+  color: var(--text-3, #9ca3af); 
+  margin-top: 10px; 
+}
+
+.msg-ai strong { color: var(--dark, #111); }
+.msg-ai em { font-style: italic; }
+.msg-ai code {
+  background: var(--surface-2, #f3f4f6);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.9em;
+}
+
+/* Если сообщение ai идёт после другого ai — скругляем верхний левый угол меньше */
+.msg-ai + .msg-ai {
+  border-top-left-radius: 6px;
+}
+
+/* ═══════ TYPING INDICATOR ═══════ */
+.typing {
+  display: flex;
+  gap: 4px;
+  padding: 14px 18px;
+  background: var(--surface, #fff);
+  border-radius: 18px 18px 18px 4px;
+  align-self: flex-start;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  margin-right: auto;
+  margin-left: 4px;
+  margin-top: 24px; /* Большой отступ от предыдущего user */
+  animation: messageSlideIn 0.3s ease;
+}
+
+/* ═══════ ERROR MESSAGE ═══════ */
+.msg-error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 16px;
+  align-self: flex-start;
+  max-width: 85%;
+  font-size: 13px;
+  margin-right: auto;
+  margin-left: 4px;
+  margin-top: 24px;
+  margin-bottom: 4px;
+  animation: messageSlideIn 0.3s ease;
+}
+
+.msg-error a {
+  color: #991b1b;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+/* ═══════ SYNC INDICATOR (между сообщениями) ═══════ */
+.sync-indicator {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-3, #9ca3af);
+  margin: 4px 0 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+/* ═══════ РАЗДЕЛИТЕЛЬ ДАТЫ (если нужен) ═══════ */
+.date-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0 16px;
+  color: var(--text-3, #9ca3af);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.date-divider::before,
+.date-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--surface-2, #e5e7eb);
+}
+
+/* ═══════ АДАПТИВНОСТЬ ДЛЯ МОБИЛОК ═══════ */
+@media (max-width: 480px) {
+  .msg-user,
+  .msg-ai {
+    max-width: 88%;
+    font-size: 14px;
+    padding: 11px 14px;
+  }
+  
+  .msg-user + .msg-ai,
+  .msg-ai + .msg-user {
+    margin-top: 20px;
+  }
+  
+  .msg-user + .msg-user,
+  .msg-ai + .msg-ai {
+    margin-top: 4px;
+  }
+}
+
+/* ═══════ ПЛАНШЕТ ═══════ */
+@media (min-width: 768px) {
+  .msg-user,
+  .msg-ai {
+    max-width: 65%;
+  }
+  
+  .msg-user + .msg-ai,
+  .msg-ai + .msg-user {
+    margin-top: 28px;
+  }
 }
 
 @keyframes messageSlideIn {
@@ -2088,3 +2282,89 @@ a.v-card:visited {
     max-width: 70%;
   }
 }
+
+
+
+    /* ═══════ ПОЛЕ ВВОДА С ПОДПИСЬЮ ═══════ */
+    .chat-input-bar {
+      background: white;
+      border-radius: 28px;
+      padding: 10px 14px 6px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    
+    .chat-input-bar-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+    
+    .chat-input-bar-top .chat-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      font-family: inherit;
+      background: transparent;
+      padding: 8px 4px;
+      color: var(--text-1);
+      min-width: 0;
+    }
+    
+    .chat-input-bar-top .chat-input::placeholder {
+      color: var(--text-3);
+    }
+    
+    .chat-input-bar-top .voice-btn,
+    .chat-input-bar-top .chat-send {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    
+    .chat-input-bar-top .voice-btn {
+      background: var(--surface-2);
+      color: var(--text-2);
+    }
+    
+    .chat-input-bar-top .voice-btn:hover {
+      background: var(--green);
+      color: white;
+    }
+    
+    .chat-input-bar-top .chat-send {
+      background: var(--green);
+      color: white;
+    }
+    
+    .chat-input-bar-top .chat-send:hover {
+      background: var(--green-light, #5BAD6F);
+    }
+    
+    .chat-input-bar-note {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-3);
+      padding: 4px 0 2px;
+      font-style: italic;
+      font-weight: 500;
+    }
+    
+    .chat-input-bar-note span:first-child {
+      font-size: 13px;
+    }
