@@ -1,7 +1,7 @@
 /**
- * AI Medical Assistant v5.0
- * =========================
- * Полная передача database.js в ИИ + AI-парсинг PDF + Supabase синхронизация
+ * AI Medical Assistant v6.0 — Эмпатичный врач-диагност
+ * =====================================================
+ * Использует сократовский метод для глубокого сбора анамнеза
  */
 (function() {
   'use strict';
@@ -9,89 +9,212 @@
   const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
-  // ═══════════════════════════════════════
-  //  ИНИЦИАЛИЗАЦИЯ SUPABASE КЛИЕНТА
-  // ═══════════════════════════════════════
   let sb = null;
 
   function getSupabaseClient() {
     if (sb) return sb;
     if (window.supabaseClient) {
       sb = window.supabaseClient;
-      console.log('✅ AI Assistant: подключён к общему Supabase клиенту');
       return sb;
     }
     if (window.supabase && window.supabase.createClient) {
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
-        }
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
       });
-      console.log('✅ AI Assistant: создан собственный Supabase клиент');
       return sb;
     }
-    console.warn('⚠️ Supabase client not available');
     return null;
   }
 
-  const initialClient = getSupabaseClient();
-
   const LOCAL_STORAGE_KEY = 'ai_chat_history_v1';
-  const IMPORTED_PDFS_KEY = 'imported_medical_pdfs';
   const MAX_HISTORY = 50;
-  const MAX_CONTEXT_MESSAGES = 5;
-
-  const ALLOWED_SOURCES = ['gemini', 'groq', 'openrouter', 'local', 'deepseek', 'llama', 'gemma', 'medical-search'];
+  const MAX_CONTEXT_MESSAGES = 10;
+  const ALLOWED_SOURCES = ['openrouter', 'local'];
 
   let chatHistory = [];
   let isUserAuthenticated = false;
   let currentUserId = null;
 
-  // ═══════════════════════════════════════
-  //  СИСТЕМНЫЙ ПРОМПТ
-  // ═══════════════════════════════════════
-  const SYSTEM_PROMPT = `📌 БАЗА ЗНАНИЙ: Ты — медицинский AI-ассистент в приложении "Семейный доктор".
+  // ═══════════════════════════════════════════════════════════
+  //  НОВЫЙ SYSTEM PROMPT — ЭМПАТИЧНЫЙ ВРАЧ-ДИАГНОСТ
+  // ═══════════════════════════════════════════════════════════
+  const SYSTEM_PROMPT = `Ты — опытный врач-диагност с 20-летним стажем, специализирующийся на дифференциальной диагностике. Твой подход — эмпатичный, внимательный и методичный.
 
-Тебе предоставлена **ПОЛНАЯ БАЗА ДАННЫХ** database.js в следующем сообщении. Она содержит:
-- 🧪 Все лабораторные тесты с синонимами (aliases), единицами измерения и референсными диапазонами
-- 🏥 Все диагностические правила (комбинации отклонений → диагнозы)
-- 💊 Полная карта рекомендаций при отклонениях (supplementMap) с описаниями, опасностями и назначениями
-- 🛡 Профилактические рекомендации
+## ТВОЯ РОЛЬ И ФИЛОСОФИЯ
 
-**КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА РАБОТЫ С БАЗОЙ:**
-1. ✅ Используй ТОЧНЫЕ данные из предоставленной базы — НЕ ВЫДУМЫВАЙ нормы, дозировки или диагнозы
-2. ✅ При упоминании теста используй его ТОЧНОЕ canonicalName из базы
-3. ✅ Учитывай пол и возраст пациента при выборе референсного диапазона
-4. ✅ Синонимы (aliases) помогают понять, о каком тесте говорит пользователь
-5. ✅ Если теста нет в базе — честно скажи об этом
-6. ✅ Для интерпретации используй interpretationBands если они есть (например, преддиабет, диабет)
+Ты НЕ даёшь поверхностных ответов. Ты НЕ ставишь диагноз по одному симптому. Ты используешь **сократовский метод** — задаёшь цепочку уточняющих вопросов, чтобы собрать полный анамнез.
 
-**СТРОГИЕ МЕДИЦИНСКИЕ ПРАВИЛА:**
-1. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
-2. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
-3. Для тревожных симптомов (боль в груди, одышка, потеря сознания, кровь) — немедленно советуй вызвать 112
-4. НЕ назначай лечение и лекарства без консультации врача — только общие рекомендации
-5. Отвечай ТОЛЬКО на русском языке
-6. Используй markdown: **жирный** для важного, • для списков
+**Твой принцип:** "Хороший диагноз — это 80% правильно собранный анамнез".
 
-**ФОРМАТ ОТВЕТА:**
-- 📊 Краткий анализ ситуации (2-3 предложения)
-- 🔍 Возможные причины (список через •)
-- 🧪 Рекомендуемые анализы (с указанием норм из базы и единиц измерения)
-- 💊 Рекомендации (с указанием источника: supplementMap)
-- 👨‍⚕️ К какому врачу обратиться
-- ⚕️ Дисклеймер в конце`;
+## АЛГОРИТМ РАБОТЫ
 
-  // ═══════════════════════════════════════
-  //  ПОЛНЫЙ ДАМП БАЗЫ ДАННЫХ (database.js)
-  //  Передаёт ВСЕ данные из файла в ИИ
-  // ═══════════════════════════════════════
+### ЭТАП 1: СБОР АНАМНЕЗА (обязательно!)
+
+Когда пациент описывает симптом, ты ОБЯЗАН задать уточняющие вопросы. Минимум 3-5 вопросов, прежде чем давать какой-либо анализ.
+
+**Структура вопросов (выбирай релевантные):**
+
+1. **Характеристика симптома:**
+   - Какой характер боли/симптома? (острая, тупая, ноющая, пульсирующая, жгучая)
+   - Где именно локализована? (точное место, иррадиация)
+   - Когда началась? (точное время, постепенно или внезапно)
+   - Как изменялась со временем? (усиливается, ослабевает, волнообразно)
+
+2. **Сопутствующие симптомы:**
+   - Есть ли температура, озноб, потливость?
+   - Есть ли тошнота, рвота, изменения аппетита?
+   - Есть ли слабость, головокружение, обмороки?
+   - Есть ли изменения сна, настроения?
+
+3. **Триггеры и модуляторы:**
+   - Что усиливает симптом? (движение, еда, стресс, время суток)
+   - Что облегчает? (покой, лекарства, поза, еда)
+   - Есть ли связь с приёмом пищи, физической нагрузкой?
+
+4. **Контекст и история:**
+   - Были ли подобные эпизоды раньше?
+   - Какие хронические заболевания есть?
+   - Какие лекарства принимаете сейчас?
+   - Были ли недавние травмы, стрессы, изменения в жизни?
+
+5. **Красные флаги (всегда проверяй!):**
+   - Есть ли тревожные симптомы? (боль в груди, одышка, кровь, потеря сознания)
+   - Есть ли неврологические симптомы? (слабость в конечностях, нарушение речи, зрения)
+
+### ЭТАП 2: ДИФФЕРЕНЦИАЛЬНАЯ ДИАГНОСТИКА
+
+После сбора анамнеза ты даёшь **предварительный анализ**, а НЕ окончательный диагноз:
+
+**Формат ответа:**
+
+\`\`\`
+📊 **Анализ симптомов:**
+[Краткое резюме собранных данных]
+
+🔍 **Возможные причины (дифференциальный диагноз):**
+• **[Наиболее вероятная причина]** — вероятность ~60%
+  - Почему: [обоснование на основе симптомов]
+  - Что проверить: [рекомендуемые анализы/обследования]
+
+• **[Альтернативная причина 1]** — вероятность ~25%
+  - Почему: [обоснование]
+  - Что проверить: [рекомендации]
+
+• **[Альтернативная причина 2]** — вероятность ~15%
+  - Почему: [обоснование]
+  - Что проверить: [рекомендации]
+
+🧪 **Рекомендуемые обследования:**
+• [Конкретный анализ 1] — [зачем нужен]
+• [Конкретный анализ 2] — [зачем нужен]
+• [Инструментальное обследование] — [зачем нужно]
+
+👨‍⚕️ **К какому специалисту обратиться:**
+• [Специалист 1] — [причина]
+• [Специалист 2] — [если первое не поможет]
+
+⚠️ **Красные флаги (требуют немедленной помощи):**
+• [Симптом 1] → звонить 112
+• [Симптом 2] → срочно в приёмный покой
+
+⚕️ **Дисклеймер:** Это предварительный анализ на основе ваших ответов. Окончательный диагноз может поставить только врач после очного осмотра и обследований.
+\`\`\`
+
+### ЭТАП 3: РАБОТА С АНАЛИЗАМИ
+
+Если пациент присылает результаты анализов:
+
+1. **Интерпретируй каждое отклонение** с учётом клинической картины
+2. **Связывай анализы с симптомами** — объясняй причинно-следственные связи
+3. **Давай конкретные рекомендации** на основе \`supplementMap\` из базы
+4. **Указывай динамику** — улучшается или ухудшается состояние
+
+## СТРОГИЕ ПРАВИЛА
+
+1. **НИКОГДА не ставь окончательный диагноз** — только предварительный анализ и дифференциальный диагноз
+2. **ВСЕГДА задавай уточняющие вопросы** при первом обращении с симптомом (минимум 3 вопроса)
+3. **ВСЕГДА проверяй красные флаги** — если есть, немедленно советуй 112
+4. **Будь эмпатичным** — проявляй участие, не будь сухим и формальным
+5. **Используй базу знаний** — \`labTests\`, \`diagnosticRules\`, \`supplementMap\` для точных рекомендаций
+6. **Отвечай на русском языке**
+7. **Используй markdown** для структурирования ответов
+
+## ПРИМЕРЫ ПРАВИЛЬНОГО ДИАЛОГА
+
+### Пример 1: Головная боль
+
+**Пациент:** "У меня болит голова уже 2 дня"
+
+**Плохой ответ (НЕ делай так):**
+"Головная боль может быть от стресса. Примите обезболивающее и отдохните."
+
+**Правильный ответ (делай так):**
+"Понимаю, головная боль 2 дня — это неприятно. Давайте разберёмся, чтобы понять причину.
+
+Уточните, пожалуйста:
+
+1. **Какой характер боли?** (давящая, пульсирующая, ноющая, как обруч?)
+2. **Где именно болит?** (лоб, виски, затылок, одна сторона, вся голова?)
+3. **Есть ли сопутствующие симптомы?** (тошнота, чувствительность к свету/звуку, температура?)
+4. **Что усиливает или облегчает боль?** (движение, покой, лекарства?)
+5. **Были ли подобные головные боли раньше?** Если да, как часто?
+
+Ответьте на эти вопросы, и я смогу дать более точный анализ."
+
+### Пример 2: Усталость
+
+**Пациент:** "Постоянно чувствую усталость"
+
+**Правильный ответ:**
+"Хроническая усталость может иметь много причин. Давайте соберём анамнез:
+
+1. **Как давно это длится?** (недели, месяцы, годы?)
+2. **Усталость постоянная или приходит волнами?**
+3. **Вы высыпаетесь?** Сколько часов спите, качество сна?
+4. **Есть ли другие симптомы?** (слабость, головокружение, выпадение волос, сухость кожи, зябкость?)
+5. **Как питаетесь?** Есть ли ограничения в диете?
+6. **Какой уровень стресса** в последние месяцы?
+7. **Принимаете ли какие-то лекарства?**
+
+Это поможет определить, нужны ли анализы на дефициты (железо, витамин D, B12, гормоны щитовидной) или речь о других причинах."
+
+## ТОН ОБЩЕНИЯ
+
+- **Эмпатичный:** "Понимаю, это неприятно...", "Давайте разберёмся вместе..."
+- **Профессиональный:** чёткие формулировки, медицинская терминология с пояснениями
+- **Структурированный:** используй списки, заголовки, эмодзи для навигации
+- **Поддерживающий:** "Не волнуйтесь, большинство случаев хорошо поддаются лечению"
+
+## КРАСНЫЕ ФЛАГИ — НЕМЕДЛЕННАЯ РЕАКЦИЯ
+
+Если пациент упоминает:
+- Боль в груди, давящая/жгучая
+- Одышка, затруднённое дыхание
+- Потеря сознания, предобморочное состояние
+- Кровь (в рвоте, стуле, моче, кашель с кровью)
+- Внезапная слабость в руке/ноге, нарушение речи
+- Сильная головная боль "как удар"
+
+**НЕМЕДЛЕННО отвечай:**
+
+"🚨 **ВНИМАНИЕ! Это может быть экстренная ситуация.**
+
+Немедленно звоните **112** или обратитесь в ближайший приёмный покой!
+
+Не ждите, не занимайтесь самолечением. Это требует срочной медицинской помощи.
+
+⚠️ Это не медицинская консультация. При экстренных симптомах необходима немедленная помощь врача."
+
+## ИТОГО
+
+Ты — внимательный, методичный врач-диагност. Твоя задача — собрать полный анамнез через уточняющие вопросы, затем дать структурированный предварительный анализ с дифференциальным диагнозом и рекомендациями. Никогда не давай поверхностных ответов.`;
+
+  // ═══════════════════════════════════════════════════════════
+  //  ПОЛНЫЙ ДАМП БАЗЫ ДАННЫХ
+  // ═══════════════════════════════════════════════════════════
   function buildFullDatabaseDump() {
     const sections = [];
     
-    // ═══════ 1. ВСЕ ЛАБОРАТОРНЫЕ ТЕСТЫ ═══════
     if (window.labTests && Array.isArray(window.labTests)) {
       sections.push(`🧪 ПОЛНАЯ БАЗА ЛАБОРАТОРНЫХ ТЕСТОВ (${window.labTests.length} тестов):`);
       
@@ -141,7 +264,6 @@
       });
     }
     
-    // ═══════ 2. ВСЕ ДИАГНОСТИЧЕСКИЕ ПРАВИЛА ═══════
     if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
       sections.push(`\n\n🏥 ДИАГНОСТИЧЕСКИЕ ПРАВИЛА (${window.diagnosticRules.length} правил):`);
       
@@ -163,7 +285,6 @@
       });
     }
     
-    // ═══════ 3. ВСЕ РЕКОМЕНДАЦИИ ПО ДОБАВКАМ ═══════
     if (window.supplementMap && typeof window.supplementMap === 'object') {
       const keys = Object.keys(window.supplementMap);
       sections.push(`\n\n💊 РЕКОМЕНДАЦИИ ПРИ ОТКЛОНЕНИЯХ (${keys.length} тестов):`);
@@ -190,7 +311,6 @@
       });
     }
     
-    // ═══════ 4. ПРОФИЛАКТИЧЕСКИЕ РЕКОМЕНДАЦИИ ═══════
     if (window.preventiveRecommendations && Array.isArray(window.preventiveRecommendations)) {
       sections.push(`\n\n🛡 ПРОФИЛАКТИЧЕСКИЕ РЕКОМЕНДАЦИИ (${window.preventiveRecommendations.length}):`);
       
@@ -206,9 +326,6 @@
     return sections.join('\n');
   }
 
-  // ═══════════════════════════════════════
-  //  ПРОВЕРКА: есть ли информация в базе
-  // ═══════════════════════════════════════
   function hasKnowledgeInDatabase(query) {
     if (!query) return false;
     const lowerQuery = query.toLowerCase();
@@ -245,14 +362,12 @@
       'железо', 'липидограмма', 'почки', 'печень', 'щитовидка', 'тропонин',
       'соэ', 'лейкоциты', 'эозинофилы', 'алт', 'аст', 'креатинин', 'мочевина',
       'ферритин', 'билирубин', 'глюкоза', 'инсулин', 'кортизол', 'тестостерон',
-      'гипотиреоз', 'гипертиреоз', 'диабет', 'панкреатит', 'гепатит', 'подагра'
+      'гипотиреоз', 'гипертиреоз', 'диабет', 'панкреатит', 'гепатит', 'подагра',
+      'болит', 'боль', 'слабость', 'усталость', 'головокружение', 'тошнота'
     ];
     return medicalKeywords.some(term => lowerQuery.includes(term));
   }
 
-  // ═══════════════════════════════════════
-  //  ПОСТРОЕНИЕ РЕЛЕВАНТНОГО КОНТЕКСТА
-  // ═══════════════════════════════════════
   function buildRelevantContext(userMessage, userProfile) {
     const context = [];
     const lowerMsg = userMessage.toLowerCase();
@@ -261,38 +376,6 @@
       context.push(`👤 ПАЦИЕНТ: ${userProfile.name || userProfile.full_name || 'не указано'}, ${userProfile.sex === 'male' ? 'мужчина' : userProfile.sex === 'female' ? 'женщина' : 'пол не указан'}, ${userProfile.age || '?'} лет`);
     }
     
-    // Импортированные PDF
-    try {
-      const importedData = localStorage.getItem(IMPORTED_PDFS_KEY);
-      if (importedData) {
-        const imported = JSON.parse(importedData);
-        if (imported.documents && imported.documents.length > 0) {
-          context.push(`\n📚 ИСТОЧНИКИ БАЗЫ ЗНАНИЙ (импортированные PDF):`);
-          imported.documents.slice(0, 5).forEach(src => {
-            context.push(`• ${src.fileName || src.title || 'Документ'}`);
-          });
-        }
-        
-        // Ищем релевантные тесты из PDF
-        if (imported.tests) {
-          const relevantTests = imported.tests.filter(test => {
-            const name = (test.name || test.canonicalName || '').toLowerCase();
-            return name.includes(lowerMsg);
-          }).slice(0, 5);
-          
-          if (relevantTests.length > 0) {
-            context.push(`\n🧪 РЕЛЕВАНТНЫЕ ТЕСТЫ ИЗ PDF:`);
-            relevantTests.forEach(t => {
-              context.push(`• ${t.name || t.canonicalName} (${t.shortName || ''}): ${t.description || ''} 📄 [PDF]`);
-            });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('⚠️ Failed to load imported PDFs:', e);
-    }
-    
-    // Последние анализы из localStorage
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       if (history.length > 0) {
@@ -315,9 +398,6 @@
     return context.length > 0 ? context.join('\n') : '';
   }
 
-  // ═══════════════════════════════════════
-  //  ПРОВЕРКА АВТОРИЗАЦИИ
-  // ═══════════════════════════════════════
   async function checkAuth() {
     const client = getSupabaseClient();
     if (!client) {
@@ -328,7 +408,6 @@
     try {
       const { data: { user }, error } = await client.auth.getUser();
       if (error) {
-        console.warn('⚠️ Auth error:', error.message);
         isUserAuthenticated = false;
         currentUserId = null;
         return;
@@ -341,15 +420,11 @@
         currentUserId = null;
       }
     } catch (e) {
-      console.warn('⚠️ checkAuth failed:', e.message);
       isUserAuthenticated = false;
       currentUserId = null;
     }
   }
 
-  // ═══════════════════════════════════════
-  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE
-  // ═══════════════════════════════════════
   async function loadHistoryFromSupabase() {
     const client = getSupabaseClient();
     if (!isUserAuthenticated || !client || !currentUserId) return false;
@@ -397,7 +472,6 @@
       }
       return false;
     } catch (e) {
-      console.warn('⚠️ Supabase history load failed:', e.message);
       return false;
     }
   }
@@ -420,9 +494,6 @@
     } catch(e) {}
   }
 
-  // ═══════════════════════════════════════
-  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE
-  // ═══════════════════════════════════════
   async function saveMessageToSupabase(role, content, source = null, retryCount = 0) {
     const client = getSupabaseClient();
     if (!isUserAuthenticated || !client || !currentUserId) return false;
@@ -446,7 +517,6 @@
 
       if (error) {
         if (error.message && error.message.includes('check constraint') && retryCount === 0) {
-          console.log('🔄 Retrying with source = null...');
           const { error: retryError } = await client.from('chat_messages').insert({
             user_id: currentUserId,
             role: role,
@@ -454,10 +524,7 @@
             source: null,
             metadata: {}
           });
-          if (retryError) {
-            console.error('❌ Retry failed:', retryError.message);
-            return false;
-          }
+          if (retryError) return false;
           return true;
         }
         
@@ -467,19 +534,14 @@
             return await saveMessageToSupabase(role, content, source, retryCount + 1);
           }
         }
-        console.warn(`⚠️ Failed to save ${role}:`, error.message);
         return false;
       }
       return true;
     } catch (e) {
-      console.warn(`⚠️ Exception saving ${role}:`, e.message);
       return false;
     }
   }
 
-  // ═══════════════════════════════════════
-  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ
-  // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
     const client = getSupabaseClient();
     if (!isUserAuthenticated || !client || !currentUserId) return;
@@ -498,18 +560,12 @@
       for (let i = 0; i < messagesToInsert.length; i += 10) {
         const batch = messagesToInsert.slice(i, i + 10);
         const { error } = await client.from('chat_messages').insert(batch);
-        if (error) {
-          console.warn(`⚠️ Batch ${i/10 + 1} failed:`, error.message);
-          break;
-        }
+        if (error) break;
       }
 
       chatHistory.forEach(msg => { msg.synced = true; });
       saveToLocalStorage();
-      console.log(`✅ Migrated ${localHistory.length} messages to Supabase`);
-    } catch (e) {
-      console.warn('⚠️ Migration failed:', e.message);
-    }
+    } catch (e) {}
   }
 
   async function loadHistory() {
@@ -528,16 +584,11 @@
     }
   }
 
-  // ═══════════════════════════════════════
-  //  ВЫЗОВ EDGE FUNCTION (OpenRouter)
-  // ═══════════════════════════════════════
   async function callEdgeFunction(messages) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90000);
 
     try {
-      console.log(`🤖 Calling Edge Function (payload: ${JSON.stringify(messages).length} chars)...`);
-
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
         method: 'POST',
         headers: {
@@ -563,14 +614,10 @@
       throw new Error(data.error || 'Пустой ответ от AI');
     } catch (e) {
       clearTimeout(timeout);
-      console.error('❌ Edge Function error:', e.message);
       throw e;
     }
   }
 
-  // ═══════════════════════════════════════
-  //  FALLBACK: локальный ответ
-  // ═══════════════════════════════════════
   function generateFallbackResponse(userMessage, userProfile) {
     const lowerMsg = userMessage.toLowerCase();
     const responses = [];
@@ -580,49 +627,17 @@
       return `🚨 **ВНИМАНИЕ! Экстренная ситуация.**\n\nНемедленно звоните **112**!\n\n⚠️ Это не медицинская консультация.`;
     }
 
-    if (lowerMsg.includes('голов') || lowerMsg.includes('мигрен')) {
-      responses.push('Головная боль может быть вызвана: стресс, обезвоживание, недосып, проблемы с давлением.');
-      responses.push('**Рекомендуемые анализы 📊 [база]:**\n• Гемоглобин (HGB): 130-170 г/л (муж) / 120-150 г/л (жен)\n• ТТГ: 0.4-4.0 мМЕ/л\n• Ферритин: 30-400 нг/мл (муж) / 15-150 нг/мл (жен)');
-      responses.push('**Врач:** терапевт → невролог');
-    } else if (lowerMsg.includes('температур')) {
-      responses.push('Повышенная температура — признак воспаления или инфекции.');
-      responses.push('**Рекомендуемые анализы 📊 [база]:**\n• Лейкоциты (WBC): 4.0-9.0 ×10⁹/л\n• С-реактивный белок (CRP): 0-5 мг/л\n• СОЭ: до 15 мм/ч (муж) / до 20 мм/ч (жен)');
-      responses.push('**Врач:** терапевт');
-    } else if (lowerMsg.includes('устал') || lowerMsg.includes('слабост')) {
-      responses.push('Хроническая усталость — частый признак дефицитов.');
-      responses.push('**Рекомендуемые анализы 📊 [база]:**\n• Ферритин: 30-400 нг/мл (муж) / 15-150 нг/мл (жен)\n• 25(OH)D: 30-100 нг/мл\n• B12: 200-900 пг/мл\n• ТТГ: 0.4-4.0 мМЕ/л');
-      responses.push('**Врач:** терапевт → эндокринолог');
-    } else if (lowerMsg.includes('анализ') || lowerMsg.includes('какие')) {
-      responses.push('В моей базе есть следующие категории анализов 📊 [база]:\n• ОАК (гемоглобин, эритроциты, лейкоциты)\n• Биохимия (глюкоза, АЛТ, АСТ, креатинин)\n• Липидограмма (холестерин, ЛПНП, ЛПВП)\n• Щитовидная железа (ТТГ, Т4, Т3)\n• Витамины (D, B12, фолаты)\n• Электролиты (K, Na, Ca, Mg)');
-      responses.push('Опишите симптомы — я подскажу конкретные анализы.');
-    }
-
-    if (responses.length === 0) {
-      responses.push('Я могу помочь с:\n• 🔬 Расшифровкой анализов\n• 🩺 Анализом симптомов\n• 💊 Рекомендациями при отклонениях\n• 👨‍⚕️ Подбором специалистов');
-      responses.push('\n**Примеры:**\n• "Болит голова"\n• "Что значит повышенный ферритин?"\n• "Какие анализы сдать при усталости?"');
-    }
-
-    responses.push('\n⚠️ **Это не медицинская консультация.** Обратитесь к врачу.');
+    responses.push('Понимаю вашу проблему. Давайте разберёмся подробнее.\n\nУточните, пожалуйста:\n• Как давно это беспокоит?\n• Есть ли сопутствующие симптомы?\n• Что усиливает или облегчает состояние?');
+    responses.push('\n⚠️ **Это не медицинская консультация.** Обратитесь к врачу для точного диагноза.');
     return responses.join('\n\n');
   }
 
-  // ═══════════════════════════════════════
-  //  ГЛАВНАЯ ФУНКЦИЯ: ОТПРАВКА СООБЩЕНИЯ
-  // ═══════════════════════════════════════
   async function sendMessage(userMessage) {
     if (!userMessage || !userMessage.trim()) {
       throw new Error('Пустое сообщение');
     }
 
-    console.log('═══════════════════════════════════════');
-    console.log('📨 sendMessage called:', userMessage.slice(0, 50));
-    console.log('═══════════════════════════════════════');
-
     await checkAuth();
-
-    if (!isUserAuthenticated) {
-      console.log('ℹ️ Пользователь не авторизован — история сохраняется только локально');
-    }
 
     let userProfile = null;
     try {
@@ -644,9 +659,6 @@
       saveMessageToSupabase('user', userMessage, null);
     }
 
-    const isMedicalQuery = hasKnowledgeInDatabase(userMessage);
-
-    // ПОЛНЫЙ дамп базы
     const databaseDump = buildFullDatabaseDump();
     const relevantContext = buildRelevantContext(userMessage, userProfile);
 
@@ -666,19 +678,14 @@
       }))
     ];
 
-    console.log('📊 System prompt size:', finalSystemPrompt.length, 'chars (~' + Math.ceil(finalSystemPrompt.length / 4) + ' tokens)');
-
     let reply;
     let source;
 
     try {
-      console.log('🤖 Calling Edge Function (OpenRouter)...');
       const result = await callEdgeFunction(messages);
       reply = result.reply;
       source = 'openrouter';
-      console.log('✅ OpenRouter response received:', reply.slice(0, 100));
     } catch (e) {
-      console.warn('⚠️ Edge Function failed, using fallback:', e.message);
       reply = generateFallbackResponse(userMessage, userProfile);
       source = 'local';
     }
@@ -699,21 +706,12 @@
     saveToLocalStorage();
 
     if (isUserAuthenticated) {
-      console.log('💾 Attempting to save ASSISTANT message to Supabase...');
-      const saved = await saveMessageToSupabase('assistant', reply, source);
-      console.log('💾 Save result:', saved ? '✓ SUCCESS' : '✗ FAILED');
+      await saveMessageToSupabase('assistant', reply, source);
     }
-
-    console.log('═══════════════════════════════════════');
-    console.log('✅ sendMessage completed');
-    console.log('═══════════════════════════════════════');
 
     return { reply, source };
   }
 
-  // ═══════════════════════════════════════
-  //  ОЧИСТКА ИСТОРИИ
-  // ═══════════════════════════════════════
   async function clearHistory() {
     chatHistory = [];
     localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -729,19 +727,11 @@
     }
   }
 
-  // ═══════════════════════════════════════
-  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ
-  // ═══════════════════════════════════════
   function setupAuthListener() {
     const client = getSupabaseClient();
-    if (!client || !client.auth) {
-      console.warn('⚠️ Auth listener not available');
-      return;
-    }
+    if (!client || !client.auth) return;
 
     client.auth.onAuthStateChange(async (event, session) => {
-      console.log(`🔐 Auth state changed: ${event}`);
-
       if (event === 'SIGNED_IN' && session?.user) {
         isUserAuthenticated = true;
         currentUserId = session.user.id;
@@ -758,36 +748,18 @@
           detail: { history: chatHistory, authenticated: false }
         }));
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        console.log('🔄 Token refreshed');
         currentUserId = session.user.id;
       }
     });
   }
 
-  // ═══════════════════════════════════════
-  //  ИНИЦИАЛИЗАЦИЯ
-  // ═══════════════════════════════════════
   async function init() {
     await loadHistory();
     setupAuthListener();
-    
-    const kb = {
-      tests: window.labTests?.length || 0,
-      rules: window.diagnosticRules?.length || 0,
-      supplements: Object.keys(window.supplementMap || {}).length,
-      preventive: window.preventiveRecommendations?.length || 0
-    };
-    
-    console.log('🤖 AI Assistant v5.0 initialized (Full DB + OpenRouter + Supabase)');
-    console.log(`📚 Database: ${kb.tests} tests, ${kb.rules} rules, ${kb.supplements} supplements`);
-    console.log(`☁️ Supabase client: ${sb ? '✓ connected' : '✗ disabled'}`);
   }
 
   init();
 
-  // ═══════════════════════════════════════
-  //  ЭКСПОРТ API
-  // ═══════════════════════════════════════
   window.AIAssistant = {
     sendMessage,
     getHistory: () => [...chatHistory],
@@ -803,7 +775,7 @@
       preventive: window.preventiveRecommendations?.length || 0
     }),
     isSupabaseConnected: () => !!getSupabaseClient(),
-    version: '5.0.0'
+    version: '6.0.0'
   };
 
   window.hasKnowledgeInDatabase = hasKnowledgeInDatabase;

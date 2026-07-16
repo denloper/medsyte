@@ -13,6 +13,73 @@ const MODELS = [
   'tencent/hy3:free'
 ];
 
+// ═══════════════════════════════════════
+//  ПОЧИНКА ОБРЕЗАННОГО JSON
+// ═══════════════════════════════════════
+function repairTruncatedJSON(str) {
+  if (!str) return null;
+  
+  let s = str.trim();
+  
+  // Убираем markdown обёртки
+  if (s.startsWith('```json')) {
+    s = s.replace(/^```json\s*/, '');
+  } else if (s.startsWith('```')) {
+    s = s.replace(/^```\s*/, '');
+  }
+  if (s.endsWith('```')) {
+    s = s.replace(/\s*```$/, '');
+  }
+  s = s.trim();
+  
+  // Пытаемся распарсить как есть
+  try {
+    return JSON.parse(s);
+  } catch (e) {
+    // Не получилось — пробуем починить
+  }
+  
+  // Если JSON начинается с { но не заканчивается на }
+  if (s.startsWith('{') && !s.endsWith('}')) {
+    // Обрезаем до последнего валидного элемента массива tests
+    const lastTestIdx = s.lastIndexOf('},');
+    if (lastTestIdx > 0) {
+      const truncated = s.substring(0, lastTestIdx + 1) + '], "patientInfo": {}, "labName": null, "analysisDate": null, "confidence": 0.5}';
+      try {
+        const parsed = JSON.parse(truncated);
+        parsed._truncated = true;
+        return parsed;
+      } catch (e) {
+        // Не получилось
+      }
+    }
+    
+    // Пробуем обрезать до последнего завершённого объекта
+    const lastObjIdx = s.lastIndexOf('}');
+    if (lastObjIdx > 0) {
+      const truncated = s.substring(0, lastObjIdx + 1) + ']}';
+      try {
+        const parsed = JSON.parse(truncated);
+        parsed._truncated = true;
+        return parsed;
+      } catch (e) {}
+    }
+  }
+  
+  // Если JSON начинается с [ (массив тестов)
+  if (s.startsWith('[') && !s.endsWith(']')) {
+    const lastTestIdx = s.lastIndexOf('},');
+    if (lastTestIdx > 0) {
+      const truncated = s.substring(0, lastTestIdx + 1) + ']';
+      try {
+        return { tests: JSON.parse(truncated), _truncated: true };
+      } catch (e) {}
+    }
+  }
+  
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -32,143 +99,100 @@ serve(async (req) => {
     if (action === 'parse_pdf') {
       console.log('📄 Parsing PDF...');
       console.log('📏 PDF text length:', pdfText?.length || 0, 'chars');
-      console.log('🔍 PDF units map:', pdfUnitsMap || 'not provided');
+      console.log('🔍 PDF units map keys:', Object.keys(pdfUnitsMap || {}).length);
       
-      // Полный список известных тестов из database.js
+      // Обрезаем PDF текст если слишком большой (лимит ~30000 символов)
+      let truncatedPdfText = pdfText || '';
+      if (truncatedPdfText.length > 30000) {
+        console.warn(`⚠️ PDF text too long (${truncatedPdfText.length}), truncating to 30000`);
+        truncatedPdfText = truncatedPdfText.substring(0, 30000);
+      }
+      
       const knownTests = [
         // ОАК
-        { name: "Гемоглобин", shortName: "HGB", units: ["г/л", "g/L", "г/дл", "g/dL"], male: "130-170 г/л", female: "120-150 г/л" },
-        { name: "Эритроциты", shortName: "RBC", units: ["×10^12/л", "10^12/L", "млн/мкл"], male: "4.3-5.7", female: "3.8-5.1" },
-        { name: "Гематокрит", shortName: "HCT", units: ["%", "л/л", "L/L"], male: "40-50", female: "36-46" },
-        { name: "Средний объём эритроцита", shortName: "MCV", units: ["фл", "fL"], range: "80-100" },
-        { name: "Среднее содержание гемоглобина в эритроците", shortName: "MCH", units: ["пг", "pg"], range: "27-34" },
-        { name: "Средняя концентрация гемоглобина в эритроците", shortName: "MCHC", units: ["г/л", "g/L", "г/дл", "g/dL"], range: "320-360" },
-        { name: "Ширина распределения эритроцитов по объёму", shortName: "RDW-CV", units: ["%"], range: "11.5-14.5" },
-        { name: "Ширина распределения эритроцитов RDW-SD", shortName: "RDW-SD", units: ["фл", "fL"], range: "35-56" },
-        { name: "Тромбоциты", shortName: "PLT", units: ["×10^9/л", "10^9/L"], range: "150-400" },
-        { name: "Лейкоциты", shortName: "WBC", units: ["×10^9/л", "10^9/L"], range: "4.0-9.0" },
-        { name: "Нейтрофилы, %", shortName: "NEUT%", units: ["%"], range: "40-75" },
-        { name: "Нейтрофилы, абсолютное количество", shortName: "NEUT#", units: ["×10^9/л", "10^9/L"], range: "1.8-7.5" },
-        { name: "Лимфоциты, %", shortName: "LYMPH%", units: ["%"], range: "20-45" },
-        { name: "Лимфоциты, абсолютное количество", shortName: "LYMPH#", units: ["×10^9/л", "10^9/L"], range: "1.0-4.0" },
-        { name: "Моноциты, %", shortName: "MONO%", units: ["%"], range: "2-10" },
-        { name: "Эозинофилы, %", shortName: "EO%", units: ["%"], range: "0-5" },
-        { name: "Базофилы, %", shortName: "BASO%", units: ["%"], range: "0-1" },
-        { name: "СОЭ", shortName: "ESR", units: ["мм/ч", "mm/h"], male: "0-15", female: "0-20" },
-        
+        { name: "Гемоглобин", shortName: "HGB", units: ["г/л", "g/L"], range: "муж 130-170, жен 120-150 г/л" },
+        { name: "Эритроциты", shortName: "RBC", units: ["×10^12/л"], range: "муж 4.3-5.7, жен 3.8-5.1" },
+        { name: "Гематокрит", shortName: "HCT", units: ["%"], range: "муж 40-50, жен 36-46" },
+        { name: "Тромбоциты", shortName: "PLT", units: ["×10^9/л"], range: "150-400" },
+        { name: "Лейкоциты", shortName: "WBC", units: ["×10^9/л"], range: "4.0-9.0" },
+        { name: "Нейтрофилы", shortName: "NEUT%", units: ["%"], range: "40-75" },
+        { name: "Лимфоциты", shortName: "LYMPH%", units: ["%"], range: "20-45" },
+        { name: "СОЭ", shortName: "ESR", units: ["мм/ч"], range: "муж 0-15, жен 0-20" },
         // Биохимия
-        { name: "Глюкоза натощак", shortName: "GLU", units: ["ммоль/л", "mg/dL", "мг/дл"], range: "3.9-5.5 ммоль/л" },
-        { name: "Гликированный гемоглобин", shortName: "HbA1c", units: ["%", "ммоль/моль"], range: "4.0-5.6%" },
-        { name: "Инсулин натощак", shortName: "Insulin", units: ["мкЕд/мл", "мЕд/л"], range: "2.6-24.9" },
-        { name: "Холестерин общий", shortName: "TC", units: ["ммоль/л", "mg/dL", "мг/дл"], range: "0-5.2 ммоль/л" },
-        { name: "Холестерин ЛПНП", shortName: "LDL-C", units: ["ммоль/л", "mg/dL", "мг/дл"], range: "0-3.0 ммоль/л" },
-        { name: "Холестерин ЛПВП", shortName: "HDL-C", units: ["ммоль/л", "mg/dL", "мг/дл"], male: ">1.0", female: ">1.2" },
-        { name: "Триглицериды", shortName: "TG", units: ["ммоль/л", "mg/dL", "мг/дл"], range: "0-1.7 ммоль/л" },
-        { name: "Аланинаминотрансфераза", shortName: "АЛТ", units: ["Ед/л", "U/L"], male: "0-41", female: "0-33" },
-        { name: "Аспартатаминотрансфераза", shortName: "АСТ", units: ["Ед/л", "U/L"], male: "0-40", female: "0-32" },
-        { name: "Гамма-глутамилтрансфераза", shortName: "ГГТ", units: ["Ед/л", "U/L"], male: "0-60", female: "0-40" },
-        { name: "Щелочная фосфатаза", shortName: "ЩФ", units: ["Ед/л", "U/L"], range: "40-150" },
-        { name: "Билирубин общий", shortName: "TBIL", units: ["мкмоль/л", "µmol/L", "mg/dL"], range: "3.4-20.5 мкмоль/л" },
-        { name: "Билирубин прямой", shortName: "DBIL", units: ["мкмоль/л", "µmol/L", "mg/dL"], range: "0-5.1 мкмоль/л" },
-        { name: "Общий белок", shortName: "TP", units: ["г/л", "g/L"], range: "65-85" },
-        { name: "Альбумин", shortName: "ALB", units: ["г/л", "g/L"], range: "35-50" },
-        { name: "Креатинин", shortName: "CREA", units: ["мкмоль/л", "µmol/L", "mg/dL"], male: "62-106", female: "44-80" },
-        { name: "Мочевина", shortName: "UREA", units: ["ммоль/л", "mg/dL", "мг/дл"], range: "2.5-8.3 ммоль/л" },
-        { name: "Мочевая кислота", shortName: "UA", units: ["мкмоль/л", "mg/dL", "мг/дл"], male: "202-416", female: "150-350" },
-        { name: "С-реактивный белок", shortName: "CRP", units: ["мг/л", "mg/L"], range: "0-5" },
-        { name: "Амилаза", shortName: "AMY", units: ["Ед/л", "U/L"], range: "28-100" },
-        { name: "Липаза", shortName: "LPS", units: ["Ед/л", "U/L"], range: "0-60" },
-        
+        { name: "Глюкоза натощак", shortName: "GLU", units: ["ммоль/л", "mg/dL"], range: "3.9-5.5 ммоль/л" },
+        { name: "Холестерин общий", shortName: "TC", units: ["ммоль/л", "mg/dL"], range: "0-5.2 ммоль/л" },
+        { name: "Холестерин ЛПНП", shortName: "LDL-C", units: ["ммоль/л"], range: "0-3.0" },
+        { name: "Холестерин ЛПВП", shortName: "HDL-C", units: ["ммоль/л"], range: "муж >1.0, жен >1.2" },
+        { name: "Триглицериды", shortName: "TG", units: ["ммоль/л"], range: "0-1.7" },
+        { name: "Аланинаминотрансфераза", shortName: "АЛТ", units: ["Ед/л"], range: "муж 0-41, жен 0-33" },
+        { name: "Аспартатаминотрансфераза", shortName: "АСТ", units: ["Ед/л"], range: "муж 0-40, жен 0-32" },
+        { name: "Гамма-глутамилтрансфераза", shortName: "ГГТ", units: ["Ед/л"], range: "муж 0-60, жен 0-40" },
+        { name: "Щелочная фосфатаза", shortName: "ЩФ", units: ["Ед/л"], range: "40-150" },
+        { name: "Билирубин общий", shortName: "TBIL", units: ["мкмоль/л"], range: "3.4-20.5" },
+        { name: "Билирубин прямой", shortName: "DBIL", units: ["мкмоль/л"], range: "0-5.1" },
+        { name: "Общий белок", shortName: "TP", units: ["г/л"], range: "65-85" },
+        { name: "Альбумин", shortName: "ALB", units: ["г/л"], range: "35-50" },
+        { name: "Креатинин", shortName: "CREA", units: ["мкмоль/л", "mg/dL"], range: "муж 62-106, жен 44-80 мкмоль/л" },
+        { name: "Мочевина", shortName: "UREA", units: ["ммоль/л"], range: "2.5-8.3" },
+        { name: "Мочевая кислота", shortName: "UA", units: ["мкмоль/л"], range: "муж 202-416, жен 150-350" },
+        { name: "С-реактивный белок", shortName: "CRP", units: ["мг/л"], range: "0-5" },
+        { name: "Амилаза", shortName: "AMY", units: ["Ед/л"], range: "28-100" },
+        { name: "Липаза", shortName: "LPS", units: ["Ед/л"], range: "0-60" },
         // Электролиты
         { name: "Калий", shortName: "K", units: ["ммоль/л", "mEq/L"], range: "3.5-5.1" },
         { name: "Натрий", shortName: "Na", units: ["ммоль/л", "mEq/L"], range: "136-145" },
         { name: "Хлор", shortName: "Cl", units: ["ммоль/л", "mEq/L"], range: "98-107" },
-        { name: "Магний", shortName: "Mg", units: ["ммоль/л", "мг/дл", "mg/dL"], range: "0.75-1.25 ммоль/л" },
-        { name: "Кальций общий", shortName: "Ca", units: ["ммоль/л", "мг/дл", "mg/dL"], range: "2.15-2.55 ммоль/л" },
-        { name: "Фосфор", shortName: "P", units: ["ммоль/л", "мг/дл", "mg/dL"], range: "0.81-1.45 ммоль/л" },
-        
+        { name: "Магний", shortName: "Mg", units: ["ммоль/л"], range: "0.75-1.25" },
+        { name: "Кальций общий", shortName: "Ca", units: ["ммоль/л"], range: "2.15-2.55" },
+        { name: "Фосфор", shortName: "P", units: ["ммоль/л"], range: "0.81-1.45" },
         // Железо
-        { name: "Ферритин", shortName: "Ferritin", units: ["нг/мл", "µg/L", "мкг/л"], male: "30-400 нг/мл", female: "15-150 нг/мл" },
-        { name: "Железо сывороточное", shortName: "Fe", units: ["мкмоль/л", "µmol/L"], male: "11.6-31.3", female: "9.0-30.4" },
-        { name: "ОЖСС", shortName: "TIBC", units: ["мкмоль/л", "µmol/L"], range: "45-76" },
-        
-        // Щитовидная железа
-        { name: "Тиреотропный гормон", shortName: "ТТГ", units: ["мМЕ/л", "mIU/L", "мкМЕ/мл"], range: "0.4-4.0 мМЕ/л" },
-        { name: "Тироксин свободный", shortName: "св. Т4", units: ["пмоль/л", "ng/dL", "нг/дл"], range: "10-22 пмоль/л" },
-        { name: "Трийодтиронин свободный", shortName: "св. Т3", units: ["пмоль/л", "pg/mL", "пг/мл"], range: "3.5-6.5 пмоль/л" },
-        
+        { name: "Ферритин", shortName: "Ferritin", units: ["нг/мл", "мкг/л"], range: "муж 30-400, жен 15-150 нг/мл" },
+        { name: "Железо сывороточное", shortName: "Fe", units: ["мкмоль/л"], range: "муж 11.6-31.3, жен 9.0-30.4" },
+        { name: "ОЖСС", shortName: "TIBC", units: ["мкмоль/л"], range: "45-76" },
+        // Щитовидка
+        { name: "Тиреотропный гормон", shortName: "ТТГ", units: ["мМЕ/л", "mIU/L"], range: "0.4-4.0" },
+        { name: "Тироксин свободный", shortName: "св. Т4", units: ["пмоль/л", "ng/dL"], range: "10-22 пмоль/л" },
+        { name: "Трийодтиронин свободный", shortName: "св. Т3", units: ["пмоль/л", "pg/mL"], range: "3.5-6.5 пмоль/л" },
         // Витамины
         { name: "25-гидроксивитамин D", shortName: "25(OH)D", units: ["нг/мл", "нмоль/л"], range: "30-100 нг/мл" },
         { name: "Витамин B12", shortName: "B12", units: ["пг/мл", "пмоль/л"], range: "200-900 пг/мл" },
-        { name: "Фолиевая кислота", shortName: "Folate", units: ["нг/мл", "нмоль/л"], range: "3-17 нг/мл" },
-        
-        // Микроэлементы
-        { name: "Цинк", shortName: "Zn", units: ["мкмоль/л", "мкг/мл"], range: "10-18 мкмоль/л" },
-        
-        // Коагулограмма
-        { name: "Международное нормализованное отношение", shortName: "МНО", units: [""], range: "0.8-1.2" },
-        { name: "D-димер", shortName: "D-dimer", units: ["мкг/мл FEU", "нг/мл FEU", "мг/л FEU"], range: "0-0.5 мкг/мл FEU" },
-        
+        { name: "Фолиевая кислота", shortName: "Folate", units: ["нг/мл"], range: "3-17" },
         // Гормоны
-        { name: "Тестостерон общий", shortName: "Testosterone", units: ["нмоль/л", "нг/мл", "пг/мл"], male: "8-35 нмоль/л или 2800-10000 пг/мл", female: "0.5-2.5 нмоль/л или 150-700 пг/мл" },
-        { name: "ГСПГ", shortName: "SHBG", units: ["нмоль/л"], male: "13-71", female: "18-114" },
-        { name: "Пролактин", shortName: "PRL", units: ["мЕд/л", "мкМЕ/мл"], male: "50-400 мЕд/л", female: "50-500 мЕд/л" },
-        { name: "Лютеинизирующий гормон", shortName: "ЛГ", units: ["МЕ/л", "мМЕ/мл"], male: "1.5-9.3", female: "1.7-15.0" },
-        { name: "Фолликулостимулирующий гормон", shortName: "ФСГ", units: ["МЕ/л", "мМЕ/мл"], male: "1.4-15.4", female: "1.4-20.0" },
-        { name: "Эстрадиол", shortName: "E2", units: ["пмоль/л", "пг/мл"], male: "40-160 пмоль/л или 10-50 пг/мл", female: "70-1200 пмоль/л или 15-350 пг/мл" },
-        { name: "ДГЭА-С", shortName: "DHEA-S", units: ["мкмоль/л", "мкг/дл"], male: "2.5-14.5", female: "1.8-11.0" },
-        { name: "Андростендион", shortName: "A4", units: ["нг/мл", "нмоль/л", "пг/мл"], male: "2.0-8.5 нг/мл", female: "1.5-7.0 нг/мл" },
-        { name: "Дегидроэпиандростерон", shortName: "DHEA", units: ["пг/мл", "нг/мл"], male: "1000-8000 пг/мл", female: "800-6000 пг/мл" },
-        { name: "Кортизол", shortName: "Cortisol", units: ["пг/мл", "нмоль/л", "мкг/дл"], range: "140-690 нмоль/л" },
-        { name: "Кортизон", shortName: "Cortisone", units: ["пг/мл"], range: "5000-35000" },
-        { name: "Прегненолон", shortName: "Pregnenolone", units: ["пг/мл"], range: "200-1000" },
-        { name: "Прогестерон", shortName: "Progesterone", units: ["пг/мл", "нмоль/л"], male: "100-500 пг/мл", female: "100-20000 пг/мл" },
-        
-        // Онкомаркеры
-        { name: "ПСА общий", shortName: "tPSA", units: ["нг/мл"], range: "0-4.0" },
-        
-        // Моча
-        { name: "Удельный вес мочи", shortName: "SG", units: [""], range: "1.010-1.025" },
-        { name: "pH мочи", shortName: "pH", units: [""], range: "5.0-7.5" },
-        { name: "Микроальбумин", shortName: "mALB", units: ["мг/л", "мг/сут"], range: "0-20" },
-        
-        // Кал
-        { name: "Кальпротектин в кале", shortName: "Calprotectin", units: ["мкг/г"], range: "0-50" },
-        { name: "Скрытая кровь в кале", shortName: "OB", units: ["нг/мл"], range: "0-50" },
-        { name: "H. pylori антиген в кале", shortName: "HP", units: [""] },
-        
-        // Иммунология
-        { name: "Иммуноглобулин A", shortName: "IgA", units: ["г/л", "g/L"], range: "0.7-4.0" },
-        { name: "Иммуноглобулин M", shortName: "IgM", units: ["г/л", "g/L"], range: "0.4-2.3" },
-        { name: "Иммуноглобулин G", shortName: "IgG", units: ["г/л", "g/L"], range: "7.0-16.0" },
-        { name: "Антитела к тканевой трансглутаминазе IgA", shortName: "tTG-IgA", units: ["Ед/мл", "U/mL"], range: "0-20" },
-        
-        // Кардиомаркеры
-        { name: "Тропонин", shortName: "Tn", units: ["нг/л", "нг/мл"], range: "0-14 нг/л" }
+        { name: "Тестостерон общий", shortName: "Testo", units: ["нмоль/л", "нг/мл", "пг/мл"], range: "муж 8-35 нмоль/л или 2800-10000 пг/мл" },
+        { name: "Эстрадиол", shortName: "E2", units: ["пмоль/л", "пг/мл"], range: "муж 40-160 пмоль/л или 10-50 пг/мл" },
+        { name: "Пролактин", shortName: "PRL", units: ["мЕд/л"], range: "муж 50-400, жен 50-500" },
+        { name: "Кортизол", shortName: "Cortisol", units: ["нмоль/л", "мкг/дл", "пг/мл"], range: "140-690 нмоль/л" },
+        { name: "Прогестерон", shortName: "Progesterone", units: ["пг/мл", "нмоль/л"], range: "муж 100-500 пг/мл" },
+        // Кардио
+        { name: "Тропонин", shortName: "Tn", units: ["нг/л"], range: "0-14" },
+        { name: "D-димер", shortName: "D-dimer", units: ["мкг/мл FEU"], range: "0-0.5" },
+        { name: "ПСА общий", shortName: "PSA", units: ["нг/мл"], range: "0-4.0" }
       ];
 
-      const knownTestsList = knownTests.map(t => {
-        const range = t.male ? `муж: ${t.male}, жен: ${t.female}` : `норма: ${t.range}`;
-        return `- ${t.name} (${t.shortName}) → единицы: [${t.units.join(', ')}] | ${range}`;
-      }).join('\n');
+      const knownTestsList = knownTests.map(t => 
+        `- ${t.name} (${t.shortName}) → единицы: [${t.units.join(', ')}] | ${t.range}`
+      ).join('\n');
 
-      // Формируем список единиц из PDF (если передан pdfUnitsMap)
+      // Список единиц из PDF
       const pdfUnitsList = pdfUnitsMap && Object.keys(pdfUnitsMap).length > 0
-        ? Object.entries(pdfUnitsMap).map(([name, unit]) => 
-            `- ${name} → ${unit}`
-          ).join('\n')
-        : 'Единицы не определены заранее';
+        ? Object.entries(pdfUnitsMap).map(([name, unit]) => `- ${name} → ${unit}`).join('\n')
+        : 'Единицы не определены заранее — смотри внимательно в самом PDF';
 
-      const parsePrompt = `Ты — медицинский ассистент для извлечения лабораторных показателей из текста PDF.
+      const parsePrompt = `Ты — медицинский ассистент. Извлеки лабораторные показатели из PDF и верни СТРОГО в JSON формате.
 
-ЗАДАЧА: Извлеки ВСЕ лабораторные показатели из предоставленного текста и верни СТРОГО в JSON формате.
+⚠️ ВАЖНО:
+1. Возвращай ТОЛЬКО валидный JSON без markdown обёрток (\`\`\`json ... \`\`\`)
+2. НЕ добавляй комментарии, пояснения, текст до или после JSON
+3. Единицы измерения бери ИМЕННО ТЕ, что указаны в PDF (пг/мл, нг/мл, нмоль/л и т.д.)
+4. Референсы должны быть в тех же единицах, что и value
+5. Если не можешь определить референс — ставь referenceMin: null, referenceMax: null
 
-ФОРМАТ ОТВЕТА (только JSON, без markdown, без комментариев):
+ФОРМАТ ОТВЕТА (пример):
 {
   "tests": [
     {
       "name": "Тестостерон общий",
-      "shortName": "Testosterone",
+      "shortName": "Testo",
       "value": 440.64,
       "unit": "пг/мл",
       "referenceMin": 2800,
@@ -182,108 +206,95 @@ serve(async (req) => {
   "confidence": 0.95
 }
 
-⚠️ КРИТИЧЕСКИ ВАЖНО — ЕДИНИЦЫ ИЗМЕРЕНИЯ:
-
-📏 ЕДИНИЦЫ, КОТОРЫЕ МЫ УЖЕ НАШЛИ В PDF (ОБЯЗАТЕЛЬНО ИСПОЛЬЗУЙ ИХ!):
+📏 ЕДИНИЦЫ ИЗ PDF (используй их!):
 ${pdfUnitsList}
 
-ПРАВИЛА:
-1. **ВСЕГДА используй ТОЛЬКО те единицы, которые указаны в списке выше** для соответствующих тестов
-2. Если в PDF написано "440.64 пг/мл" — верни unit: "пг/мл", НЕ "нмоль/л"
-3. Если единицы из списка отсутствуют — бери единицу из самого текста PDF
-4. Референсные значения (referenceMin, referenceMax) должны быть В ТЕХ ЖЕ единицах, что и value
-5. **НЕ ПРИДУМЫВАЙ единицы** — только те, что реально есть в документе
-6. ВНИМАТЕЛЬНО смотри на единицы в самом тексте PDF рядом с числом
-7. Если рядом с значением написано "нг/мл" — это единица, даже если в другом месте указан "нмоль/л"
-
-СПИСОК ИЗВЕСТНЫХ ТЕСТОВ С ДОПУСТИМЫМИ ЕДИНИЦАМИ:
+📋 ИЗВЕСТНЫЕ ТЕСТЫ:
 ${knownTestsList}
 
-ПРАВИЛА ОПРЕДЕЛЕНИЯ STATUS:
-- "normal" — value в пределах [referenceMin, referenceMax]
+STATUS:
+- "normal" — value в [referenceMin, referenceMax]
 - "high" — value > referenceMax
 - "low" — value < referenceMin
-- "unknown" — если нет референсного диапазона
+- "unknown" — если нет референса
 
-ДОПОЛНИТЕЛЬНЫЕ ПРАВИЛА:
-1. Извлекай ВСЕ числовые лабораторные показатели
-2. Определяй референсные диапазоны из PDF, сверяй со списком выше
-3. Если в PDF нет референса — используй из списка выше (с учётом единиц!)
-4. Игнорируй нечисловые данные (имена, адреса, комментарии врачей)
-5. Возвращай ТОЛЬКО валидный JSON без markdown обёрток
-6. Для тестов с альтернативными названиями используй каноническое имя из списка выше
-
-ТЕКСТ PDF ДЛЯ АНАЛИЗА:
+ТЕКСТ PDF:
 """
-${pdfText}
+${truncatedPdfText}
 """
 
 ПАЦИЕНТ: ${patientSex || 'unknown'}, ${patientAge || '?'} лет
 
-НАПОМИНАНИЕ: Проверяй единицы измерения ВНИМАТЕЛЬНО. Они должны точно совпадать с теми, что указаны в PDF!`;
+ВОЗВРАЩАЙ ТОЛЬКО JSON. БЕЗ MARKDOWN. БЕЗ ПОЯСНЕНИЙ.`;
 
       const messages = [{ role: 'user', content: parsePrompt }];
-      return await callOpenRouter(messages, OPENROUTER_API_KEY, 'parse_pdf');
+      
+      // Пробуем несколько раз если ответ невалидный
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        console.log(`🔄 Parse attempt ${attempt}/3`);
+        
+        const result = await callOpenRouter(messages, OPENROUTER_API_KEY, 'parse_pdf');
+        
+        if (result.success && result.data) {
+          console.log(`✅ Parse successful on attempt ${attempt}`);
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              data: result.data,
+              model: result.model,
+              attempt: attempt
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        console.warn(`⚠️ Attempt ${attempt} failed:`, result.error);
+        
+        if (attempt < 3) {
+          // Делаем промпт более строгим для следующей попытки
+          messages[0].content = parsePrompt + '\n\n⚠️ КРИТИЧЕСКИ ВАЖНО: Возвращай ТОЛЬКО валидный JSON без markdown!';
+        }
+      }
+      
+      // Все попытки провалились
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: 'AI не смог вернуть валидный JSON после 3 попыток',
+          data: { tests: [], patientInfo: {}, labName: null, analysisDate: null, confidence: 0 }
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // ═══════════════════════════════════════
-    //  ДЕЙСТВИЕ 2: ЧАТ С МЕДИЦИНСКИМ АССИСТЕНТОМ
+    //  ДЕЙСТВИЕ 2: ЧАТ
     // ═══════════════════════════════════════
     if (action === 'chat' || messages) {
       console.log('💬 Chat mode activated');
       
       const systemPrompt = {
         role: 'system',
-        content: `📌 БАЗА ЗНАНИЙ: Ты — медицинский AI-ассистент в приложении "Семейный доктор". Работаешь в чате (chat.html).
+        content: `Ты — медицинский AI-ассистент в приложении "Семейный доктор". Работаешь в чате (chat.html).
 
-Ты имеешь доступ к двум источникам медицинских данных:
-1. 📊 **Встроенная база** — 71 лабораторный тест, 17 диагностических правил, 27 рекомендаций по добавкам
-2. 📄 **Импортированные PDF** — медицинские учебники, клинические рекомендации, протоколы лечения
+СТРОГИЕ ПРАВИЛА:
+1. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
+2. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
+3. Для тревожных симптомов (боль в груди, одышка, потеря сознания, кровь) — немедленно советуй вызвать 112
+4. НЕ назначай лечение без консультации врача
+5. Отвечай ТОЛЬКО на русском языке
+6. Используй markdown: **жирный** для важного, • для списков
 
-**ПРИОРИТЕТ ИСТОЧНИКОВ:**
-- 🥇 **ПЕРВЫМ ДЕЛОМ** используй данные из импортированных PDF (помечены 📄 [из PDF])
-- 🥈 **ВТОРЫМ ДЕЛОМ** используй встроенную базу (помечены 📊 [база])
-- 🥉 Если информации нет в обоих источниках — честно скажи: "В моей базе знаний нет данных по этому вопросу. Я могу найти актуальную информацию в медицинских источниках (UpToDate, ВОЗ, PubMed) — хотите?"
-
-**ТВОИ ВОЗМОЖНОСТИ:**
-- Анализ результатов лабораторных анализов
-- Интерпретация отклонений от нормы
-- Рекомендации по дополнительным обследованиям
-- Объяснение медицинских терминов простым языком
-- Рекомендации по питанию и образу жизни
-- Направление к нужным специалистам
-
-**СТРОГИЕ ПРАВИЛА:**
-1. НИКОГДА не выдумывай нормы, дозировки или диагнозы
-2. ВСЕГДА указывай источник информации (📄 [из PDF] или 📊 [база])
-3. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
-4. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
-5. Для тревожных симптомов (боль в груди, одышка, потеря сознания, кровь) — немедленно советуй вызвать 112
-6. НЕ назначай лечение и лекарства без консультации врача — только общие рекомендации
-7. Отвечай ТОЛЬКО на русском языке
-8. Используй markdown: **жирный** для важного, • для списков
-9. Будь дружелюбным и поддерживающим
-
-**ФОРМАТ ОТВЕТА:**
-- 📊 Краткий анализ ситуации (2-3 предложения)
+ФОРМАТ ОТВЕТА:
+- 📊 Краткий анализ (2-3 предложения)
 - 🔍 Возможные причины (список через •)
-- 🧪 Рекомендуемые анализы (с указанием источника: 📄 или 📊)
-- 💊 Рекомендации по лечению (с указанием источника)
-- 👨‍⚕️ К какому врачу обратиться
-- ⚕️ Дисклеймер в конце
-
-**ВАЖНО:** Если вопрос касается конкретного лекарства, протокола лечения или клинической рекомендации — ищи в первую очередь в импортированных PDF документах.
-
-Если вопрос НЕ медицинский — вежливо предложи задать медицинский вопрос.
-
-**ПРИМЕРЫ ХОРОШИХ ОТВЕТОВ:**
-- "Повышенный ферритин 📊 [база] может указывать на воспаление или избыток железа. Рекомендую сдать..."
-- "Низкий витамин D 📊 [база] — частая проблема. Обычно назначают витамин D3 2000-4000 МЕ/сут..."
-- "Согласно клиническим рекомендациям 📄 [из PDF] при таких симптомах стоит проверить..."`
+- 🧪 Рекомендуемые анализы
+- 💊 Рекомендации
+- 👨‍⚕️ К какому врачу
+- ⚕️ Дисклеймер в конце`
       };
 
       const fullMessages = [systemPrompt, ...messages];
-      
       return await callOpenRouter(fullMessages, OPENROUTER_API_KEY, 'chat');
     }
 
@@ -299,7 +310,7 @@ ${pdfText}
 });
 
 // ═══════════════════════════════════════
-//  ОБЩАЯ ФУНКЦИЯ ВЫЗОВА OPENROUTER
+//  ВЫЗОВ OPENROUTER
 // ═══════════════════════════════════════
 async function callOpenRouter(messages, apiKey, actionType) {
   let lastError = null;
@@ -321,8 +332,8 @@ async function callOpenRouter(messages, apiKey, actionType) {
         body: JSON.stringify({
           model: model,
           messages: messages,
-          temperature: actionType === 'parse_pdf' ? 0.1 : 0.7,
-          max_tokens: actionType === 'parse_pdf' ? 4096 : 2048,
+          temperature: actionType === 'parse_pdf' ? 0.05 : 0.7, // Очень низкая для парсинга
+          max_tokens: actionType === 'parse_pdf' ? 8192 : 4096, // ← УВЕЛИЧИЛИ до 8192
           top_p: 0.95
         })
       });
@@ -356,7 +367,7 @@ async function callOpenRouter(messages, apiKey, actionType) {
         continue;
       }
       
-      console.log(`✅ SUCCESS with ${model}`);
+      console.log(`✅ SUCCESS with ${model}, reply length: ${reply.length}`);
       break;
     } catch (modelError) {
       console.error(`❌ ${model} error:`, modelError.message);
@@ -367,51 +378,34 @@ async function callOpenRouter(messages, apiKey, actionType) {
 
   if (!reply) {
     console.error('❌ All models failed. Last error:', lastError);
-    return new Response(
-      JSON.stringify({ 
-        success: false,
-        error: `Все модели недоступны: ${lastError}`,
-        models_tried: MODELS
-      }),
-      { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return { success: false, error: `Все модели недоступны: ${lastError}` };
   }
 
-  // Для парсинга PDF — пытаемся извлечь JSON из ответа
+  // Для парсинга PDF — пытаемся извлечь JSON
   if (actionType === 'parse_pdf') {
-    try {
-      let jsonStr = reply.trim();
-      if (jsonStr.startsWith('```json')) {
-        jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-      } else if (jsonStr.startsWith('```')) {
-        jsonStr = jsonStr.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    console.log('🔍 Parsing JSON from AI response...');
+    console.log('📏 Raw reply length:', reply.length, 'chars');
+    
+    // Пробуем распарсить как есть
+    const parsed = repairTruncatedJSON(reply);
+    
+    if (parsed && parsed.tests && Array.isArray(parsed.tests)) {
+      console.log(`✅ Parsed ${parsed.tests.length} tests`);
+      if (parsed._truncated) {
+        console.warn('⚠️ JSON was truncated, but we recovered partial data');
+        delete parsed._truncated;
       }
-      
-      const parsed = JSON.parse(jsonStr);
-      
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          data: parsed,
-          model: usedModel,
-          rawResponse: reply
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (parseError) {
-      console.error('❌ Failed to parse JSON from AI response:', parseError.message);
-      console.error('Raw response:', reply);
-      
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: `AI вернул невалидный JSON: ${parseError.message}`,
-          rawResponse: reply,
-          model: usedModel
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return { success: true, data: parsed, model: usedModel };
     }
+    
+    console.error('❌ Failed to parse JSON');
+    console.error('Raw reply (first 500 chars):', reply.substring(0, 500));
+    
+    return { 
+      success: false, 
+      error: `AI вернул невалидный JSON. Длина ответа: ${reply.length}`,
+      rawReply: reply.substring(0, 1000)
+    };
   }
 
   // Для обычного чата
