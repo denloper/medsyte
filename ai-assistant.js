@@ -1,5 +1,5 @@
 /**
- * AI Medical Assistant v4.1
+ * AI Medical Assistant v4.0
  * Гибридная архитектура: DB + PDF + Internet fallback
  */
 (function() {
@@ -8,45 +8,12 @@
   const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
-  // ═══════════════════════════════════════
-  //  ЛЕНИВАЯ ИНИЦИАЛИЗАЦИЯ SUPABASE КЛИЕНТА
-  // ═══════════════════════════════════════
-  let sb = null;
+  const sb = window.supabaseClient || null;
 
-  function getSupabaseClient() {
-    // Если уже есть — возвращаем
-    if (sb) return sb;
-    
-    // Пробуем получить из глобального клиента
-    if (window.supabaseClient) {
-      sb = window.supabaseClient;
-      console.log('✅ AI Assistant: подключён к общему Supabase клиенту');
-      return sb;
-    }
-    
-    // Если глобального нет — создаём свой
-    if (window.supabase && window.supabase.createClient) {
-      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
-        }
-      });
-      console.log('✅ AI Assistant: создан собственный Supabase клиент');
-      return sb;
-    }
-    
-    console.warn('⚠️ Supabase client not available');
-    return null;
-  }
-
-  // Проверяем доступность клиента сразу
-  const initialClient = getSupabaseClient();
-  if (initialClient) {
-    console.log('✅ AI Assistant: Supabase клиент доступен при инициализации');
+  if (!sb) {
+    console.warn('⚠️ Supabase client not available. Chat sync disabled.');
   } else {
-    console.warn('⚠️ AI Assistant: Supabase клиент недоступен, будет проверяться позже');
+    console.log('✅ AI Assistant: using shared Supabase client');
   }
 
   const LOCAL_STORAGE_KEY = 'ai_chat_history_v1';
@@ -54,16 +21,12 @@
   const MAX_HISTORY = 50;
   const MAX_CONTEXT_MESSAGES = 10;
 
-  // Допустимые значения для constraint `source`
   const ALLOWED_SOURCES = ['gemini', 'groq', 'openrouter', 'local', 'deepseek', 'llama', 'gemma', 'medical-search'];
 
   let chatHistory = [];
   let isUserAuthenticated = false;
   let currentUserId = null;
 
-  // ═══════════════════════════════════════
-  //  СИСТЕМНЫЙ ПРОМПТ (с приоритетом базы знаний)
-  // ═══════════════════════════════════════
   const SYSTEM_PROMPT = `📌 БАЗА ЗНАНИЙ: Ты имеешь доступ к двум источникам медицинских данных:
 1. 📊 **Встроенная база** (database.js) — 71 лабораторный тест, 17 диагностических правил, 27 рекомендаций по добавкам
 2. 📄 **Импортированные PDF** — медицинские учебники, клинические рекомендации, протоколы лечения
@@ -93,9 +56,6 @@
 
 **ВАЖНО:** Если вопрос касается конкретного лекарства, протокола лечения или клинической рекомендации — ищи в первую очередь в импортированных PDF документах.`;
 
-  // ═══════════════════════════════════════
-  //  ОБЪЕДИНЁННАЯ БАЗА ЗНАНИЙ (database.js + импортированные PDF)
-  // ═══════════════════════════════════════
   function getCombinedKnowledgeBase() {
     const combined = {
       tests: [],
@@ -106,7 +66,6 @@
       sources: []
     };
 
-    // 1. Встроенная база (database.js)
     if (window.labTests && Array.isArray(window.labTests)) {
       combined.tests = window.labTests.map(t => ({ ...t, source: 'database.js' }));
     }
@@ -119,7 +78,6 @@
       }));
     }
 
-    // 2. Импортированные PDF из localStorage
     try {
       const importedData = localStorage.getItem(IMPORTED_PDFS_KEY);
       if (importedData) {
@@ -138,15 +96,11 @@
     return combined;
   }
 
-  // ═══════════════════════════════════════
-  //  ПРОВЕРКА: есть ли информация в базе знаний
-  // ═══════════════════════════════════════
   function hasKnowledgeInDatabase(query) {
     if (!query) return false;
     const lowerQuery = query.toLowerCase();
     const kb = getCombinedKnowledgeBase();
 
-    // Поиск по тестам (database.js + PDF)
     const testMatch = kb.tests.some(test => {
       const name = (test.canonicalName || test.name || '').toLowerCase();
       const short = (test.shortName || '').toLowerCase();
@@ -156,7 +110,6 @@
     });
     if (testMatch) return true;
 
-    // Поиск по диагностическим правилам
     const ruleMatch = kb.diagnoses.some(rule => {
       const name = (rule.name || '').toLowerCase();
       const tests = Object.keys(rule.results || {}).map(k => k.toLowerCase());
@@ -164,19 +117,16 @@
     });
     if (ruleMatch) return true;
 
-    // Поиск по supplementMap
     const supplementMatch = kb.treatments.some(t => 
       (t.test || '').toLowerCase().includes(lowerQuery)
     );
     if (supplementMatch) return true;
 
-    // Поиск по лекарствам (из PDF)
     const drugMatch = kb.drugs.some(d => 
       (d.name || '').toLowerCase().includes(lowerQuery)
     );
     if (drugMatch) return true;
 
-    // Медицинские ключевые слова
     const medicalKeywords = [
       'анемия', 'гемоглобин', 'холестерин', 'сахар', 'ттг', 'витамин d',
       'железо', 'липидограмма', 'почки', 'печень', 'щитовидка', 'тропонин',
@@ -187,20 +137,15 @@
     return medicalKeywords.some(term => lowerQuery.includes(term));
   }
 
-  // ═══════════════════════════════════════
-  //  ПОСТРОЕНИЕ КОНТЕКСТА ИЗ ОБЪЕДИНЁННОЙ БАЗЫ
-  // ═══════════════════════════════════════
   function buildRelevantContext(userMessage, userProfile) {
     const context = [];
     const lowerMsg = userMessage.toLowerCase();
     const kb = getCombinedKnowledgeBase();
 
-    // 1. Профиль пациента
     if (userProfile) {
       context.push(`👤 ПАЦИЕНТ: ${userProfile.name || userProfile.full_name || 'не указано'}, ${userProfile.sex === 'male' ? 'мужчина' : userProfile.sex === 'female' ? 'женщина' : 'пол не указан'}, ${userProfile.age || '?'} лет`);
     }
 
-    // 2. Источники базы знаний
     if (kb.sources.length > 0) {
       context.push(`\n📚 ИСТОЧНИКИ БАЗЫ ЗНАНИЙ (импортированные PDF):`);
       kb.sources.slice(0, 5).forEach(src => {
@@ -208,7 +153,6 @@
       });
     }
 
-    // 3. Релевантные тесты (до 10)
     const relevantTests = [];
     kb.tests.forEach(test => {
       const name = (test.canonicalName || test.name || '').toLowerCase();
@@ -230,7 +174,6 @@
       });
     }
 
-    // 4. Диагностические правила
     const relevantDiagnoses = [];
     kb.diagnoses.forEach(rule => {
       const name = (rule.name || '').toLowerCase();
@@ -249,7 +192,6 @@
       });
     }
 
-    // 5. Рекомендации по добавкам
     const relevantTreatments = [];
     kb.treatments.forEach(t => {
       if ((t.test || '').toLowerCase().includes(lowerMsg) && relevantTreatments.length < 5) {
@@ -267,7 +209,6 @@
       });
     }
 
-    // 6. Лекарства (из PDF)
     if (kb.drugs.length > 0) {
       const relevantDrugs = kb.drugs.filter(d => 
         (d.name || '').toLowerCase().includes(lowerMsg)
@@ -280,7 +221,6 @@
       }
     }
 
-    // 7. Клинические рекомендации (из PDF)
     if (kb.guidelines.length > 0) {
       const relevantGuidelines = kb.guidelines.filter(g => {
         const title = (g.title || '').toLowerCase();
@@ -295,7 +235,6 @@
       }
     }
 
-    // 8. Последние анализы пользователя из localStorage
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       if (history.length > 0) {
@@ -318,18 +257,14 @@
     return context.length > 0 ? context.join('\n') : '';
   }
 
-  // ═══════════════════════════════════════
-  //  ПРОВЕРКА АВТОРИЗАЦИИ
-  // ═══════════════════════════════════════
   async function checkAuth() {
-    const client = getSupabaseClient();  // ✅ получаем актуальный клиент
-    if (!client) {
+    if (!sb) {
       isUserAuthenticated = false;
       currentUserId = null;
       return;
     }
     try {
-      const { data: { user }, error } = await client.auth.getUser();  // ✅
+      const { data: { user }, error } = await sb.auth.getUser();
       if (error) {
         console.warn('⚠️ Auth error:', error.message);
         isUserAuthenticated = false;
@@ -350,9 +285,6 @@
     }
   }
 
-  // ═══════════════════════════════════════
-  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE
-  // ═══════════════════════════════════════
   async function loadHistoryFromSupabase() {
     if (!isUserAuthenticated || !sb || !currentUserId) return false;
     try {
@@ -422,9 +354,6 @@
     } catch(e) {}
   }
 
-  // ═══════════════════════════════════════
-  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE (с retry)
-  // ═══════════════════════════════════════
   async function saveMessageToSupabase(role, content, source = null, retryCount = 0) {
     if (!isUserAuthenticated || !sb || !currentUserId) return false;
 
@@ -435,7 +364,6 @@
         return false;
       }
 
-      // Валидация source под constraint
       const safeSource = (source && ALLOWED_SOURCES.includes(source)) ? source : null;
 
       const { error } = await sb.from('chat_messages').insert({
@@ -447,7 +375,6 @@
       });
 
       if (error) {
-        // Retry с source = null при constraint error
         if (error.message && error.message.includes('check constraint') && retryCount === 0) {
           console.log('🔄 Retrying with source = null...');
           const { error: retryError } = await sb.from('chat_messages').insert({
@@ -464,7 +391,6 @@
           return true;
         }
         
-        // Refresh token при 401
         if ((error.status === 401 || error.code === 'PGRST301') && retryCount < 1) {
           const { error: refreshError } = await sb.auth.refreshSession();
           if (!refreshError) {
@@ -481,9 +407,6 @@
     }
   }
 
-  // ═══════════════════════════════════════
-  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ В SUPABASE
-  // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
     if (!isUserAuthenticated || !sb || !currentUserId) return;
     const localHistory = chatHistory.filter(msg => !msg.synced);
@@ -531,9 +454,6 @@
     }
   }
 
-  // ═══════════════════════════════════════
-  //  ВЫЗОВ EDGE FUNCTION (OpenRouter)
-  // ═══════════════════════════════════════
   async function callEdgeFunction(messages) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60000);
@@ -547,7 +467,7 @@
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
         },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ action: 'chat', messages }),
         signal: controller.signal
       });
 
@@ -560,11 +480,7 @@
       }
 
       if (data.success && data.reply) {
-        return {
-          reply: data.reply,
-          source: 'openrouter',
-          model: data.model || 'unknown'
-        };
+        return { reply: data.reply, source: 'openrouter', model: data.model || 'unknown' };
       }
 
       throw new Error(data.error || 'Пустой ответ от AI');
@@ -575,9 +491,6 @@
     }
   }
 
-  // ═══════════════════════════════════════
-  //  FALLBACK: локальный ответ
-  // ═══════════════════════════════════════
   function generateFallbackResponse(userMessage, userProfile) {
     const lowerMsg = userMessage.toLowerCase();
     const responses = [];
@@ -613,9 +526,6 @@
     return responses.join('\n\n');
   }
 
-  // ═══════════════════════════════════════
-  //  ГЛАВНАЯ ФУНКЦИЯ: ОТПРАВКА СООБЩЕНИЯ
-  // ═══════════════════════════════════════
   async function sendMessage(userMessage) {
     if (!userMessage || !userMessage.trim()) {
       throw new Error('Пустое сообщение');
@@ -638,7 +548,6 @@
       }
     } catch(e) {}
 
-    // Добавляем сообщение пользователя
     const userMsg = {
       role: 'user',
       content: userMessage,
@@ -652,13 +561,10 @@
       saveMessageToSupabase('user', userMessage, null);
     }
 
-    // Определяем тип запроса
     const isMedicalQuery = hasKnowledgeInDatabase(userMessage);
 
-    // Строим контекст из объединённой базы
     const relevantContext = buildRelevantContext(userMessage, userProfile);
 
-    // Формируем финальный system prompt
     let finalSystemPrompt = SYSTEM_PROMPT;
     
     if (isMedicalQuery) {
@@ -696,7 +602,6 @@
       source = 'local';
     }
 
-    // Добавляем ответ ассистента
     const assistantMsg = {
       role: 'assistant',
       content: reply,
@@ -725,9 +630,6 @@
     return { reply, source };
   }
 
-  // ═══════════════════════════════════════
-  //  ОЧИСТКА ИСТОРИИ
-  // ═══════════════════════════════════════
   async function clearHistory() {
     chatHistory = [];
     localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -742,9 +644,6 @@
     }
   }
 
-  // ═══════════════════════════════════════
-  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ
-  // ═══════════════════════════════════════
   function setupAuthListener() {
     if (!sb || !sb.auth) {
       console.warn('⚠️ Auth listener not available');
@@ -776,9 +675,6 @@
     });
   }
 
-  // ═══════════════════════════════════════
-  //  ИНИЦИАЛИЗАЦИЯ
-  // ═══════════════════════════════════════
   async function init() {
     await loadHistory();
     setupAuthListener();
@@ -792,47 +688,6 @@
 
   init();
 
-  // Диагностика состояния Supabase клиента
-  window.diagnoseSupabaseClient = async function() {
-    console.log('═══════════════════════════════════════');
-    console.log('🔍 ДИАГНОСТИКА SUPABASE КЛИЕНТА');
-    console.log('═══════════════════════════════════════');
-    
-    const client = getSupabaseClient();
-    console.log('1. Client exists:', !!client);
-    
-    if (!client) {
-      console.log('   window.supabaseClient:', !!window.supabaseClient);
-      console.log('   window.supabase:', !!window.supabase);
-      console.log('   window.SupabaseDB:', !!window.SupabaseDB);
-      console.log('═══════════════════════════════════════');
-      return;
-    }
-    
-    console.log('2. client.auth exists:', !!client.auth);
-    
-    try {
-      const { data: { session } } = await client.auth.getSession();
-      console.log('3. Session exists:', !!session);
-      console.log('4. User email:', session?.user?.email || 'none');
-      console.log('5. Access token:', session?.access_token ? '✓ present' : '✗ missing');
-    } catch (e) {
-      console.error('❌ Session check failed:', e.message);
-    }
-    
-    try {
-      const { data: { user } } = await client.auth.getUser();
-      console.log('6. User (getUser):', user?.email || 'none');
-    } catch (e) {
-      console.error('❌ getUser failed:', e.message);
-    }
-    
-    console.log('═══════════════════════════════════════');
-  };
-
-  // ═══════════════════════════════════════
-  //  ЭКСПОРТ API
-  // ═══════════════════════════════════════
   window.AIAssistant = {
     sendMessage,
     getHistory: () => [...chatHistory],
@@ -856,7 +711,6 @@
     version: '4.0.0'
   };
 
-  // Глобальный доступ к функции проверки базы
   window.hasKnowledgeInDatabase = hasKnowledgeInDatabase;
 
   window.addEventListener('load', () => {

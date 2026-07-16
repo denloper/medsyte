@@ -10,8 +10,62 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="animations.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <title>Загрузка анализов</title>
+  <style>
+    .upload-zone {
+      border: 3px dashed var(--text-3);
+      border-radius: var(--r-lg);
+      padding: 60px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: var(--green);
+      background: rgba(61, 139, 78, 0.05);
+    }
+    
+    .upload-zone-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+    
+    .upload-zone-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 8px;
+    }
+    
+    .upload-zone-subtext {
+      font-size: 14px;
+      color: var(--text-3);
+    }
+    
+    .file-info {
+      background: var(--surface);
+      padding: 16px;
+      border-radius: var(--r-md);
+      margin-top: 16px;
+      box-shadow: var(--sh-sm);
+    }
+    
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%);
+      color: white;
+      padding: 6px 12px;
+      border-radius: var(--r-full);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+  </style>
 </head>
 <body>
 
@@ -29,10 +83,9 @@
         <a href="index.html" class="circle-btn ripple-element" aria-label="Назад">←</a>
         <div>
           <div class="pc-name">Загрузка анализов</div>
-          <div class="pc-id">PDF или фото бланка</div>
+          <div class="pc-id">PDF с AI-анализом</div>
         </div>
       </div>
-      <button class="circle-btn dark-btn ripple-element" onclick="showToast('Помощь', 'ℹ️')">?</button>
     </div>
   </div>
 
@@ -62,44 +115,47 @@
     </div>
   </div>
 
-  <!-- Drop Zone -->
+  <!-- Upload Zone -->
   <div class="sec-hd animate-on-scroll animate-slide-left">
     <h2>Загрузить файл</h2>
   </div>
 
-  <div class="sleep-card animate-on-scroll animate-fade-up tilt-card" id="dropZone" 
-       style="cursor: pointer; border: 2px dashed #C8DCC8; text-align: center; padding: 40px 20px;">
-    <div style="font-size: 64px; margin-bottom: 12px;" class="float">📁</div>
-    <div class="sc-title" style="margin-bottom: 8px;">Перетащите PDF сюда</div>
-    <p style="color: var(--text-3); font-size: 14px; margin-bottom: 16px;">
-      или нажмите для выбора файла
-    </p>
-    <div id="fileInfo" style="display: none; padding: 12px; background: var(--surface-2); border-radius: var(--r-md); margin-top: 12px;">
-      <div style="font-weight: 700; color: var(--green);">✓ Файл выбран</div>
-      <div id="fileName" style="font-size: 13px; color: var(--text-3); margin-top: 4px;"></div>
+  <div class="upload-zone animate-on-scroll animate-fade-up" id="dropZone">
+    <div class="upload-zone-icon">📁</div>
+    <div class="upload-zone-text">Нажмите чтобы загрузить</div>
+    <div class="upload-zone-subtext">или перетащите PDF файл сюда</div>
+    <div class="ai-badge">
+      <span>🤖</span>
+      <span>AI автоматически проанализирует</span>
     </div>
-    <input type="file" id="fileInput" accept="application/pdf,image/*" style="display: none;">
+    <input type="file" id="fileInput" accept="application/pdf" style="display: none;">
   </div>
 
-  <!-- Action Buttons -->
-  <div style="display: flex; gap: 10px; margin-top: 16px;" class="animate-on-scroll animate-fade-up">
-    <button class="next-btn magnetic-btn ripple-element" id="analyzeBtn" onclick="analyzePDF()" disabled style="flex: 2;">
-      🔍 Анализировать
-    </button>
-    <a href="compare.html" class="next-btn ripple-element magnetic-btn" 
-       style="flex: 1; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 16px rgba(61, 139, 78, 0.3);">
-      📈 Сравнить
-    </a>
+  <div id="fileInfo" class="file-info" style="display: none;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="font-size: 32px;">📄</div>
+      <div style="flex: 1;">
+        <div id="fileName" style="font-weight: 700; color: var(--dark); margin-bottom: 4px;"></div>
+        <div id="fileSize" style="font-size: 13px; color: var(--text-3);"></div>
+      </div>
+      <button onclick="clearFile()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-3);">✕</button>
+    </div>
   </div>
+
+  <!-- Analyze Button -->
+  <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" 
+          id="analyzeBtn" onclick="analyzePDF()" disabled style="opacity: 0.5; margin-top: 20px;">
+    🤖 Анализировать с помощью AI
+  </button>
 
   <!-- Progress -->
-  <div id="progressSection" style="display: none;">
+  <div id="progressSection" style="display: none; margin-top: 20px;">
     <div class="doctor-card">
       <div class="doc-row">
         <div class="doc-avatar"><span class="spin" style="display: inline-block;">⏳</span></div>
         <div style="flex: 1;">
-          <div class="doc-name" id="progressText">Обрабатываем PDF...</div>
-          <div class="doc-spec">• Это займёт несколько секунд</div>
+          <div class="doc-name" id="progressText">AI анализирует PDF...</div>
+          <div class="doc-spec" id="progressSubtext">• Извлекаем показатели</div>
         </div>
       </div>
       <div class="progress-track">
@@ -108,50 +164,12 @@
     </div>
   </div>
 
-  <!-- Parse Review -->
-  <div id="parseReview" style="display: none;">
-    <div class="sec-hd animate-on-scroll animate-slide-left">
-      <h2>Распознанные показатели</h2>
-      <span class="see-all" id="parsedCount">0</span>
-    </div>
+  <!-- Results -->
+  <div id="resultsSection" style="display: none; margin-top: 20px;"></div>
 
-    <div class="other-card animate-on-scroll animate-fade-up">
-      <div style="padding: 12px; background: #FFF8E1; border-radius: var(--r-sm); margin-bottom: 16px; font-size: 13px; color: #92400E;">
-        ⚠️ Проверьте значения — при необходимости исправьте
-      </div>
-      <div id="parsedList"></div>
-      <button class="next-btn ripple-element magnetic-btn" style="margin-top: 16px;" onclick="confirmResults()">
-        ✓ Подтвердить и показать результаты
-      </button>
-    </div>
-  </div>
-
-  <!-- Info cards -->
-  <div class="sec-hd animate-on-scroll animate-slide-left">
-    <h2>Поддерживаемые форматы</h2>
-  </div>
-
-  <div class="quick-grid stagger">
-    <div class="qi">
-      <div class="qi-icon">📄</div>
-      <span class="qi-label">PDF<br>бланки</span>
-    </div>
-    <div class="qi">
-      <div class="qi-icon">📸</div>
-      <span class="qi-label">Фото<br>бланка</span>
-    </div>
-    <div class="qi">
-      <div class="qi-icon qi-dark">🔬</div>
-      <span class="qi-label">150+<br>тестов</span>
-    </div>
-    <div class="qi">
-      <div class="qi-icon">🏥</div>
-      <span class="qi-label">Все<br>лаборат.</span>
-    </div>
-  </div>
-
-  <div style="padding: 16px; background: var(--surface-2); border-radius: var(--r-md); margin-bottom: 14px; font-size: 13px; color: var(--text-2); line-height: 1.5;" class="animate-on-scroll animate-fade-up">
-    ⚕️ Автоматическая расшифровка. При неточностях сверяйтесь с оригиналом. Все данные хранятся только на вашем устройстве.
+  <!-- Info -->
+  <div style="padding: 16px; background: var(--surface-2); border-radius: var(--r-md); margin-top: 20px; font-size: 13px; color: var(--text-2); line-height: 1.5;" class="animate-on-scroll animate-fade-up">
+    ⚕️ <strong>AI-анализ:</strong> Нейросеть автоматически извлечёт все показатели и сверит их с медицинской базой данных.
   </div>
 
   <div style="height: 100px;"></div>
@@ -168,7 +186,10 @@
       <div class="nav-icon">📄</div>
       <span class="nav-label">Анализы</span>
     </a>
-    <a href="index.html" class="nav-fab" aria-label="Чат">💬</a>
+    <a href="chat.html" class="nav-item">
+      <div class="nav-icon">💬</div>
+      <span class="nav-label">ИИ-чат</span>
+    </a>
     <a href="calendar.html" class="nav-item">
       <div class="nav-icon">📅</div>
       <span class="nav-label">Календарь</span>
@@ -184,17 +205,20 @@
 <script src="supabase-client.js"></script>
 <script src="database.js"></script>
 <script src="patient-profile.js"></script>
+<script src="ai-assistant.js"></script>
 <script src="animations.js"></script>
 <script>
 (function(){
   'use strict';
+
+  const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
   if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
   let selectedFile = null;
-  let parsedResults = {};
   let selectedSex = 'female';
 
   window.showToast = function(text, icon = '✓') {
@@ -205,7 +229,6 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
-  // ═══════ СИНХРОНИЗАЦИЯ С ПРОФИЛЕМ ═══════
   window.selectSex = function(sex) {
     selectedSex = sex;
     const fBtn = document.getElementById('sexFemale');
@@ -213,13 +236,11 @@
     fBtn.className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
     mBtn.className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
     
-    // Сохраняем в профиль (автоматическая синхронизация)
     if (window.PatientProfile) {
       window.PatientProfile.update({ sex });
     }
   };
 
-  // Слушаем изменения возраста
   document.getElementById('ageInput').addEventListener('input', function(e) {
     const age = parseInt(e.target.value) || 35;
     if (window.PatientProfile) {
@@ -227,235 +248,433 @@
     }
   });
 
-  // ═══════ ИНИЦИАЛИЗАЦИЯ ПРОФИЛЯ ═══════
   document.addEventListener('DOMContentLoaded', () => {
-    // PatientProfile автоматически применит сохранённые значения
-    // Но применяем явно для надёжности
     if (window.PatientProfile) {
       const profile = window.PatientProfile.get();
       selectSex(profile.sex);
       document.getElementById('ageInput').value = profile.age;
-      console.log('[Upload] Профиль загружен:', profile);
     }
   });
 
+  // Drag & Drop
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
-  const fileInfo = document.getElementById('fileInfo');
-  const fileName = document.getElementById('fileName');
-  const analyzeBtn = document.getElementById('analyzeBtn');
 
   dropZone.addEventListener('click', () => fileInput.click());
+
   ['dragenter', 'dragover'].forEach(ev => {
     dropZone.addEventListener(ev, (e) => {
       e.preventDefault();
-      dropZone.style.borderColor = 'var(--green)';
-      dropZone.style.background = 'rgba(61, 139, 78, 0.05)';
+      dropZone.classList.add('dragover');
     });
   });
+
   ['dragleave', 'drop'].forEach(ev => {
     dropZone.addEventListener(ev, (e) => {
       e.preventDefault();
-      dropZone.style.borderColor = '#C8DCC8';
-      dropZone.style.background = '';
+      dropZone.classList.remove('dragover');
     });
   });
+
   dropZone.addEventListener('drop', (e) => {
-    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length > 0) {
+      handleFile(e.dataTransfer.files[0]);
+    }
   });
+
   fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    if (e.target.files.length > 0) {
+      handleFile(e.target.files[0]);
+    }
   });
 
   function handleFile(file) {
-    if (!file.type.match(/pdf|image/)) {
-      showToast('Только PDF или изображение', '⚠️');
+    if (file.type !== 'application/pdf') {
+      showToast('Только PDF файлы', '⚠️');
       return;
     }
+
     selectedFile = file;
-    fileInfo.style.display = 'block';
-    fileName.textContent = `${file.name} (${(file.size/1024/1024).toFixed(2)} МБ)`;
+    document.getElementById('fileInfo').style.display = 'block';
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = `${(file.size/1024/1024).toFixed(2)} МБ`;
+    
+    const analyzeBtn = document.getElementById('analyzeBtn');
     analyzeBtn.disabled = false;
+    analyzeBtn.style.opacity = '1';
+    
     showToast('Файл загружен', '📄');
   }
 
-  async function parsePDF(file) {
-    if (file.type === 'application/pdf') {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = '';
-      const YT = 3;
-      for (let i = 1; i <= pdf.numPages; i++) {
-        updateProgress(10 + (i / pdf.numPages) * 70, `Страница ${i} из ${pdf.numPages}`);
-        const page = await pdf.getPage(i);
-        const tc = await page.getTextContent();
-        const lm = new Map();
-        tc.items.forEach(item => {
-          const y = Math.round(item.transform[5] / YT) * YT;
-          if (!lm.has(y)) lm.set(y, []);
-          lm.get(y).push({ text: item.str, x: item.transform[4] });
-        });
-        const sl = Array.from(lm.entries())
-          .sort((a, b) => b[0] - a[0])
-          .map(e => e[1].sort((a, b) => a.x - b.x).map(i => i.text).join(' '));
-        fullText += sl.join('\n') + '\n';
-      }
-      return fullText;
-    } else {
-      updateProgress(20, 'Распознаём текст (OCR)...');
-      const result = await Tesseract.recognize(file, 'rus+eng', {
-        logger: (m) => {
-          if (m.status === 'recognizing text') {
-            updateProgress(20 + m.progress * 70, `OCR: ${Math.round(m.progress * 100)}%`);
-          }
-        }
-      });
-      return result.data.text;
+  window.clearFile = function() {
+    selectedFile = null;
+    document.getElementById('fileInfo').style.display = 'none';
+    document.getElementById('fileInput').value = '';
+    
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    analyzeBtn.disabled = true;
+    analyzeBtn.style.opacity = '0.5';
+  };
+
+  function updateProgress(percent, text, subtext = '') {
+    document.getElementById('progressBar').style.width = percent + '%';
+    document.getElementById('progressText').textContent = text;
+    if (subtext) {
+      document.getElementById('progressSubtext').textContent = subtext;
     }
   }
 
-  function updateProgress(percent, text) {
-    document.getElementById('progressBar').style.width = percent + '%';
-    document.getElementById('progressText').textContent = text;
+  async function extractTextFromPDF(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      updateProgress(10 + (i / pdf.numPages) * 30, `Читаем страницу ${i}/${pdf.numPages}`);
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      fullText += pageText + '\n';
+    }
+    
+    return fullText;
   }
 
   window.analyzePDF = async function() {
     if (!selectedFile) return;
     
+    const analyzeBtn = document.getElementById('analyzeBtn');
     analyzeBtn.disabled = true;
     document.getElementById('progressSection').style.display = 'block';
-    updateProgress(5, 'Начинаем обработку...');
-
+    document.getElementById('resultsSection').style.display = 'none';
+    
     try {
-      const text = await parsePDF(selectedFile);
-      if (!text) {
-        showToast('Не удалось прочитать файл', '❌');
+      updateProgress(5, 'Извлекаем текст из PDF...', '• Обрабатываем страницы');
+      const pdfText = await extractTextFromPDF(selectedFile);
+      
+      if (!pdfText || pdfText.trim().length < 50) {
+        showToast('Не удалось извлечь текст из PDF', '❌');
         analyzeBtn.disabled = false;
         document.getElementById('progressSection').style.display = 'none';
         return;
       }
       
-      updateProgress(90, 'Анализируем показатели...');
-      const age = parseInt(document.getElementById('ageInput').value) || 35;
-      parsedResults = window.parseAnalysisText(text, selectedSex, age);
+      updateProgress(45, '🤖 AI анализирует показатели...', '• Отправляем в нейросеть');
       
-      updateProgress(100, 'Готово!');
+      const age = parseInt(document.getElementById('ageInput').value) || 35;
+      
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          action: 'parse_pdf',
+          pdfText: pdfText,
+          patientSex: selectedSex,
+          patientAge: age
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'AI не смог проанализировать PDF');
+      }
+      
+      updateProgress(85, '✓ AI извлёк показатели', '• Проверяем с базой данных');
+      
+      const parsedResults = validateWithDatabase(result.data, selectedSex, age);
+      
+      updateProgress(100, '✓ Анализ завершён!', '');
       
       setTimeout(() => {
         document.getElementById('progressSection').style.display = 'none';
-        showParseReview();
+        renderResults(parsedResults);
       }, 500);
+      
     } catch (err) {
-      console.error(err);
+      console.error('Analysis error:', err);
       showToast('Ошибка: ' + err.message, '❌');
       analyzeBtn.disabled = false;
       document.getElementById('progressSection').style.display = 'none';
     }
   };
 
-  function showParseReview() {
-    const keys = Object.keys(parsedResults);
-    document.getElementById('parsedCount').textContent = keys.length;
+  function validateWithDatabase(aiData, sex, age) {
+    const validated = {
+      tests: [],
+      patientInfo: aiData.patientInfo || { sex, age },
+      labName: aiData.labName,
+      analysisDate: aiData.analysisDate,
+      confidence: aiData.confidence || 0.9
+    };
     
-    if (keys.length === 0) {
-      showToast('Не распознано ни одного показателя', '⚠️');
-      analyzeBtn.disabled = false;
-      return;
+    if (!aiData.tests || !Array.isArray(aiData.tests)) {
+      return validated;
     }
+    
+    aiData.tests.forEach(aiTest => {
+      const dbTest = window.labTests.find(t => {
+        const name = (t.canonicalName || '').toLowerCase().trim();
+        const short = (t.shortName || '').toLowerCase().trim();
+        const aiName = (aiTest.name || '').toLowerCase().trim();
+        
+        return name === aiName || short === aiName ||
+               t.aliases.some(alias => alias.toLowerCase().trim() === aiName);
+      });
+      
+      if (dbTest) {
+        const ref = window.getReference(dbTest, sex, age);
+        
+        let status = 'unknown';
+        if (ref && aiTest.value !== null && aiTest.value !== undefined) {
+          if (ref.min !== null && ref.min !== undefined && aiTest.value < ref.min) {
+            status = 'low';
+          } else if (ref.max !== null && ref.max !== undefined && aiTest.value > ref.max) {
+            status = 'high';
+          } else {
+            status = 'normal';
+          }
+        }
+        
+        validated.tests.push({
+          name: dbTest.canonicalName,
+          shortName: dbTest.shortName,
+          value: aiTest.value,
+          unit: ref?.unit || aiTest.unit || dbTest.units[0],
+          referenceMin: ref?.min,
+          referenceMax: ref?.max,
+          status: status,
+          source: 'validated',
+          category: dbTest.category
+        });
+      } else {
+        validated.tests.push({
+          name: aiTest.name,
+          shortName: aiTest.shortName || '',
+          value: aiTest.value,
+          unit: aiTest.unit || '',
+          referenceMin: aiTest.referenceMin,
+          referenceMax: aiTest.referenceMax,
+          status: aiTest.status || 'unknown',
+          source: 'ai_only',
+          category: 'Другое'
+        });
+      }
+    });
+    
+    return validated;
+  }
 
-    const list = document.getElementById('parsedList');
-    list.innerHTML = keys.map((name, idx) => {
-      const r = parsedResults[name];
-      const cls = r.status === 'normal' ? 'ok' : r.status === 'high' ? 'danger' : 'warn';
-      const label = r.status === 'normal' ? '✓ Норма' : r.status === 'high' ? '↑ Повышен' : '↓ Понижен';
-      return `
-        <div class="metric-row ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.05}s backwards;">
-          <div class="mr-circle ${cls === 'ok' ? 'green-bg' : cls === 'warn' ? 'amber-bg' : 'red-bg'}">
-            ${cls === 'ok' ? '✓' : cls === 'warn' ? '↓' : '↑'}
-          </div>
-          <div class="mr-info">
-            <div class="mr-label">${name}</div>
-            <input type="number" step="0.01" value="${r.value}" 
-                   data-test="${name}"
-                   style="font-size: 18px; font-weight: 700; border: none; background: transparent; color: var(--dark); width: 100px; padding: 0;">
-            <span style="font-size: 13px; color: var(--text-3); margin-left: 4px;">${r.unit}</span>
-          </div>
-          <div style="font-size: 12px; font-weight: 600; color: var(--${cls === 'ok' ? 'green' : cls === 'warn' ? 'orange' : 'red'}-pill);">
-            ${label}
+  function renderResults(data) {
+    const container = document.getElementById('resultsSection');
+    
+    if (!data.tests || data.tests.length === 0) {
+      container.innerHTML = `
+        <div class="other-card">
+          <div style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 48px; margin-bottom: 12px;">😕</div>
+            <div style="font-size: 16px; font-weight: 700; color: var(--dark); margin-bottom: 8px;">
+              Показатели не найдены
+            </div>
+            <div style="font-size: 13px; color: var(--text-3);">
+              AI не смог извлечь лабораторные показатели из этого PDF
+            </div>
           </div>
         </div>
       `;
-    }).join('');
-
-    document.getElementById('parseReview').style.display = 'block';
-    document.getElementById('parseReview').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showToast(`Распознано ${keys.length} показателей`, '✓');
+      container.style.display = 'block';
+      return;
+    }
+    
+    const byCategory = {};
+    data.tests.forEach(test => {
+      const cat = test.category || 'Другое';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(test);
+    });
+    
+    const normal = data.tests.filter(t => t.status === 'normal').length;
+    const high = data.tests.filter(t => t.status === 'high').length;
+    const low = data.tests.filter(t => t.status === 'low').length;
+    
+    let html = `
+      <div class="sec-hd">
+        <h2>📊 Результаты анализа</h2>
+      </div>
+      
+      <div class="vitals-grid stagger" style="margin-bottom: 16px;">
+        <div class="v-card">
+          <div class="v-icon green">✓</div>
+          <div class="v-label">В норме</div>
+          <div class="v-value">${normal}</div>
+        </div>
+        <div class="v-card">
+          <div class="v-icon amber">⚠</div>
+          <div class="v-label">Отклонения</div>
+          <div class="v-value">${high + low}</div>
+        </div>
+      </div>
+      
+      ${data.labName || data.analysisDate ? `
+        <div class="other-card" style="margin-bottom: 16px;">
+          ${data.labName ? `<div style="font-size: 13px; color: var(--text-3); margin-bottom: 4px;">🏥 ${data.labName}</div>` : ''}
+          ${data.analysisDate ? `<div style="font-size: 13px; color: var(--text-3);">📅 ${data.analysisDate}</div>` : ''}
+        </div>
+      ` : ''}
+    `;
+    
+    Object.entries(byCategory).forEach(([category, tests]) => {
+      html += `
+        <div class="other-card" style="margin-bottom: 16px;">
+          <div class="other-card-head" style="margin-bottom: 12px;">
+            ${category}
+            <span class="see-all">${tests.length}</span>
+          </div>
+      `;
+      
+      tests.forEach((test, idx) => {
+        const statusIcon = test.status === 'normal' ? '✓' : test.status === 'high' ? '↑' : test.status === 'low' ? '↓' : '?';
+        const statusBg = test.status === 'normal' ? 'green-bg' : test.status === 'high' || test.status === 'low' ? 'red-bg' : 'amber-bg';
+        
+        const refRange = (test.referenceMin !== null && test.referenceMax !== null) 
+          ? `${test.referenceMin} - ${test.referenceMax}` 
+          : '—';
+        
+        html += `
+          <div class="metric-row" style="animation: fadeInUp 0.4s ease ${idx * 0.05}s backwards;">
+            <div class="mr-circle ${statusBg}">${statusIcon}</div>
+            <div class="mr-info">
+              <div class="mr-label">
+                ${test.name}
+                ${test.shortName ? `<span style="color: var(--text-3); font-weight: 400;"> (${test.shortName})</span>` : ''}
+                ${test.source === 'ai_only' ? '<span style="color: var(--orange); font-size: 10px; margin-left: 4px;">🤖</span>' : ''}
+              </div>
+              <div class="mr-value">
+                ${test.value !== null && test.value !== undefined ? test.value : '—'}
+                <span>${test.unit || ''}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">
+                Норма: ${refRange}
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `</div>`;
+    });
+    
+    html += `
+      <div style="display: flex; gap: 10px; margin-top: 16px;">
+        <button class="next-btn ripple-element" onclick="saveResults()" style="flex: 1; background: var(--green);">
+          💾 Сохранить
+        </button>
+        <button class="next-btn ripple-element" onclick="askAIAboutResults()" style="flex: 1; background: var(--dark);">
+          🤖 Спросить AI
+        </button>
+      </div>
+    `;
+    
+    container.innerHTML = html;
+    container.style.display = 'block';
+    container.scrollIntoView({ behavior: 'smooth' });
+    
+    showToast(`Извлечено ${data.tests.length} показателей`, '✓');
+    
+    window.currentResults = data;
   }
 
-  window.confirmResults = async function() {
-    // Обновляем значения если пользователь их изменил
-    document.querySelectorAll('#parsedList input[data-test]').forEach(input => {
-      const testName = input.dataset.test;
-      const newValue = parseFloat(input.value);
-      if (!isNaN(newValue) && parsedResults[testName]) {
-        parsedResults[testName].value = newValue;
-        const test = window.labTests.find(t => t.canonicalName === testName);
-        if (test) {
-          const age = parseInt(document.getElementById('ageInput').value) || 35;
-          const ref = window.getReference(test, selectedSex, age);
-          if (ref) {
-            let status = 'normal';
-            if (ref.min !== null && ref.min !== undefined && newValue < ref.min) status = 'low';
-            if (ref.max !== null && ref.max !== undefined && newValue > ref.max) status = 'high';
-            parsedResults[testName].status = status;
-          }
-        }
-      }
-    });
-
-    const data = {
-      results: parsedResults,
-      patient: { sex: selectedSex, age: parseInt(document.getElementById('ageInput').value) || 35 },
-      date: new Date().toISOString(),
-      fileName: selectedFile.name
-    };
-
-    sessionStorage.setItem('analysisResults', JSON.stringify(data));
+  window.saveResults = function() {
+    if (!window.currentResults) return;
     
-    // Сохраняем в историю
+    const data = {
+      results: {},
+      patient: window.currentResults.patientInfo,
+      date: window.currentResults.analysisDate || new Date().toISOString(),
+      fileName: selectedFile?.name || 'Анализ',
+      labName: window.currentResults.labName,
+      confidence: window.currentResults.confidence
+    };
+    
+    window.currentResults.tests.forEach(test => {
+      data.results[test.name] = {
+        value: test.value,
+        unit: test.unit,
+        status: test.status,
+        referenceMin: test.referenceMin,
+        referenceMax: test.referenceMax
+      };
+    });
+    
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       history.push({
         id: 'a_' + Date.now(),
-        fileName: selectedFile.name,
+        fileName: data.fileName,
         date: Date.now(),
-        count: Object.keys(parsedResults).length
+        results: data.results,
+        count: Object.keys(data.results).length,
+        source: 'ai_pdf'
       });
       localStorage.setItem('analysis_history_v1', JSON.stringify(history));
-    } catch (e) {}
-
-    // Синхронизация с Supabase (если доступен)
-    if (window.SupabaseDB) {
-      try {
-        await window.SupabaseDB.saveAnalysis({
-          fileName: selectedFile.name,
-          results: parsedResults
-        });
-        console.log('[Upload] ☁️ Анализ сохранён в Supabase');
-      } catch (e) {
-        console.warn('[Upload] ⚠️ Ошибка сохранения в Supabase:', e.message);
-      }
+    } catch (e) {
+      console.error('Save error:', e);
     }
-
-    showToast('Переход к результатам...', '📊');
+    
+    if (window.SupabaseDB) {
+      window.SupabaseDB.saveAnalysis({
+        fileName: data.fileName,
+        results: data.results
+      }).catch(e => console.warn('Supabase save error:', e));
+    }
+    
+    showToast('Результаты сохранены!', '✅');
+    
     setTimeout(() => {
+      sessionStorage.setItem('analysisResults', JSON.stringify(data));
       window.location.href = 'results.html';
-    }, 500);
+    }, 1000);
   };
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
-  }
+  window.askAIAboutResults = function() {
+    if (!window.currentResults || window.currentResults.tests.length === 0) {
+      showToast('Нет данных для анализа', '⚠️');
+      return;
+    }
+    
+    const abnormal = window.currentResults.tests.filter(t => t.status !== 'normal' && t.status !== 'unknown');
+    
+    let question = 'Проанализируй мои результаты анализов:\n\n';
+    question += `Пациент: ${window.currentResults.patientInfo.sex === 'male' ? 'мужчина' : 'женщина'}, ${window.currentResults.patientInfo.age} лет\n\n`;
+    
+    if (abnormal.length > 0) {
+      question += '**Отклонения от нормы:**\n';
+      abnormal.forEach(t => {
+        const status = t.status === 'high' ? '↑ выше нормы' : '↓ ниже нормы';
+        question += `• ${t.name}: ${t.value} ${t.unit} (${status}, норма ${t.referenceMin}-${t.referenceMax})\n`;
+      });
+    }
+    
+    const normal = window.currentResults.tests.filter(t => t.status === 'normal');
+    if (normal.length > 0) {
+      question += `\n**В норме (${normal.length} показателей):**\n`;
+      normal.slice(0, 5).forEach(t => {
+        question += `• ${t.name}: ${t.value} ${t.unit}\n`;
+      });
+      if (normal.length > 5) {
+        question += `• ... и ещё ${normal.length - 5} показателей\n`;
+      }
+    }
+    
+    question += '\nДай развёрнутую интерпретацию результатов, возможные причины отклонений и рекомендации.';
+    
+    sessionStorage.setItem('pending_chat_message', question);
+    window.location.href = 'chat.html';
+  };
+
 })();
 </script>
 

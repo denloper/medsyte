@@ -6,10 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// 🏆 Приоритетная очередь моделей
 const MODELS = [
-  'google/gemma-4-26b-a4b-it:free', // 🥇 ПРИОРИТЕТ #1 (лучшая для медицины)
-  'supabase functions deploy ai-assistant',
+  'google/gemma-4-26b-a4b-it:free',
+  'deepseek/deepseek-chat-v3-0324:free',
+  'meta-llama/llama-4-maverick:free',
+  'tencent/hy3:free'
 ];
 
 serve(async (req) => {
@@ -18,115 +19,298 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { action, messages, pdfText, patientSex, patientAge } = await req.json();
 
     const OPENROUTER_API_KEY = Deno.env.get('OPENROUTER_API_KEY');
     if (!OPENROUTER_API_KEY) {
       throw new Error('OPENROUTER_API_KEY не настроен');
     }
 
-    console.log(`📨 Request received (${messages.length} messages)`);
+    // ═══════════════════════════════════════
+    //  ДЕЙСТВИЕ 1: ПАРСИНГ PDF
+    // ═══════════════════════════════════════
+    if (action === 'parse_pdf') {
+      console.log('📄 Parsing PDF...');
+      console.log('📏 PDF text length:', pdfText?.length || 0, 'chars');
+      
+      const knownTests = [
+        { name: "Тестостерон общий", shortName: "Testosterone", units: ["нмоль/л", "нг/мл", "пг/мл"], male: "8-35 нмоль/л или 2800-10000 пг/мл", female: "0.5-2.5 нмоль/л или 150-700 пг/мл" },
+        { name: "Эстрадиол", shortName: "E2", units: ["пмоль/л", "пг/мл"], male: "40-160 пмоль/л или 10-50 пг/мл", female: "70-1200 пмоль/л или 15-350 пг/мл" },
+        { name: "Гемоглобин", shortName: "HGB", units: ["г/л", "g/L", "г/дл"], male: "130-170 г/л", female: "120-150 г/л" },
+        { name: "Глюкоза натощак", shortName: "GLU", units: ["ммоль/л", "mg/dL"], range: "3.9-5.5 ммоль/л" },
+        { name: "Холестерин общий", shortName: "TC", units: ["ммоль/л", "mg/dL"], range: "0-5.2 ммоль/л" },
+        { name: "Холестерин ЛПНП", shortName: "LDL-C", units: ["ммоль/л", "mg/dL"], range: "0-3.0 ммоль/л" },
+        { name: "Холестерин ЛПВП", shortName: "HDL-C", units: ["ммоль/л", "mg/dL"], range: ">1.0 ммоль/л" },
+        { name: "Триглицериды", shortName: "TG", units: ["ммоль/л", "mg/dL"], range: "0-1.7 ммоль/л" },
+        { name: "Тиреотропный гормон", shortName: "ТТГ", units: ["мМЕ/л", "mIU/L"], range: "0.4-4.0 мМЕ/л" },
+        { name: "Тироксин свободный", shortName: "св. Т4", units: ["пмоль/л", "ng/dL"], range: "10-22 пмоль/л" },
+        { name: "25-гидроксивитамин D", shortName: "25(OH)D", units: ["нг/мл", "нмоль/л"], range: "30-100 нг/мл" },
+        { name: "Ферритин", shortName: "Ferritin", units: ["нг/мл", "мкг/л"], male: "30-400 нг/мл", female: "15-150 нг/мл" },
+        { name: "Витамин B12", shortName: "B12", units: ["пг/мл", "пмоль/л"], range: "200-900 пг/мл" },
+        { name: "АЛТ", shortName: "АЛТ", units: ["Ед/л", "U/L"], male: "0-41", female: "0-33" },
+        { name: "АСТ", shortName: "АСТ", units: ["Ед/л", "U/L"], male: "0-40", female: "0-32" },
+        { name: "Креатинин", shortName: "CREA", units: ["мкмоль/л", "mg/dL"], male: "62-106", female: "44-80" },
+        { name: "Лейкоциты", shortName: "WBC", units: ["×10^9/л", "10^9/L"], range: "4.0-9.0" },
+        { name: "Тромбоциты", shortName: "PLT", units: ["×10^9/л", "10^9/L"], range: "150-400" },
+        { name: "С-реактивный белок", shortName: "CRP", units: ["мг/л", "mg/L"], range: "0-5" },
+        { name: "Пролактин", shortName: "PRL", units: ["мЕд/л", "нг/мл"], male: "50-400 мЕд/л", female: "50-500 мЕд/л" },
+        { name: "Кортизол", shortName: "Cortisol", units: ["нмоль/л", "мкг/дл", "пг/мл"], range: "140-690 нмоль/л" },
+        { name: "Прогестерон", shortName: "Progesterone", units: ["нмоль/л", "пг/мл"], male: "100-500 пг/мл" },
+        { name: "ЛГ", shortName: "ЛГ", units: ["МЕ/л", "мМЕ/мл"], male: "1.5-9.3", female: "1.7-15.0" },
+        { name: "ФСГ", shortName: "ФСГ", units: ["МЕ/л", "мМЕ/мл"], male: "1.4-15.4", female: "1.4-20.0" },
+        { name: "ГСПГ", shortName: "SHBG", units: ["нмоль/л"], male: "13-71", female: "18-114" },
+        { name: "ДГЭА-С", shortName: "DHEA-S", units: ["мкмоль/л", "мкг/дл"], male: "2.5-14.5", female: "1.8-11.0" },
+        { name: "Андростендион", shortName: "A4", units: ["нг/мл", "нмоль/л", "пг/мл"], male: "2.0-8.5 нг/мл", female: "1.5-7.0 нг/мл" }
+      ];
 
-    let lastError = null;
-    let usedModel = null;
-    let reply = null;
+      const knownTestsList = knownTests.map(t => {
+        const range = t.male ? `муж: ${t.male}, жен: ${t.female}` : `норма: ${t.range}`;
+        return `- ${t.name} (${t.shortName}) → единицы: [${t.units.join(', ')}] | ${range}`;
+      }).join('\n');
 
-    //  Пробуем каждую модель по очереди
-    for (const model of MODELS) {
-      try {
-        console.log(`🤖 Trying: ${model}`);
-        
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://denloper.github.io',
-            'X-Title': 'Medical AI Assistant'
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: messages.map((m) => ({
-              role: m.role,
-              content: m.content
-            })),
-            temperature: 0.7,
-            max_tokens: 2048,
-            top_p: 0.95
-          })
-        });
+      const parsePrompt = `Ты — медицинский ассистент для извлечения лабораторных показателей из текста PDF.
 
-        if (!response.ok) {
-          let errorMsg = response.statusText;
-          try {
-            const errorData = await response.json();
-            errorMsg = errorData.error?.message || errorMsg;
-          } catch {}
-          
-          console.warn(`⚠️ ${model} failed (${response.status}): ${errorMsg}`);
-          lastError = errorMsg;
-          continue; // Переходим к следующей модели
-        }
+ЗАДАЧА: Извлеки ВСЕ лабораторные показатели из предоставленного текста и верни СТРОГО в JSON формате.
 
-        const data = await response.json();
-        
-        if (!data.choices || data.choices.length === 0) {
-          console.warn(`⚠️ ${model} returned empty choices`);
-          lastError = 'Empty response';
-          continue;
-        }
-        
-        reply = data.choices[0]?.message?.content;
-        usedModel = model;
-        
-        if (!reply || reply.trim() === '') {
-          console.warn(`⚠️ ${model} returned empty content`);
-          lastError = 'Empty content';
-          continue;
-        }
-        
-        console.log(`✅ SUCCESS with ${model}`);
-        break; // Успех! Выходим из цикла
-      } catch (modelError) {
-        console.error(`❌ ${model} error:`, modelError.message);
-        lastError = modelError.message;
-        continue;
-      }
+ФОРМАТ ОТВЕТА (только JSON, без markdown):
+{
+  "tests": [
+    {
+      "name": "Тестостерон общий",
+      "shortName": "Testosterone",
+      "value": 440.64,
+      "unit": "пг/мл",
+      "referenceMin": 2800,
+      "referenceMax": 10000,
+      "status": "low"
+    }
+  ],
+  "patientInfo": { "sex": "male", "age": 35 },
+  "labName": "Название лаборатории или null",
+  "analysisDate": "YYYY-MM-DD или null",
+  "confidence": 0.95
+}
+
+⚠️ КРИТИЧЕСКИ ВАЖНО — ЕДИНИЦЫ ИЗМЕРЕНИЯ:
+1. ВНИМАТЕЛЬНО смотри на единицы измерения В САМОМ ТЕКСТЕ PDF (пг/мл, нг/мл, нмоль/л и т.д.)
+2. Используй ИМЕННО ТЕ единицы, которые указаны в PDF, а не первые из списка
+3. Проверяй референсные диапазоны В PDF — они должны соответствовать единицам!
+4. Если в PDF написано "440.64 пг/мл" — верни unit: "пг/мл", а НЕ "нмоль/л"
+5. Референсные значения (referenceMin, referenceMax) должны быть В ТЕХ ЖЕ единицах, что и value!
+
+СПИСОК ИЗВЕСТНЫХ ТЕСТОВ С ДОПУСТИМЫМИ ЕДИНИЦАМИ:
+${knownTestsList}
+
+ПРАВИЛА ОПРЕДЕЛЕНИЯ STATUS:
+- "normal" — value в пределах [referenceMin, referenceMax]
+- "high" — value > referenceMax
+- "low" — value < referenceMin
+- "unknown" — если нет референсного диапазона
+
+ПРАВИЛА:
+1. Извлекай ВСЕ числовые лабораторные показатели
+2. **ВСЕГДА сохраняй единицы измерения ИЗ PDF** — не меняй их
+3. Определяй референсные диапазоны из PDF, сверяй со списком выше
+4. Если в PDF нет референса — используй из списка выше (с учётом единиц!)
+5. Игнорируй нечисловые данные (имена, адреса, комментарии)
+6. Возвращай ТОЛЬКО валидный JSON
+
+ТЕКСТ PDF ДЛЯ АНАЛИЗА:
+"""
+${pdfText}
+"""
+
+ПАЦИЕНТ: ${patientSex || 'unknown'}, ${patientAge || '?'} лет`;
+
+      const messages = [{ role: 'user', content: parsePrompt }];
+      return await callOpenRouter(messages, OPENROUTER_API_KEY, 'parse_pdf');
     }
 
-    // Если ни одна модель не ответила
-    if (!reply) {
-      console.error('❌ All models failed. Last error:', lastError);
-      return new Response(
-        JSON.stringify({ 
-          reply: null,
-          success: false, 
-          error: `Все модели недоступны. Последняя ошибка: ${lastError}`,
-          models_tried: MODELS
-        }),
-        { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // ═══════════════════════════════════════
+    //  ДЕЙСТВИЕ 2: ЧАТ С МЕДИЦИНСКИМ АССИСТЕНТОМ
+    // ═══════════════════════════════════════
+    if (action === 'chat' || messages) {
+      console.log('💬 Chat mode activated');
+      
+      // Добавляем system prompt для медицинского ассистента
+      const systemPrompt = {
+        role: 'system',
+        content: `Ты — медицинский AI-ассистент в приложении "Семейный доктор". Ты работаешь в чате (chat.html) и помогаешь пользователям с медицинскими вопросами.
+
+ТВОИ ВОЗМОЖНОСТИ:
+- Анализ результатов лабораторных анализов
+- Интерпретация отклонений от нормы
+- Рекомендации по дополнительным обследованиям
+- Объяснение медицинских терминов простым языком
+- Рекомендации по питанию и образу жизни
+- Направление к нужным специалистам
+
+СТРОГИЕ ПРАВИЛА:
+1. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
+2. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
+3. Для тревожных симптомов (боль в груди, одышка, потеря сознания, кровь) — немедленно советуй вызвать 112
+4. НЕ назначай лечение и лекарства без консультации врача — только общие рекомендации
+5. Отвечай ТОЛЬКО на русском языке
+6. Используй markdown: **жирный** для важного, • для списков
+7. Будь дружелюбным и поддерживающим
+
+ФОРМАТ ОТВЕТА:
+- 📊 Краткий анализ ситуации (2-3 предложения)
+- 🔍 Возможные причины (список через •)
+- 🧪 Рекомендуемые анализы (если нужно)
+- 💊 Общие рекомендации
+- 👨‍⚕️ К какому врачу обратиться
+- ⚕️ Дисклеймер в конце
+
+Если вопрос НЕ медицинский — вежливо предложи задать медицинский вопрос.
+
+ПРИМЕРЫ ХОРОШИХ ОТВЕТОВ:
+- "Повышенный ферритин может указывать на воспаление или избыток железа. Рекомендую сдать..."
+- "Низкий витамин D — частая проблема. Обычно назначают витамин D3 2000-4000 МЕ/сут..."
+- "При таких симптомах стоит проверить ТТГ, ферритин и витамин D..."`
+      };
+
+      // Добавляем system prompt в начало сообщений
+      const fullMessages = [systemPrompt, ...messages];
+      
+      return await callOpenRouter(fullMessages, OPENROUTER_API_KEY, 'chat');
     }
 
-    return new Response(
-      JSON.stringify({ 
-        reply, 
-        success: true, 
-        source: 'openrouter', 
-        model: usedModel 
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    throw new Error('Unknown action: ' + action);
 
   } catch (error) {
     console.error('❌ Fatal error:', error);
     return new Response(
-      JSON.stringify({ 
-        reply: null,
-        success: false, 
-        error: error.message 
-      }),
+      JSON.stringify({ success: false, error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
+
+// ═══════════════════════════════════════
+//  ОБЩАЯ ФУНКЦИЯ ВЫЗОВА OPENROUTER
+// ═══════════════════════════════════════
+async function callOpenRouter(messages, apiKey, actionType) {
+  let lastError = null;
+  let usedModel = null;
+  let reply = null;
+
+  for (const model of MODELS) {
+    try {
+      console.log(`🤖 Trying: ${model} (action: ${actionType})`);
+      
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://denloper.github.io',
+          'X-Title': 'Medical AI Assistant'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: messages,
+          temperature: actionType === 'parse_pdf' ? 0.1 : 0.7,
+          max_tokens: actionType === 'parse_pdf' ? 4096 : 2048,
+          top_p: 0.95
+        })
+      });
+
+      if (!response.ok) {
+        let errorMsg = response.statusText;
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error?.message || errorMsg;
+        } catch {}
+        
+        console.warn(`⚠️ ${model} failed (${response.status}): ${errorMsg}`);
+        lastError = errorMsg;
+        continue;
+      }
+
+      const data = await response.json();
+      
+      if (!data.choices || data.choices.length === 0) {
+        console.warn(`⚠️ ${model} returned empty choices`);
+        lastError = 'Empty response';
+        continue;
+      }
+      
+      reply = data.choices[0]?.message?.content;
+      usedModel = model;
+      
+      if (!reply || reply.trim() === '') {
+        console.warn(`⚠️ ${model} returned empty content`);
+        lastError = 'Empty content';
+        continue;
+      }
+      
+      console.log(`✅ SUCCESS with ${model}`);
+      break;
+    } catch (modelError) {
+      console.error(`❌ ${model} error:`, modelError.message);
+      lastError = modelError.message;
+      continue;
+    }
+  }
+
+  if (!reply) {
+    console.error('❌ All models failed. Last error:', lastError);
+    return new Response(
+      JSON.stringify({ 
+        success: false,
+        error: `Все модели недоступны: ${lastError}`,
+        models_tried: MODELS
+      }),
+      { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Для парсинга PDF — пытаемся извлечь JSON из ответа
+  if (actionType === 'parse_pdf') {
+    try {
+      let jsonStr = reply.trim();
+      if (jsonStr.startsWith('```json')) {
+        jsonStr = jsonStr.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const parsed = JSON.parse(jsonStr);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          data: parsed,
+          model: usedModel,
+          rawResponse: reply
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (parseError) {
+      console.error('❌ Failed to parse JSON from AI response:', parseError.message);
+      console.error('Raw response:', reply);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: `AI вернул невалидный JSON: ${parseError.message}`,
+          rawResponse: reply,
+          model: usedModel
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+
+  // Для обычного чата
+  return new Response(
+    JSON.stringify({ 
+      reply, 
+      success: true, 
+      source: 'openrouter', 
+      model: usedModel 
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
