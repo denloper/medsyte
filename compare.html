@@ -11,10 +11,123 @@
   <link rel="stylesheet" href="animations.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="database.js"></script>
-  <script src="patient-profile.js"></script>
-  <script src="animations.js"></script>
   <title>Динамика анализов</title>
+  <style>
+    .upload-zone {
+      border: 3px dashed var(--text-3);
+      border-radius: var(--r-lg);
+      padding: 30px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(255, 255, 255, 0.3);
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: var(--green);
+      background: rgba(61, 139, 78, 0.05);
+    }
+    
+    .upload-zone.uploaded {
+      border-color: var(--green);
+      border-style: solid;
+      background: rgba(61, 139, 78, 0.05);
+    }
+    
+    .upload-zone-icon { font-size: 48px; margin-bottom: 12px; }
+    .upload-zone-text { font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+    .upload-zone-subtext { font-size: 12px; color: var(--text-3); }
+    .upload-zone-filename { font-size: 12px; color: var(--green); font-weight: 700; margin-top: 8px; word-break: break-word; }
+    
+    .readonly-field {
+      background: var(--surface-2) !important;
+      color: var(--text-2) !important;
+      cursor: not-allowed !important;
+      opacity: 0.85;
+    }
+    
+    .profile-info {
+      background: rgba(61, 139, 78, 0.08);
+      border: 1px solid rgba(61, 139, 78, 0.2);
+      padding: 8px 12px;
+      border-radius: var(--r-sm);
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .unit-fix-badge {
+      display: inline-block;
+      background: var(--orange);
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      margin-left: 4px;
+      font-weight: 600;
+    }
+    
+    .ai-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%);
+      color: white;
+      padding: 6px 12px;
+      border-radius: var(--r-full);
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    
+    .comparison-arrow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+    
+    .old-value {
+      color: var(--text-3);
+      font-size: 14px;
+      padding: 4px 8px;
+      background: var(--surface-2);
+      border-radius: 6px;
+      text-decoration: line-through;
+      text-decoration-color: var(--text-3);
+    }
+    
+    .new-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--dark);
+      padding: 4px 8px;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+    
+    .status-normal { background: rgba(61, 139, 78, 0.1); color: var(--green); }
+    .status-high { background: rgba(230, 57, 70, 0.1); color: var(--red); }
+    .status-low { background: rgba(244, 162, 97, 0.15); color: var(--orange); }
+    .status-unknown { background: var(--surface-2); color: var(--text-3); }
+  </style>
 </head>
 <body>
 
@@ -41,35 +154,42 @@
         <a href="index.html" class="circle-btn ripple-element">←</a>
         <div>
           <div class="pc-name">Динамика анализов</div>
-          <div class="pc-id">Сравнение двух PDF</div>
+          <div class="pc-id">AI-сравнение двух PDF</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Patient Info -->
+  <!-- Patient Info (из профиля) -->
   <div class="doctor-card animate-on-scroll animate-fade-up tilt-card">
     <div class="doc-row">
       <div class="doc-avatar float-slow">👤</div>
       <div style="flex: 1;">
         <div class="doc-name">Данные пациента</div>
-        <div class="doc-spec">• Для точных референсов</div>
+        <div class="doc-spec">• Из вашего профиля</div>
       </div>
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
       <div>
-        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Пол</label>
-        <div class="pc-pills" style="gap: 6px;">
-          <button class="pill pill-green ripple-element click-scale" id="sexFemale" onclick="selectSex('female')">👩 Жен</button>
-          <button class="pill pill-outline ripple-element click-scale" id="sexMale" onclick="selectSex('male')">👨 Муж</button>
-        </div>
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">
+          Пол <span style="font-size: 10px; color: var(--green);">🔒 из профиля</span>
+        </label>
+        <input type="text" id="sexDisplay" readonly class="readonly-field"
+               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px;">
       </div>
       <div>
-        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Возраст</label>
-        <input type="number" id="ageInput" value="35" min="0" max="120" 
-               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">
+          Возраст <span style="font-size: 10px; color: var(--green);">🔒 из профиля</span>
+        </label>
+        <input type="text" id="ageDisplay" readonly class="readonly-field"
+               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px;">
       </div>
+    </div>
+    
+    <div class="profile-info">
+      <span>ℹ️</span>
+      <span>Данные берутся из вашего профиля на главной странице.</span>
     </div>
   </div>
 
@@ -79,25 +199,35 @@
   </div>
 
   <div class="vitals-grid stagger">
-    <div class="v-card tilt-card ripple-element" id="dropZoneOld" style="cursor: pointer; min-height: 180px;">
-      <div class="v-icon blue float">📄</div>
-      <div class="v-label">Старый анализ</div>
-      <div style="font-size: 14px; color: var(--text-3); margin-top: 8px;" id="oldFileName">Нажмите для выбора</div>
+    <div class="upload-zone" id="dropZoneOld">
+      <div class="upload-zone-icon">📄</div>
+      <div class="upload-zone-text">Старый анализ</div>
+      <div class="upload-zone-subtext">Нажмите или перетащите PDF</div>
+      <div class="upload-zone-filename" id="oldFileName"></div>
       <input type="file" id="fileInputOld" accept="application/pdf" style="display: none;">
     </div>
 
-    <div class="v-card tilt-card ripple-element" id="dropZoneNew" style="cursor: pointer; min-height: 180px;">
-      <div class="v-icon green float-slow">📄</div>
-      <div class="v-label">Новый анализ</div>
-      <div style="font-size: 14px; color: var(--text-3); margin-top: 8px;" id="newFileName">Нажмите для выбора</div>
+    <div class="upload-zone" id="dropZoneNew">
+      <div class="upload-zone-icon">📄</div>
+      <div class="upload-zone-text">Новый анализ</div>
+      <div class="upload-zone-subtext">Нажмите или перетащите PDF</div>
+      <div class="upload-zone-filename" id="newFileName"></div>
       <input type="file" id="fileInputNew" accept="application/pdf" style="display: none;">
     </div>
   </div>
 
+  <!-- AI Badge -->
+  <div style="text-align: center;">
+    <span class="ai-badge">
+      <span>🤖</span>
+      <span>AI автоматически извлечёт и сравнит показатели</span>
+    </span>
+  </div>
+
   <!-- Compare button -->
   <button class="next-btn magnetic-btn ripple-element animate-on-scroll animate-fade-up" 
-          id="compareBtn" onclick="compareFiles()" disabled style="opacity: 0.5;">
-    🔍 Сравнить анализы
+          id="compareBtn" onclick="compareFiles()" disabled style="opacity: 0.5; margin-top: 16px;">
+    🔍 Сравнить анализы с помощью AI
   </button>
 
   <!-- Progress -->
@@ -106,8 +236,8 @@
       <div class="doc-row">
         <div class="doc-avatar"><span class="spin" style="display: inline-block;">⏳</span></div>
         <div style="flex: 1;">
-          <div class="doc-name" id="progressText">Сравниваем анализы...</div>
-          <div class="doc-spec">• Это займёт несколько секунд</div>
+          <div class="doc-name" id="progressText">AI сравнивает анализы...</div>
+          <div class="doc-spec" id="progressSubtext">• Это займёт несколько секунд</div>
         </div>
       </div>
       <div class="progress-track">
@@ -119,8 +249,8 @@
   <!-- Results -->
   <div id="compareResults" style="display: none;"></div>
 
-  <div style="padding: 16px; background: #FFF8E1; border-radius: var(--r-md); margin-bottom: 14px; font-size: 13px; color: #92400E; line-height: 1.5;" class="animate-on-scroll animate-fade-up">
-    ⚕️ Динамика — важный показатель, но требует врачебной интерпретации.
+  <div style="padding: 16px; background: var(--surface-2); border-radius: var(--r-md); margin-top: 20px; font-size: 13px; color: var(--text-2); line-height: 1.5;" class="animate-on-scroll animate-fade-up">
+    ⚕️ <strong>AI-сравнение:</strong> Нейросеть извлекает показатели из обоих PDF и показывает динамику с учётом единиц измерения.
   </div>
 
   <div style="height: 100px;"></div>
@@ -137,30 +267,40 @@
       <div class="nav-icon">📄</div>
       <span class="nav-label">Анализы</span>
     </a>
-    <a href="index.html" class="nav-fab">🩺</a>
+    <a href="chat.html" class="nav-item">
+      <div class="nav-icon">💬</div>
+      <span class="nav-label">ИИ-чат</span>
+    </a>
     <a href="calendar.html" class="nav-item">
       <div class="nav-icon">📅</div>
       <span class="nav-label">Календарь</span>
     </a>
-    <a href="diary.html" class="nav-item active">
+    <a href="compare.html" class="nav-item active">
       <div class="nav-icon">📈</div>
       <span class="nav-label">Динамика</span>
     </a>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-client.js"></script>
 <script src="database.js"></script>
+<script src="patient-profile.js"></script>
+<script src="ai-assistant.js"></script>
 <script src="animations.js"></script>
 <script>
 (function(){
   'use strict';
+
+  const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
   if (window.pdfjsLib) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
 
   let fileOld = null, fileNew = null;
-  let selectedSex = 'female';
+  let patientProfile = { sex: 'female', age: 35 };
 
   function updateTime() {
     const now = new Date();
@@ -179,39 +319,65 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
-  window.selectSex = function(sex) {
-    selectedSex = sex;
-    const fBtn = document.getElementById('sexFemale');
-    const mBtn = document.getElementById('sexMale');
-    fBtn.className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
-    mBtn.className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
-  };
+  // ═══════════════════════════════════════
+  //  ЗАГРУЗКА ПРОФИЛЯ ПАЦИЕНТА
+  // ═══════════════════════════════════════
+  function loadPatientProfile() {
+    try {
+      if (window.PatientProfile && window.PatientProfile.get) {
+        const profile = window.PatientProfile.get();
+        if (profile) {
+          patientProfile.sex = profile.sex || 'female';
+          patientProfile.age = profile.age || 35;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load patient profile:', e);
+    }
+    
+    const sexDisplay = document.getElementById('sexDisplay');
+    const ageDisplay = document.getElementById('ageDisplay');
+    
+    if (sexDisplay) {
+      sexDisplay.value = patientProfile.sex === 'male' ? '👨 Мужской' : '👩 Женский';
+    }
+    if (ageDisplay) {
+      ageDisplay.value = `${patientProfile.age} лет`;
+    }
+  }
 
+  document.addEventListener('DOMContentLoaded', loadPatientProfile);
+  setTimeout(loadPatientProfile, 500);
+
+  // ═══════════════════════════════════════
+  //  DROP ZONES
+  // ═══════════════════════════════════════
   function setupDropZone(zoneId, inputId, nameId, setFile) {
     const zone = document.getElementById(zoneId);
     const input = document.getElementById(inputId);
     const nameEl = document.getElementById(nameId);
     
     zone.addEventListener('click', () => input.click());
+    
     ['dragenter', 'dragover'].forEach(ev => {
       zone.addEventListener(ev, (e) => {
         e.preventDefault();
-        zone.style.borderColor = 'var(--green)';
+        zone.classList.add('dragover');
       });
     });
     ['dragleave', 'drop'].forEach(ev => {
       zone.addEventListener(ev, (e) => {
         e.preventDefault();
-        zone.style.borderColor = '';
+        zone.classList.remove('dragover');
       });
     });
     zone.addEventListener('drop', (e) => {
       if (e.dataTransfer.files.length > 0 && e.dataTransfer.files[0].type === 'application/pdf') {
-        setFile(e.dataTransfer.files[0], nameEl);
+        setFile(e.dataTransfer.files[0], zone, nameEl);
       }
     });
     input.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) setFile(e.target.files[0], nameEl);
+      if (e.target.files.length > 0) setFile(e.target.files[0], zone, nameEl);
     });
   }
 
@@ -223,74 +389,367 @@
     }
   }
 
-  setupDropZone('dropZoneOld', 'fileInputOld', 'oldFileName', (file, el) => {
+  setupDropZone('dropZoneOld', 'fileInputOld', 'oldFileName', (file, zone, el) => {
     fileOld = file;
-    el.innerHTML = `<div style="color: var(--green); font-weight: 700;">✓</div><div style="font-size: 12px; margin-top: 4px; word-break: break-word;">${file.name}</div>`;
+    zone.classList.add('uploaded');
+    el.textContent = `✓ ${file.name}`;
     updateCompareBtn();
+    showToast('Старый анализ загружен', '📄');
   });
-  setupDropZone('dropZoneNew', 'fileInputNew', 'newFileName', (file, el) => {
+  
+  setupDropZone('dropZoneNew', 'fileInputNew', 'newFileName', (file, zone, el) => {
     fileNew = file;
-    el.innerHTML = `<div style="color: var(--green); font-weight: 700;">✓</div><div style="font-size: 12px; margin-top: 4px; word-break: break-word;">${file.name}</div>`;
+    zone.classList.add('uploaded');
+    el.textContent = `✓ ${file.name}`;
     updateCompareBtn();
+    showToast('Новый анализ загружен', '📄');
   });
 
-  async function parsePDF(file, onProgress) {
+  // ═══════════════════════════════════════
+  //  ПАРСИНГ PDF
+  // ═══════════════════════════════════════
+  async function extractTextFromPDF(file, onProgress) {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let fullText = '';
-    const YT = 3;
+    
     for (let i = 1; i <= pdf.numPages; i++) {
       if (onProgress) onProgress(i, pdf.numPages);
       const page = await pdf.getPage(i);
-      const tc = await page.getTextContent();
-      const lm = new Map();
-      tc.items.forEach(item => {
-        const y = Math.round(item.transform[5] / YT) * YT;
-        if (!lm.has(y)) lm.set(y, []);
-        lm.get(y).push({ text: item.str, x: item.transform[4] });
-      });
-      const sl = Array.from(lm.entries())
-        .sort((a, b) => b[0] - a[0])
-        .map(e => e[1].sort((a, b) => a.x - b.x).map(i => i.text).join(' '));
-      fullText += sl.join('\n') + '\n';
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map(item => item.str).join(' ');
+      fullText += pageText + '\n';
     }
+    
     return fullText;
   }
 
-  function updateProgress(percent, text) {
-    document.getElementById('progressBar').style.width = percent + '%';
-    document.getElementById('progressText').textContent = text;
+  // ═══════════════════════════════════════
+  //  ИЗВЛЕЧЕНИЕ ЕДИНИЦ ИЗ PDF
+  // ═══════════════════════════════════════
+  function extractUnitsFromPDF(pdfText) {
+    const unitsMap = {};
+    const unitPatterns = [
+      'г/л', 'g/L', 'г/дл', 'g/dL',
+      'ммоль/л', 'mg/dL', 'мг/дл',
+      'мкмоль/л', 'µmol/L', 'μmol/L',
+      'Ед/л', 'U/L', 'ед/л',
+      'нг/мл', 'ng/mL', 'пг/мл', 'pg/mL', 'мкг/л', 'µg/L', 'μg/L',
+      'мМЕ/л', 'mIU/L', 'мкМЕ/мл', 'µIU/mL', 'μIU/mL', 'МЕ/л',
+      'пмоль/л', 'pmol/L', 'ng/dL',
+      '×10^9/л', '10^9/L', '×10^12/л', '10^12/L',
+      '%', 'мм/ч', 'mm/h',
+      'мкг/мл', 'µg/mL', 'μg/mL', 'мг/л', 'mg/L',
+      'ммоль/моль', 'мг/сут', 'мкг/г', 'нг/л'
+    ];
+    
+    if (!window.labTests || !Array.isArray(window.labTests)) {
+      return unitsMap;
+    }
+    
+    window.labTests.forEach(test => {
+      const testName = (test.canonicalName || '').trim();
+      const shortName = (test.shortName || '').trim();
+      const aliases = test.aliases || [];
+      const names = [testName, shortName, ...aliases].filter(n => n);
+      
+      for (const name of names) {
+        if (!name) continue;
+        
+        const searchPatterns = [
+          new RegExp(`(${escapeRegExp(name)})\\s*[:\\s]\\s*([0-9]+[.,]?[0-9]*)\\s*([а-яА-Яa-zA-Zµμ/\\^×.0-9\\-\\s]{1,20})`, 'i'),
+          new RegExp(`([0-9]+[.,]?[0-9]*)\\s*([а-яА-Яa-zA-Zµμ/\\^×.0-9\\-\\s]{1,20})\\s+(${escapeRegExp(name)})`, 'i')
+        ];
+        
+        for (const pattern of searchPatterns) {
+          const match = pdfText.match(pattern);
+          if (match) {
+            const fragment = match[0];
+            const foundUnit = findUnitInText(fragment, unitPatterns);
+            if (foundUnit) {
+              unitsMap[testName] = foundUnit;
+              break;
+            }
+          }
+        }
+        
+        if (unitsMap[testName]) break;
+      }
+    });
+    
+    return unitsMap;
   }
 
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function findUnitInText(text, unitPatterns) {
+    const sortedUnits = [...unitPatterns].sort((a, b) => b.length - a.length);
+    for (const unit of sortedUnits) {
+      const regex = new RegExp(`(^|\\s|\\()${escapeRegExp(unit)}($|\\s|\\)|,)`, 'i');
+      if (regex.test(text) || text.includes(unit)) return unit;
+    }
+    return null;
+  }
+
+  // ═══════════════════════════════════════
+  //  AI ПАРСИНГ ЧЕРЕЗ EDGE FUNCTION
+  // ═══════════════════════════════════════
+  async function analyzeWithAI(pdfText, pdfUnitsMap, label) {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+      },
+      body: JSON.stringify({
+        action: 'parse_pdf',
+        pdfText: pdfText,
+        patientSex: patientProfile.sex,
+        patientAge: patientProfile.age,
+        pdfUnitsMap: pdfUnitsMap
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error || `AI не смог проанализировать ${label}`);
+    }
+    
+    return result.data;
+  }
+
+  // ═══════════════════════════════════════
+  //  ВАЛИДАЦИЯ С database.js
+  // ═══════════════════════════════════════
+  function validateWithDatabase(aiData, pdfUnitsMap) {
+    const validated = {
+      tests: [],
+      patientInfo: { sex: patientProfile.sex, age: patientProfile.age },
+      labName: aiData.labName,
+      analysisDate: aiData.analysisDate,
+      confidence: aiData.confidence || 0.9
+    };
+    
+    if (!aiData.tests || !Array.isArray(aiData.tests)) return validated;
+    
+    aiData.tests.forEach(aiTest => {
+      const dbTest = window.labTests.find(t => {
+        const name = (t.canonicalName || '').toLowerCase().trim();
+        const short = (t.shortName || '').toLowerCase().trim();
+        const aiName = (aiTest.name || '').toLowerCase().trim();
+        return name === aiName || short === aiName ||
+               (t.aliases || []).some(alias => alias.toLowerCase().trim() === aiName);
+      });
+      
+      if (dbTest) {
+        const testName = dbTest.canonicalName;
+        const ref = window.getReference(dbTest, patientProfile.sex, patientProfile.age);
+        
+        let finalUnit = pdfUnitsMap[testName] || aiTest.unit || ref?.unit || dbTest.units[0];
+        let matchingRef = null;
+        if (dbTest.references) {
+          matchingRef = dbTest.references.find(r => r.unit === finalUnit) || ref;
+        }
+        
+        let finalValue = aiTest.value;
+        let finalRefMin = matchingRef?.min;
+        let finalRefMax = matchingRef?.max;
+        let wasUnitFixed = false;
+        
+        if (pdfUnitsMap[testName] && aiTest.unit !== pdfUnitsMap[testName]) {
+          finalUnit = pdfUnitsMap[testName];
+          wasUnitFixed = true;
+          
+          if (matchingRef && matchingRef.unit !== finalUnit) {
+            const converted = convertRefToUnit(dbTest, matchingRef, finalUnit);
+            if (converted) {
+              finalRefMin = converted.min;
+              finalRefMax = converted.max;
+            }
+          }
+        }
+        
+        let status = 'unknown';
+        if (finalValue !== null && finalValue !== undefined && 
+            finalRefMin !== null && finalRefMax !== null) {
+          if (finalValue < finalRefMin) status = 'low';
+          else if (finalValue > finalRefMax) status = 'high';
+          else status = 'normal';
+        }
+        
+        validated.tests.push({
+          name: testName,
+          shortName: dbTest.shortName,
+          value: finalValue,
+          unit: finalUnit,
+          aiUnit: aiTest.unit,
+          pdfUnit: pdfUnitsMap[testName] || null,
+          wasUnitFixed: wasUnitFixed,
+          referenceMin: finalRefMin,
+          referenceMax: finalRefMax,
+          status: status,
+          source: wasUnitFixed ? 'unit_fixed' : 'validated',
+          category: dbTest.category
+        });
+      } else {
+        validated.tests.push({
+          name: aiTest.name,
+          shortName: aiTest.shortName || '',
+          value: aiTest.value,
+          unit: pdfUnitsMap[aiTest.name] || aiTest.unit || '',
+          referenceMin: aiTest.referenceMin,
+          referenceMax: aiTest.referenceMax,
+          status: aiTest.status || 'unknown',
+          source: 'ai_only',
+          category: 'Другое'
+        });
+      }
+    });
+    
+    return validated;
+  }
+
+  function convertRefToUnit(dbTest, fromRef, toUnit) {
+    const conversions = {
+      'Тестостерон общий': { 'нмоль/л': { 'пг/мл': 288.5, 'нг/мл': 0.2885 }, 'пг/мл': { 'нмоль/л': 0.003467 }, 'нг/мл': { 'нмоль/л': 3.467, 'пг/мл': 1000 } },
+      'Эстрадиол': { 'пмоль/л': { 'пг/мл': 0.2724 }, 'пг/мл': { 'пмоль/л': 3.671 } },
+      '25-гидроксивитамин D': { 'нг/мл': { 'нмоль/л': 2.496 }, 'нмоль/л': { 'нг/мл': 0.4006 } },
+      'Кортизол': { 'нмоль/л': { 'мкг/дл': 0.03624, 'пг/мл': 362.4 }, 'мкг/дл': { 'нмоль/л': 27.59 } },
+      'Прогестерон': { 'нмоль/л': { 'пг/мл': 0.3145 }, 'пг/мл': { 'нмоль/л': 3.18 } },
+      'Глюкоза натощак': { 'ммоль/л': { 'mg/dL': 18.018 }, 'mg/dL': { 'ммоль/л': 0.0555 } },
+      'Холестерин общий': { 'ммоль/л': { 'mg/dL': 38.67 }, 'mg/dL': { 'ммоль/л': 0.02586 } },
+      'Холестерин ЛПНП': { 'ммоль/л': { 'mg/dL': 38.67 }, 'mg/dL': { 'ммоль/л': 0.02586 } },
+      'Холестерин ЛПВП': { 'ммоль/л': { 'mg/dL': 38.67 }, 'mg/dL': { 'ммоль/л': 0.02586 } },
+      'Триглицериды': { 'ммоль/л': { 'mg/dL': 88.57 }, 'mg/dL': { 'ммоль/л': 0.01129 } },
+      'Креатинин': { 'мкмоль/л': { 'mg/dL': 0.0113 }, 'mg/dL': { 'мкмоль/л': 88.4 } }
+    };
+    
+    const testConversions = conversions[dbTest.canonicalName];
+    if (!testConversions) return null;
+    
+    const fromUnit = fromRef.unit;
+    const unitConversions = testConversions[fromUnit];
+    if (!unitConversions || !unitConversions[toUnit]) return null;
+    
+    const factor = unitConversions[toUnit];
+    return {
+      min: fromRef.min !== null ? parseFloat((fromRef.min * factor).toFixed(2)) : null,
+      max: fromRef.max !== null ? parseFloat((fromRef.max * factor).toFixed(2)) : null
+    };
+  }
+
+  // ═══════════════════════════════════════
+  //  СРАВНЕНИЕ ДВУХ НАБОРОВ РЕЗУЛЬТАТОВ
+  // ═══════════════════════════════════════
+  function compareTestResults(oldData, newData) {
+    const comparison = {};
+    const oldTests = {};
+    const newTests = {};
+    
+    oldData.tests.forEach(t => { oldTests[t.name] = t; });
+    newData.tests.forEach(t => { newTests[t.name] = t; });
+    
+    const allKeys = new Set([...Object.keys(oldTests), ...Object.keys(newTests)]);
+    
+    for (const key of allKeys) {
+      const oldT = oldTests[key];
+      const newT = newTests[key];
+      
+      const oldVal = oldT?.value ?? null;
+      const newVal = newT?.value ?? null;
+      
+      let change = null, changePercent = null, direction = 'unchanged';
+      if (oldVal !== null && newVal !== null && oldVal !== 0) {
+        change = newVal - oldVal;
+        changePercent = parseFloat(((change / Math.abs(oldVal)) * 100).toFixed(1));
+        if (change > 0) direction = 'increased';
+        else if (change < 0) direction = 'decreased';
+      }
+      
+      // Берём данные из нового теста как основные
+      const primaryTest = newT || oldT;
+      
+      comparison[key] = {
+        name: key,
+        shortName: primaryTest?.shortName || '',
+        unit: primaryTest?.unit || '',
+        category: primaryTest?.category || 'Другое',
+        referenceMin: primaryTest?.referenceMin,
+        referenceMax: primaryTest?.referenceMax,
+        old: oldVal,
+        new: newVal,
+        oldStatus: oldT?.status || null,
+        newStatus: newT?.status || null,
+        change,
+        changePercent,
+        direction,
+        wasUnitFixed: primaryTest?.wasUnitFixed || false
+      };
+    }
+    
+    return comparison;
+  }
+
+  // ═══════════════════════════════════════
+  //  PROGRESS
+  // ═══════════════════════════════════════
+  function updateProgress(percent, text, subtext = '') {
+    document.getElementById('progressBar').style.width = percent + '%';
+    document.getElementById('progressText').textContent = text;
+    if (subtext) document.getElementById('progressSubtext').textContent = subtext;
+  }
+
+  // ═══════════════════════════════════════
+  //  СРАВНЕНИЕ ФАЙЛОВ (ГЛАВНАЯ ФУНКЦИЯ)
+  // ═══════════════════════════════════════
   window.compareFiles = async function() {
     if (!fileOld || !fileNew) return;
     
     document.getElementById('compareBtn').disabled = true;
     document.getElementById('progressSection').style.display = 'block';
-    updateProgress(5, 'Начинаем сравнение...');
+    updateProgress(5, 'Начинаем анализ...');
 
     try {
-      updateProgress(10, 'Читаем старый анализ...');
-      const tOld = await parsePDF(fileOld, (i, total) => {
-        updateProgress(10 + (i / total) * 30, `Старый: страница ${i}/${total}`);
+      // 1. Старый анализ: извлекаем текст + единицы
+      updateProgress(10, 'Читаем старый анализ...', '• Извлекаем текст');
+      const tOld = await extractTextFromPDF(fileOld, (i, total) => {
+        updateProgress(10 + (i / total) * 10, 'Старый анализ', `Страница ${i}/${total}`);
       });
       
-      updateProgress(45, 'Читаем новый анализ...');
-      const tNew = await parsePDF(fileNew, (i, total) => {
-        updateProgress(45 + (i / total) * 30, `Новый: страница ${i}/${total}`);
+      updateProgress(20, '🔍 Определяем единицы (старый)...');
+      const unitsOld = extractUnitsFromPDF(tOld);
+      
+      // 2. Новый анализ: извлекаем текст + единицы
+      updateProgress(25, 'Читаем новый анализ...', '• Извлекаем текст');
+      const tNew = await extractTextFromPDF(fileNew, (i, total) => {
+        updateProgress(25 + (i / total) * 10, 'Новый анализ', `Страница ${i}/${total}`);
       });
       
-      updateProgress(80, 'Сравниваем показатели...');
-      const age = parseInt(document.getElementById('ageInput').value) || 35;
-      const rOld = window.parseAnalysisText(tOld, selectedSex, age);
-      const rNew = window.parseAnalysisText(tNew, selectedSex, age);
-      const comparison = window.compareResults(rOld, rNew);
+      updateProgress(35, '🔍 Определяем единицы (новый)...');
+      const unitsNew = extractUnitsFromPDF(tNew);
       
-      updateProgress(100, 'Готово!');
+      // 3. AI анализ старого
+      updateProgress(40, '🤖 AI анализирует старый анализ...');
+      const aiOld = await analyzeWithAI(tOld, unitsOld, 'старый анализ');
+      const validatedOld = validateWithDatabase(aiOld, unitsOld);
+      
+      // 4. AI анализ нового
+      updateProgress(70, '🤖 AI анализирует новый анализ...');
+      const aiNew = await analyzeWithAI(tNew, unitsNew, 'новый анализ');
+      const validatedNew = validateWithDatabase(aiNew, unitsNew);
+      
+      // 5. Сравнение
+      updateProgress(90, '📊 Сравниваем результаты...');
+      const comparison = compareTestResults(validatedOld, validatedNew);
+      
+      updateProgress(100, '✓ Готово!');
       
       setTimeout(() => {
         document.getElementById('progressSection').style.display = 'none';
-        renderCompareResults(comparison);
+        renderCompareResults(comparison, validatedOld, validatedNew);
       }, 500);
     } catch (err) {
       console.error(err);
@@ -300,11 +759,20 @@
     }
   };
 
-  function renderCompareResults(comparison) {
-    let better = 0, worse = 0, stable = 0;
+  // ═══════════════════════════════════════
+  //  РЕНДЕР РЕЗУЛЬТАТОВ СРАВНЕНИЯ
+  // ═══════════════════════════════════════
+  function renderCompareResults(comparison, oldData, newData) {
+    let better = 0, worse = 0, stable = 0, newTests = 0;
+    
     Object.values(comparison).forEach(c => {
+      if (c.old === null && c.new !== null) { newTests++; return; }
+      if (c.old !== null && c.new === null) return;
       if (c.old === null || c.new === null) return;
-      const ob = c.oldStatus !== 'normal', nb = c.newStatus !== 'normal';
+      
+      const ob = c.oldStatus !== 'normal' && c.oldStatus !== 'unknown';
+      const nb = c.newStatus !== 'normal' && c.newStatus !== 'unknown';
+      
       if (ob && !nb) better++;
       else if (!ob && nb) worse++;
       else if (ob && nb) {
@@ -320,76 +788,133 @@
       <div class="sec-hd animate-on-scroll animate-slide-left">
         <h2>Итоги сравнения</h2>
       </div>
-      <div class="vitals-grid stagger">
+      
+      <div class="vitals-grid stagger" style="margin-bottom: 16px;">
         <div class="v-card tilt-card ripple-element">
-          <div class="v-icon green">✓</div>
+          <div class="v-icon green">↗</div>
           <div class="v-label">Стало лучше</div>
           <div class="v-value"><span data-counter="${better}">${better}</span></div>
         </div>
         <div class="v-card tilt-card ripple-element">
-          <div class="v-icon red">⚠</div>
+          <div class="v-icon red">↘</div>
           <div class="v-label">Ухудшилось</div>
           <div class="v-value"><span data-counter="${worse}">${worse}</span></div>
         </div>
         <div class="v-card tilt-card ripple-element" style="grid-column: span 2;">
           <div class="v-icon blue">→</div>
-          <div class="v-label">Без изменений</div>
+          <div class="v-label">Без изменений / стабильно</div>
           <div class="v-value"><span data-counter="${stable}">${stable}</span></div>
         </div>
       </div>
+    `;
 
+    // Группировка по категориям
+    const byCategory = {};
+    Object.entries(comparison).forEach(([name, c]) => {
+      if (c.old === null || c.new === null) return;
+      const cat = c.category || 'Другое';
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push([name, c]);
+    });
+
+    html += `
       <div class="sec-hd animate-on-scroll animate-slide-left">
         <h2>Детальное сравнение</h2>
       </div>
     `;
 
-    const entries = Object.entries(comparison).filter(([_, c]) => c.old !== null && c.new !== null);
-    
-    html += '<div class="other-card animate-on-scroll animate-fade-up">';
-    entries.forEach(([name, c], idx) => {
-      const wn = c.oldStatus === 'normal', inn = c.newStatus === 'normal';
-      let trend, arrow, cls;
-      if (wn && !inn) { trend = 'ухудшилось'; arrow = '↘'; cls = 'danger'; }
-      else if (!wn && inn) { trend = 'улучшилось'; arrow = '↗'; cls = 'ok'; }
-      else if (wn && inn) { trend = 'стабильно'; arrow = '→'; cls = 'ok'; }
-      else {
-        if (c.oldStatus === 'high' && c.direction === 'decreased') { trend = 'улучшение'; arrow = '↗'; cls = 'ok'; }
-        else if (c.oldStatus === 'low' && c.direction === 'increased') { trend = 'улучшение'; arrow = '↗'; cls = 'ok'; }
-        else if (c.oldStatus === 'high' && c.direction === 'increased') { trend = 'ухудшение'; arrow = '↘'; cls = 'danger'; }
-        else if (c.oldStatus === 'low' && c.direction === 'decreased') { trend = 'ухудшение'; arrow = '↘'; cls = 'danger'; }
-        else { trend = 'стабильно вне нормы'; arrow = '→'; cls = 'warn'; }
-      }
-      
-      const changeStr = c.change !== null ? 
-        `${c.change > 0 ? '+' : ''}${c.change.toFixed(2)} (${c.changePercent > 0 ? '+' : ''}${c.changePercent}%)` : '';
-      
-      const bgColor = cls === 'ok' ? 'green-bg' : cls === 'warn' ? 'amber-bg' : 'red-bg';
-      
+    Object.entries(byCategory).forEach(([category, tests]) => {
       html += `
-        <div class="metric-row ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.04}s backwards;">
-          <div class="mr-circle ${bgColor}">${arrow}</div>
-          <div class="mr-info">
-            <div class="mr-label">${name}</div>
-            <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
-              <span style="font-size: 14px; color: var(--text-3);">${c.old}</span>
-              <span style="color: var(--text-3);">→</span>
-              <span style="font-size: 18px; font-weight: 700; color: var(--dark);">${c.new}</span>
-            </div>
-            ${changeStr ? `<div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">${changeStr}</div>` : ''}
+        <div class="other-card animate-on-scroll animate-fade-up" style="margin-bottom: 16px;">
+          <div class="other-card-head" style="margin-bottom: 12px;">
+            ${category}
+            <span class="see-all">${tests.length}</span>
           </div>
-          <div style="font-size: 11px; font-weight: 700; color: var(--${cls === 'ok' ? 'green' : cls === 'warn' ? 'orange' : 'red'});">
-            ${trend}
-          </div>
-        </div>
       `;
+      
+      tests.forEach(([name, c], idx) => {
+        const wn = c.oldStatus === 'normal';
+        const inn = c.newStatus === 'normal';
+        let trend, arrow, trendClass;
+        
+        if (wn && !inn) { trend = 'ухудшилось'; arrow = '↘'; trendClass = 'danger'; }
+        else if (!wn && inn) { trend = 'улучшилось'; arrow = '↗'; trendClass = 'ok'; }
+        else if (wn && inn) { trend = 'стабильно в норме'; arrow = '→'; trendClass = 'ok'; }
+        else {
+          if (c.oldStatus === 'high' && c.direction === 'decreased') { trend = 'улучшение'; arrow = '↗'; trendClass = 'ok'; }
+          else if (c.oldStatus === 'low' && c.direction === 'increased') { trend = 'улучшение'; arrow = '↗'; trendClass = 'ok'; }
+          else if (c.oldStatus === 'high' && c.direction === 'increased') { trend = 'ухудшение'; arrow = '↘'; trendClass = 'danger'; }
+          else if (c.oldStatus === 'low' && c.direction === 'decreased') { trend = 'ухудшение'; arrow = '↘'; trendClass = 'danger'; }
+          else { trend = 'вне нормы'; arrow = '→'; trendClass = 'warn'; }
+        }
+        
+        const changeStr = c.change !== null ? 
+          `${c.change > 0 ? '+' : ''}${c.change.toFixed(2)} (${c.changePercent > 0 ? '+' : ''}${c.changePercent}%)` : '';
+        
+        const bgColor = trendClass === 'ok' ? 'green-bg' : trendClass === 'warn' ? 'amber-bg' : 'red-bg';
+        const statusOldBadge = c.oldStatus === 'normal' ? 'status-normal' : 
+                               c.oldStatus === 'high' ? 'status-high' : 
+                               c.oldStatus === 'low' ? 'status-low' : 'status-unknown';
+        const statusNewBadge = c.newStatus === 'normal' ? 'status-normal' : 
+                               c.newStatus === 'high' ? 'status-high' : 
+                               c.newStatus === 'low' ? 'status-low' : 'status-unknown';
+        
+        const refRange = (c.referenceMin !== null && c.referenceMax !== null) 
+          ? `${c.referenceMin} - ${c.referenceMax} ${c.unit || ''}` : '';
+        
+        const unitFixBadge = c.wasUnitFixed ? '<span class="unit-fix-badge">ед. исправлены</span>' : '';
+        
+        html += `
+          <div class="metric-row ripple-element" style="animation: fadeInUp 0.4s ease ${idx * 0.04}s backwards;">
+            <div class="mr-circle ${bgColor}">${arrow}</div>
+            <div class="mr-info">
+              <div class="mr-label">
+                ${name}
+                ${c.shortName ? `<span style="color: var(--text-3); font-weight: 400;"> (${c.shortName})</span>` : ''}
+                ${unitFixBadge}
+              </div>
+              
+              <div class="comparison-arrow">
+                <span class="old-value">
+                  ${c.old !== null ? c.old : '—'} ${c.unit || ''}
+                </span>
+                <span style="color: var(--text-3);">→</span>
+                <span class="new-value">
+                  ${c.new !== null ? c.new : '—'} ${c.unit || ''}
+                </span>
+                <span class="status-badge ${statusNewBadge}">${
+                  c.newStatus === 'normal' ? '✓ норма' : 
+                  c.newStatus === 'high' ? '↑ выше' : 
+                  c.newStatus === 'low' ? '↓ ниже' : '?'
+                }</span>
+              </div>
+              
+              ${changeStr ? `<div style="font-size: 11px; color: var(--text-3); margin-top: 4px;">📊 Изменение: ${changeStr}</div>` : ''}
+              ${refRange ? `<div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">📏 Норма: ${refRange}</div>` : ''}
+            </div>
+            <div style="font-size: 11px; font-weight: 700; color: var(--${trendClass === 'ok' ? 'green' : trendClass === 'warn' ? 'orange' : 'red'}); white-space: nowrap;">
+              ${trend}
+            </div>
+          </div>
+        `;
+      });
+      
+      html += `</div>`;
     });
-    html += '</div>';
+
+    // Кнопка "Спросить AI"
+    html += `
+      <div style="margin-top: 20px;">
+        <button class="next-btn ripple-element" onclick="askAIAboutComparison()" style="background: var(--dark);">
+          🤖 Спросить AI про динамику
+        </button>
+      </div>
+    `;
 
     document.getElementById('compareResults').innerHTML = html;
     document.getElementById('compareResults').style.display = 'block';
     document.getElementById('compareResults').scrollIntoView({ behavior: 'smooth' });
     
-    // Счётчики
     setTimeout(() => {
       document.querySelectorAll('#compareResults [data-counter]').forEach(el => {
         if (window.AnimationsEngine) {
@@ -398,8 +923,69 @@
       });
     }, 300);
     
+    window.lastComparison = comparison;
+    window.lastOldData = oldData;
+    window.lastNewData = newData;
+    
     showToast('Сравнение завершено', '✓');
   }
+
+  // ═══════════════════════════════════════
+  //  СПРОСИТЬ AI ПРО ДИНАМИКУ
+  // ═══════════════════════════════════════
+  window.askAIAboutComparison = function() {
+    if (!window.lastComparison) {
+      showToast('Нет данных для анализа', '⚠️');
+      return;
+    }
+    
+    const comparison = window.lastComparison;
+    
+    let question = 'Проанализируй динамику моих анализов (старый → новый):\n\n';
+    question += `Пациент: ${patientProfile.sex === 'male' ? 'мужчина' : 'женщина'}, ${patientProfile.age} лет\n\n`;
+    
+    const improved = [];
+    const worsened = [];
+    const stable = [];
+    
+    Object.entries(comparison).forEach(([name, c]) => {
+      if (c.old === null || c.new === null) return;
+      
+      const wn = c.oldStatus === 'normal';
+      const inn = c.newStatus === 'normal';
+      const line = `• ${name}: ${c.old} ${c.unit || ''} (${c.oldStatus}) → ${c.new} ${c.unit || ''} (${c.newStatus})`;
+      
+      if (wn && !inn) worsened.push(line);
+      else if (!wn && inn) improved.push(line);
+      else if (wn && inn) stable.push(line);
+      else {
+        if ((c.oldStatus === 'high' && c.direction === 'decreased') || 
+            (c.oldStatus === 'low' && c.direction === 'increased')) {
+          improved.push(line);
+        } else if ((c.oldStatus === 'high' && c.direction === 'increased') || 
+                   (c.oldStatus === 'low' && c.direction === 'decreased')) {
+          worsened.push(line);
+        } else {
+          stable.push(line);
+        }
+      }
+    });
+    
+    if (improved.length > 0) {
+      question += '**📈 Улучшения:**\n' + improved.join('\n') + '\n\n';
+    }
+    if (worsened.length > 0) {
+      question += '**📉 Ухудшения:**\n' + worsened.join('\n') + '\n\n';
+    }
+    if (stable.length > 0) {
+      question += `**➡️ Стабильно (${stable.length} показателей):** без изменений\n\n`;
+    }
+    
+    question += 'Дай развёрнутую интерпретацию динамики: что означает улучшение/ухудшение, какие факторы могли повлиять, и рекомендации по дальнейшему наблюдению.';
+    
+    sessionStorage.setItem('pending_chat_message', question);
+    window.location.href = 'chat.html';
+  };
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));

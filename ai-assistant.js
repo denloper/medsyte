@@ -1,6 +1,7 @@
 /**
- * AI Medical Assistant v4.0
- * Гибридная архитектура: DB + PDF + Internet fallback
+ * AI Medical Assistant v5.0
+ * =========================
+ * Полная передача database.js в ИИ + AI-парсинг PDF + Supabase синхронизация
  */
 (function() {
   'use strict';
@@ -8,18 +9,39 @@
   const SUPABASE_URL = 'https://lmhdadvbgnkmgtvdzbxk.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaGRhZHZiZ25rbWd0dmR6YnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM2OTM1MTcsImV4cCI6MjA5OTI2OTUxN30.XFtx4Ytax8F7Ud_PE68jJo-EuOs6Oe_Ic0PSZTjEdNs';
 
-  const sb = window.supabaseClient || null;
+  // ═══════════════════════════════════════
+  //  ИНИЦИАЛИЗАЦИЯ SUPABASE КЛИЕНТА
+  // ═══════════════════════════════════════
+  let sb = null;
 
-  if (!sb) {
-    console.warn('⚠️ Supabase client not available. Chat sync disabled.');
-  } else {
-    console.log('✅ AI Assistant: using shared Supabase client');
+  function getSupabaseClient() {
+    if (sb) return sb;
+    if (window.supabaseClient) {
+      sb = window.supabaseClient;
+      console.log('✅ AI Assistant: подключён к общему Supabase клиенту');
+      return sb;
+    }
+    if (window.supabase && window.supabase.createClient) {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+      console.log('✅ AI Assistant: создан собственный Supabase клиент');
+      return sb;
+    }
+    console.warn('⚠️ Supabase client not available');
+    return null;
   }
+
+  const initialClient = getSupabaseClient();
 
   const LOCAL_STORAGE_KEY = 'ai_chat_history_v1';
   const IMPORTED_PDFS_KEY = 'imported_medical_pdfs';
   const MAX_HISTORY = 50;
-  const MAX_CONTEXT_MESSAGES = 10;
+  const MAX_CONTEXT_MESSAGES = 5;
 
   const ALLOWED_SOURCES = ['gemini', 'groq', 'openrouter', 'local', 'deepseek', 'llama', 'gemma', 'medical-search'];
 
@@ -27,106 +49,197 @@
   let isUserAuthenticated = false;
   let currentUserId = null;
 
-  const SYSTEM_PROMPT = `📌 БАЗА ЗНАНИЙ: Ты имеешь доступ к двум источникам медицинских данных:
-1. 📊 **Встроенная база** (database.js) — 71 лабораторный тест, 17 диагностических правил, 27 рекомендаций по добавкам
-2. 📄 **Импортированные PDF** — медицинские учебники, клинические рекомендации, протоколы лечения
+  // ═══════════════════════════════════════
+  //  СИСТЕМНЫЙ ПРОМПТ
+  // ═══════════════════════════════════════
+  const SYSTEM_PROMPT = `📌 БАЗА ЗНАНИЙ: Ты — медицинский AI-ассистент в приложении "Семейный доктор".
 
-**ПРИОРИТЕТ ИСТОЧНИКОВ:**
-- 🥇 **ПЕРВЫМ ДЕЛОМ** используй данные из импортированных PDF (помечены 📄 [из PDF])
-- 🥈 **ВТОРЫМ ДЕЛОМ** используй встроенную базу (помечены 📊 [база])
-- 🥉 Если информации нет в обоих источниках — честно скажи: "В моей базе знаний нет данных по этому вопросу. Я могу найти актуальную информацию в медицинских источниках (UpToDate, ВОЗ, PubMed) — хотите?"
+Тебе предоставлена **ПОЛНАЯ БАЗА ДАННЫХ** database.js в следующем сообщении. Она содержит:
+- 🧪 Все лабораторные тесты с синонимами (aliases), единицами измерения и референсными диапазонами
+- 🏥 Все диагностические правила (комбинации отклонений → диагнозы)
+- 💊 Полная карта рекомендаций при отклонениях (supplementMap) с описаниями, опасностями и назначениями
+- 🛡 Профилактические рекомендации
 
-**СТРОГИЕ ПРАВИЛА:**
-1. НИКОГДА не выдумывай нормы, дозировки или диагнозы
-2. ВСЕГДА указывай источник информации (📄 [из PDF] или 📊 [база])
-3. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
-4. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
-5. Для тревожных симптомов (боль в груди, одышка, потеря сознания, кровь) — немедленно советуй вызвать 112
-6. НЕ назначай лечение и лекарства без консультации врача — только общие рекомендации
-7. Отвечай ТОЛЬКО на русском языке
-8. Используй markdown: **жирный** для важного, • для списков
+**КРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА РАБОТЫ С БАЗОЙ:**
+1. ✅ Используй ТОЧНЫЕ данные из предоставленной базы — НЕ ВЫДУМЫВАЙ нормы, дозировки или диагнозы
+2. ✅ При упоминании теста используй его ТОЧНОЕ canonicalName из базы
+3. ✅ Учитывай пол и возраст пациента при выборе референсного диапазона
+4. ✅ Синонимы (aliases) помогают понять, о каком тесте говорит пользователь
+5. ✅ Если теста нет в базе — честно скажи об этом
+6. ✅ Для интерпретации используй interpretationBands если они есть (например, преддиабет, диабет)
+
+**СТРОГИЕ МЕДИЦИНСКИЕ ПРАВИЛА:**
+1. НИКОГДА не ставь окончательных диагнозов — только предполагаемые состояния
+2. ВСЕГДА добавляй дисклеймер: "Это не медицинская консультация. Обратитесь к врачу."
+3. Для тревожных симптомов (боль в груди, одышка, потеря сознания, кровь) — немедленно советуй вызвать 112
+4. НЕ назначай лечение и лекарства без консультации врача — только общие рекомендации
+5. Отвечай ТОЛЬКО на русском языке
+6. Используй markdown: **жирный** для важного, • для списков
 
 **ФОРМАТ ОТВЕТА:**
 - 📊 Краткий анализ ситуации (2-3 предложения)
 - 🔍 Возможные причины (список через •)
-- 🧪 Рекомендуемые анализы (с указанием источника: 📄 или 📊)
-- 💊 Рекомендации по лечению (с указанием источника)
+- 🧪 Рекомендуемые анализы (с указанием норм из базы и единиц измерения)
+- 💊 Рекомендации (с указанием источника: supplementMap)
 - 👨‍⚕️ К какому врачу обратиться
-- ⚕️ Дисклеймер в конце
+- ⚕️ Дисклеймер в конце`;
 
-**ВАЖНО:** Если вопрос касается конкретного лекарства, протокола лечения или клинической рекомендации — ищи в первую очередь в импортированных PDF документах.`;
-
-  function getCombinedKnowledgeBase() {
-    const combined = {
-      tests: [],
-      diagnoses: [],
-      treatments: [],
-      drugs: [],
-      guidelines: [],
-      sources: []
-    };
-
+  // ═══════════════════════════════════════
+  //  ПОЛНЫЙ ДАМП БАЗЫ ДАННЫХ (database.js)
+  //  Передаёт ВСЕ данные из файла в ИИ
+  // ═══════════════════════════════════════
+  function buildFullDatabaseDump() {
+    const sections = [];
+    
+    // ═══════ 1. ВСЕ ЛАБОРАТОРНЫЕ ТЕСТЫ ═══════
     if (window.labTests && Array.isArray(window.labTests)) {
-      combined.tests = window.labTests.map(t => ({ ...t, source: 'database.js' }));
+      sections.push(`🧪 ПОЛНАЯ БАЗА ЛАБОРАТОРНЫХ ТЕСТОВ (${window.labTests.length} тестов):`);
+      
+      window.labTests.forEach(test => {
+        let testStr = `\n### ${test.canonicalName.trim()}`;
+        if (test.shortName) testStr += ` [${test.shortName.trim()}]`;
+        testStr += ` (категория: ${test.category.trim()})`;
+        
+        if (test.aliases && test.aliases.length > 0) {
+          const cleanAliases = test.aliases.map(a => a.trim()).filter(a => a);
+          testStr += `\n  Синонимы: ${cleanAliases.join(', ')}`;
+        }
+        
+        if (test.units && test.units.length > 0) {
+          const cleanUnits = test.units.map(u => u.trim()).filter(u => u);
+          testStr += `\n  Единицы: ${cleanUnits.join(', ') || 'безразмерный'}`;
+        }
+        
+        if (test.references && test.references.length > 0) {
+          testStr += `\n  Референсы:`;
+          test.references.forEach(ref => {
+            const sexRu = ref.sex === 'male' ? 'муж' : 
+                         ref.sex === 'female' ? 'жен' : 'любой';
+            const ageRange = `${ref.ageMin}-${ref.ageMax} лет`;
+            const minStr = ref.min !== null && ref.min !== undefined ? ref.min : '—';
+            const maxStr = ref.max !== null && ref.max !== undefined ? ref.max : '∞';
+            testStr += `\n    • ${sexRu}, ${ageRange}: ${minStr} — ${maxStr} ${ref.unit?.trim() || ''}`;
+          });
+        }
+        
+        if (test.interpretationBands && test.interpretationBands.length > 0) {
+          testStr += `\n  Клинические интерпретации:`;
+          test.interpretationBands.forEach(band => {
+            let range = '';
+            if (band.min !== undefined && band.max !== undefined) {
+              range = `${band.min} — ${band.max} ${band.unit?.trim() || ''}`;
+            } else if (band.max !== undefined) {
+              range = `до ${band.max} ${band.unit?.trim() || ''}`;
+            } else if (band.min !== undefined) {
+              range = `от ${band.min} ${band.unit?.trim() || ''}`;
+            }
+            testStr += `\n    • ${band.label.trim()}: ${range}`;
+          });
+        }
+        
+        sections.push(testStr);
+      });
     }
+    
+    // ═══════ 2. ВСЕ ДИАГНОСТИЧЕСКИЕ ПРАВИЛА ═══════
     if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
-      combined.diagnoses = window.diagnosticRules.map(r => ({ ...r, source: 'database.js' }));
+      sections.push(`\n\n🏥 ДИАГНОСТИЧЕСКИЕ ПРАВИЛА (${window.diagnosticRules.length} правил):`);
+      
+      window.diagnosticRules.forEach(rule => {
+        const testsStr = Object.entries(rule.results || {}).map(([testName, status]) => {
+          const statusRu = status === 'high' ? '↑ повышен' : 
+                           status === 'low' ? '↓ понижен' : status;
+          return `${testName.trim()} ${statusRu}`;
+        }).join(', ');
+        
+        const dangerRu = rule.danger === 'high' ? 'высокая' : 
+                         rule.danger === 'medium' ? 'средняя' : 'низкая';
+        
+        const doctorsRu = (rule.doctors || []).map(d => d.trim()).join(', ');
+        
+        sections.push(`\n• ${rule.name.trim()} (опасность: ${dangerRu})`);
+        sections.push(`  Условия: ${testsStr}`);
+        sections.push(`  Врачи: ${doctorsRu || 'не указаны'}`);
+      });
     }
+    
+    // ═══════ 3. ВСЕ РЕКОМЕНДАЦИИ ПО ДОБАВКАМ ═══════
     if (window.supplementMap && typeof window.supplementMap === 'object') {
-      combined.treatments = Object.entries(window.supplementMap).map(([test, data]) => ({
-        test, recommendations: data, source: 'database.js'
-      }));
+      const keys = Object.keys(window.supplementMap);
+      sections.push(`\n\n💊 РЕКОМЕНДАЦИИ ПРИ ОТКЛОНЕНИЯХ (${keys.length} тестов):`);
+      
+      keys.forEach(testName => {
+        const testMap = window.supplementMap[testName];
+        sections.push(`\n### ${testName.trim()}:`);
+        
+        Object.entries(testMap).forEach(([status, rec]) => {
+          const statusRu = status === 'high' ? 'ПОВЫШЕН ↑' : 
+                           status === 'low' ? 'ПОНИЖЕН ↓' : status;
+          const dangerRu = rec.danger === 'high' ? 'высокая' : 
+                           rec.danger === 'medium' ? 'средняя' : 'низкая';
+          const doctorsRu = (rec.doctors || []).map(d => d.trim()).join(', ');
+          
+          sections.push(`\n  **${statusRu}** (опасность: ${dangerRu})`);
+          if (rec.supplement) sections.push(`    💊 Рекомендация: ${rec.supplement.trim()}`);
+          if (rec.description) sections.push(`    📖 Описание: ${rec.description.trim()}`);
+          if (rec.dangerDesc) sections.push(`    ⚠️ Опасность: ${rec.dangerDesc.trim()}`);
+          if (rec.duration) sections.push(`    ⏱ Длительность: ${rec.duration.trim()}`);
+          if (rec.note) sections.push(`    📝 Примечание: ${rec.note.trim()}`);
+          if (doctorsRu) sections.push(`    👨‍⚕️ Врачи: ${doctorsRu}`);
+        });
+      });
     }
-
-    try {
-      const importedData = localStorage.getItem(IMPORTED_PDFS_KEY);
-      if (importedData) {
-        const imported = JSON.parse(importedData);
-        if (imported.tests) combined.tests = combined.tests.concat(imported.tests.map(t => ({ ...t, source: 'imported_pdf' })));
-        if (imported.diagnoses) combined.diagnoses = combined.diagnoses.concat(imported.diagnoses.map(d => ({ ...d, source: 'imported_pdf' })));
-        if (imported.treatments) combined.treatments = combined.treatments.concat(imported.treatments.map(t => ({ ...t, source: 'imported_pdf' })));
-        if (imported.drugs) combined.drugs = imported.drugs.map(d => ({ ...d, source: 'imported_pdf' }));
-        if (imported.guidelines) combined.guidelines = imported.guidelines.map(g => ({ ...g, source: 'imported_pdf' }));
-        if (imported.documents) combined.sources = imported.documents;
-      }
-    } catch (e) {
-      console.warn('⚠️ Failed to load imported PDFs:', e);
+    
+    // ═══════ 4. ПРОФИЛАКТИЧЕСКИЕ РЕКОМЕНДАЦИИ ═══════
+    if (window.preventiveRecommendations && Array.isArray(window.preventiveRecommendations)) {
+      sections.push(`\n\n🛡 ПРОФИЛАКТИЧЕСКИЕ РЕКОМЕНДАЦИИ (${window.preventiveRecommendations.length}):`);
+      
+      window.preventiveRecommendations.forEach(rec => {
+        const doctorsRu = (rec.doctors || []).map(d => d.trim()).join(', ');
+        sections.push(`\n• ${rec.supplement.trim()}`);
+        if (rec.duration) sections.push(`  ⏱ Длительность: ${rec.duration.trim()}`);
+        if (rec.note) sections.push(`  📝 ${rec.note.trim()}`);
+        if (doctorsRu) sections.push(`  👨‍⚕️ Врачи: ${doctorsRu}`);
+      });
     }
-
-    return combined;
+    
+    return sections.join('\n');
   }
 
+  // ═══════════════════════════════════════
+  //  ПРОВЕРКА: есть ли информация в базе
+  // ═══════════════════════════════════════
   function hasKnowledgeInDatabase(query) {
     if (!query) return false;
     const lowerQuery = query.toLowerCase();
-    const kb = getCombinedKnowledgeBase();
-
-    const testMatch = kb.tests.some(test => {
-      const name = (test.canonicalName || test.name || '').toLowerCase();
-      const short = (test.shortName || '').toLowerCase();
-      const aliases = (test.aliases || []).map(a => a.toLowerCase());
-      return name.includes(lowerQuery) || short.includes(lowerQuery) || 
-             aliases.some(alias => alias.includes(lowerQuery));
-    });
-    if (testMatch) return true;
-
-    const ruleMatch = kb.diagnoses.some(rule => {
-      const name = (rule.name || '').toLowerCase();
-      const tests = Object.keys(rule.results || {}).map(k => k.toLowerCase());
-      return name.includes(lowerQuery) || tests.some(t => t.includes(lowerQuery));
-    });
-    if (ruleMatch) return true;
-
-    const supplementMatch = kb.treatments.some(t => 
-      (t.test || '').toLowerCase().includes(lowerQuery)
-    );
-    if (supplementMatch) return true;
-
-    const drugMatch = kb.drugs.some(d => 
-      (d.name || '').toLowerCase().includes(lowerQuery)
-    );
-    if (drugMatch) return true;
-
+    
+    if (window.labTests && Array.isArray(window.labTests)) {
+      const testMatch = window.labTests.some(test => {
+        const name = (test.canonicalName || '').toLowerCase();
+        const short = (test.shortName || '').toLowerCase();
+        const aliases = (test.aliases || []).map(a => a.toLowerCase());
+        return name.includes(lowerQuery) || short.includes(lowerQuery) || 
+               aliases.some(alias => alias.includes(lowerQuery));
+      });
+      if (testMatch) return true;
+    }
+    
+    if (window.diagnosticRules && Array.isArray(window.diagnosticRules)) {
+      const ruleMatch = window.diagnosticRules.some(rule => {
+        const name = (rule.name || '').toLowerCase();
+        const tests = Object.keys(rule.results || {}).map(k => k.toLowerCase());
+        return name.includes(lowerQuery) || tests.some(t => t.includes(lowerQuery));
+      });
+      if (ruleMatch) return true;
+    }
+    
+    if (window.supplementMap && typeof window.supplementMap === 'object') {
+      const supplementMatch = Object.keys(window.supplementMap).some(key => 
+        key.toLowerCase().includes(lowerQuery)
+      );
+      if (supplementMatch) return true;
+    }
+    
     const medicalKeywords = [
       'анемия', 'гемоглобин', 'холестерин', 'сахар', 'ттг', 'витамин d',
       'железо', 'липидограмма', 'почки', 'печень', 'щитовидка', 'тропонин',
@@ -137,104 +250,49 @@
     return medicalKeywords.some(term => lowerQuery.includes(term));
   }
 
+  // ═══════════════════════════════════════
+  //  ПОСТРОЕНИЕ РЕЛЕВАНТНОГО КОНТЕКСТА
+  // ═══════════════════════════════════════
   function buildRelevantContext(userMessage, userProfile) {
     const context = [];
     const lowerMsg = userMessage.toLowerCase();
-    const kb = getCombinedKnowledgeBase();
-
+    
     if (userProfile) {
       context.push(`👤 ПАЦИЕНТ: ${userProfile.name || userProfile.full_name || 'не указано'}, ${userProfile.sex === 'male' ? 'мужчина' : userProfile.sex === 'female' ? 'женщина' : 'пол не указан'}, ${userProfile.age || '?'} лет`);
     }
-
-    if (kb.sources.length > 0) {
-      context.push(`\n📚 ИСТОЧНИКИ БАЗЫ ЗНАНИЙ (импортированные PDF):`);
-      kb.sources.slice(0, 5).forEach(src => {
-        context.push(`• ${src.fileName || src.title || 'Документ'}`);
-      });
-    }
-
-    const relevantTests = [];
-    kb.tests.forEach(test => {
-      const name = (test.canonicalName || test.name || '').toLowerCase();
-      const short = (test.shortName || '').toLowerCase();
-      const aliases = (test.aliases || []).map(a => a.toLowerCase());
-      const matched = name.includes(lowerMsg) || short.includes(lowerMsg) ||
-                      aliases.some(alias => lowerMsg.includes(alias));
-      if (matched && relevantTests.length < 10) {
-        relevantTests.push(test);
+    
+    // Импортированные PDF
+    try {
+      const importedData = localStorage.getItem(IMPORTED_PDFS_KEY);
+      if (importedData) {
+        const imported = JSON.parse(importedData);
+        if (imported.documents && imported.documents.length > 0) {
+          context.push(`\n📚 ИСТОЧНИКИ БАЗЫ ЗНАНИЙ (импортированные PDF):`);
+          imported.documents.slice(0, 5).forEach(src => {
+            context.push(`• ${src.fileName || src.title || 'Документ'}`);
+          });
+        }
+        
+        // Ищем релевантные тесты из PDF
+        if (imported.tests) {
+          const relevantTests = imported.tests.filter(test => {
+            const name = (test.name || test.canonicalName || '').toLowerCase();
+            return name.includes(lowerMsg);
+          }).slice(0, 5);
+          
+          if (relevantTests.length > 0) {
+            context.push(`\n🧪 РЕЛЕВАНТНЫЕ ТЕСТЫ ИЗ PDF:`);
+            relevantTests.forEach(t => {
+              context.push(`• ${t.name || t.canonicalName} (${t.shortName || ''}): ${t.description || ''} 📄 [PDF]`);
+            });
+          }
+        }
       }
-    });
-    if (relevantTests.length > 0) {
-      context.push(`\n🧪 РЕЛЕВАНТНЫЕ ТЕСТЫ:`);
-      relevantTests.forEach(t => {
-        const ref = t.references && t.references[0];
-        const tag = t.source === 'imported_pdf' ? '📄 [PDF]' : '📊 [база]';
-        const normStr = ref ? `${ref.min}-${ref.max} ${ref.unit || ''}`.trim() : '—';
-        context.push(`• ${t.canonicalName || t.name} (${t.shortName || ''}): норма ${normStr} ${tag}`);
-      });
+    } catch (e) {
+      console.warn('⚠️ Failed to load imported PDFs:', e);
     }
-
-    const relevantDiagnoses = [];
-    kb.diagnoses.forEach(rule => {
-      const name = (rule.name || '').toLowerCase();
-      const testsMatch = rule.results && Object.keys(rule.results).some(test => 
-        lowerMsg.includes(test.toLowerCase())
-      );
-      if ((name.includes(lowerMsg) || testsMatch) && relevantDiagnoses.length < 5) {
-        relevantDiagnoses.push(rule);
-      }
-    });
-    if (relevantDiagnoses.length > 0) {
-      context.push(`\n🏥 ВОЗМОЖНЫЕ СОСТОЯНИЯ:`);
-      relevantDiagnoses.forEach(r => {
-        const tag = r.source === 'imported_pdf' ? '📄 [PDF]' : '📊 [база]';
-        context.push(`• ${r.name} (уровень: ${r.danger}) → ${(r.doctors || []).join(', ')} ${tag}`);
-      });
-    }
-
-    const relevantTreatments = [];
-    kb.treatments.forEach(t => {
-      if ((t.test || '').toLowerCase().includes(lowerMsg) && relevantTreatments.length < 5) {
-        relevantTreatments.push(t);
-      }
-    });
-    if (relevantTreatments.length > 0) {
-      context.push(`\n💊 РЕКОМЕНДАЦИИ:`);
-      relevantTreatments.forEach(t => {
-        const tag = t.source === 'imported_pdf' ? '📄 [PDF]' : '📊 [база]';
-        Object.entries(t.recommendations || {}).forEach(([status, rec]) => {
-          const statusRu = status === 'high' ? '↑ повышен' : '↓ понижен';
-          context.push(`• ${t.test} (${statusRu}): ${rec.supplement || 'консультация'} → ${(rec.doctors || []).join(', ')} ${tag}`);
-        });
-      });
-    }
-
-    if (kb.drugs.length > 0) {
-      const relevantDrugs = kb.drugs.filter(d => 
-        (d.name || '').toLowerCase().includes(lowerMsg)
-      ).slice(0, 5);
-      if (relevantDrugs.length > 0) {
-        context.push(`\n💊 ЛЕКАРСТВА:`);
-        relevantDrugs.forEach(d => {
-          context.push(`• ${d.name}: ${d.description || ''} ${d.dosage ? `(доза: ${d.dosage})` : ''} 📄 [PDF]`);
-        });
-      }
-    }
-
-    if (kb.guidelines.length > 0) {
-      const relevantGuidelines = kb.guidelines.filter(g => {
-        const title = (g.title || '').toLowerCase();
-        const content = (g.content || '').toLowerCase();
-        return title.includes(lowerMsg) || content.includes(lowerMsg);
-      }).slice(0, 3);
-      if (relevantGuidelines.length > 0) {
-        context.push(`\n📋 КЛИНИЧЕСКИЕ РЕКОМЕНДАЦИИ:`);
-        relevantGuidelines.forEach(g => {
-          context.push(`• ${g.title}: ${(g.content || '').slice(0, 300)}... 📄 [PDF]`);
-        });
-      }
-    }
-
+    
+    // Последние анализы из localStorage
     try {
       const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
       if (history.length > 0) {
@@ -253,18 +311,22 @@
         }
       }
     } catch(e) {}
-
+    
     return context.length > 0 ? context.join('\n') : '';
   }
 
+  // ═══════════════════════════════════════
+  //  ПРОВЕРКА АВТОРИЗАЦИИ
+  // ═══════════════════════════════════════
   async function checkAuth() {
-    if (!sb) {
+    const client = getSupabaseClient();
+    if (!client) {
       isUserAuthenticated = false;
       currentUserId = null;
       return;
     }
     try {
-      const { data: { user }, error } = await sb.auth.getUser();
+      const { data: { user }, error } = await client.auth.getUser();
       if (error) {
         console.warn('⚠️ Auth error:', error.message);
         isUserAuthenticated = false;
@@ -285,10 +347,14 @@
     }
   }
 
+  // ═══════════════════════════════════════
+  //  ЗАГРУЗКА ИСТОРИИ ИЗ SUPABASE
+  // ═══════════════════════════════════════
   async function loadHistoryFromSupabase() {
-    if (!isUserAuthenticated || !sb || !currentUserId) return false;
+    const client = getSupabaseClient();
+    if (!isUserAuthenticated || !client || !currentUserId) return false;
     try {
-      const { data: { user } } = await sb.auth.getUser();
+      const { data: { user } } = await client.auth.getUser();
       if (!user || !user.id) {
         isUserAuthenticated = false;
         return false;
@@ -300,7 +366,7 @@
     }
 
     try {
-      const { data, error } = await sb
+      const { data, error } = await client
         .from('chat_messages')
         .select('role, content, source, created_at')
         .eq('user_id', currentUserId)
@@ -309,7 +375,7 @@
 
       if (error) {
         if (error.status === 401 || error.code === 'PGRST301') {
-          const { error: refreshError } = await sb.auth.refreshSession();
+          const { error: refreshError } = await client.auth.refreshSession();
           if (refreshError) {
             isUserAuthenticated = false;
             return false;
@@ -354,11 +420,15 @@
     } catch(e) {}
   }
 
+  // ═══════════════════════════════════════
+  //  СОХРАНЕНИЕ СООБЩЕНИЯ В SUPABASE
+  // ═══════════════════════════════════════
   async function saveMessageToSupabase(role, content, source = null, retryCount = 0) {
-    if (!isUserAuthenticated || !sb || !currentUserId) return false;
+    const client = getSupabaseClient();
+    if (!isUserAuthenticated || !client || !currentUserId) return false;
 
     try {
-      const { data: { user } } = await sb.auth.getUser();
+      const { data: { user } } = await client.auth.getUser();
       if (!user || user.id !== currentUserId) {
         isUserAuthenticated = false;
         return false;
@@ -366,7 +436,7 @@
 
       const safeSource = (source && ALLOWED_SOURCES.includes(source)) ? source : null;
 
-      const { error } = await sb.from('chat_messages').insert({
+      const { error } = await client.from('chat_messages').insert({
         user_id: currentUserId,
         role: role,
         content: content,
@@ -377,7 +447,7 @@
       if (error) {
         if (error.message && error.message.includes('check constraint') && retryCount === 0) {
           console.log('🔄 Retrying with source = null...');
-          const { error: retryError } = await sb.from('chat_messages').insert({
+          const { error: retryError } = await client.from('chat_messages').insert({
             user_id: currentUserId,
             role: role,
             content: content,
@@ -392,7 +462,7 @@
         }
         
         if ((error.status === 401 || error.code === 'PGRST301') && retryCount < 1) {
-          const { error: refreshError } = await sb.auth.refreshSession();
+          const { error: refreshError } = await client.auth.refreshSession();
           if (!refreshError) {
             return await saveMessageToSupabase(role, content, source, retryCount + 1);
           }
@@ -407,8 +477,12 @@
     }
   }
 
+  // ═══════════════════════════════════════
+  //  МИГРАЦИЯ ЛОКАЛЬНОЙ ИСТОРИИ
+  // ═══════════════════════════════════════
   async function migrateLocalHistoryToSupabase() {
-    if (!isUserAuthenticated || !sb || !currentUserId) return;
+    const client = getSupabaseClient();
+    if (!isUserAuthenticated || !client || !currentUserId) return;
     const localHistory = chatHistory.filter(msg => !msg.synced);
     if (localHistory.length === 0) return;
 
@@ -423,7 +497,7 @@
 
       for (let i = 0; i < messagesToInsert.length; i += 10) {
         const batch = messagesToInsert.slice(i, i + 10);
-        const { error } = await sb.from('chat_messages').insert(batch);
+        const { error } = await client.from('chat_messages').insert(batch);
         if (error) {
           console.warn(`⚠️ Batch ${i/10 + 1} failed:`, error.message);
           break;
@@ -454,9 +528,12 @@
     }
   }
 
+  // ═══════════════════════════════════════
+  //  ВЫЗОВ EDGE FUNCTION (OpenRouter)
+  // ═══════════════════════════════════════
   async function callEdgeFunction(messages) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), 90000);
 
     try {
       console.log(`🤖 Calling Edge Function (payload: ${JSON.stringify(messages).length} chars)...`);
@@ -491,6 +568,9 @@
     }
   }
 
+  // ═══════════════════════════════════════
+  //  FALLBACK: локальный ответ
+  // ═══════════════════════════════════════
   function generateFallbackResponse(userMessage, userProfile) {
     const lowerMsg = userMessage.toLowerCase();
     const responses = [];
@@ -526,6 +606,9 @@
     return responses.join('\n\n');
   }
 
+  // ═══════════════════════════════════════
+  //  ГЛАВНАЯ ФУНКЦИЯ: ОТПРАВКА СООБЩЕНИЯ
+  // ═══════════════════════════════════════
   async function sendMessage(userMessage) {
     if (!userMessage || !userMessage.trim()) {
       throw new Error('Пустое сообщение');
@@ -563,18 +646,16 @@
 
     const isMedicalQuery = hasKnowledgeInDatabase(userMessage);
 
+    // ПОЛНЫЙ дамп базы
+    const databaseDump = buildFullDatabaseDump();
     const relevantContext = buildRelevantContext(userMessage, userProfile);
 
     let finalSystemPrompt = SYSTEM_PROMPT;
     
-    if (isMedicalQuery) {
-      finalSystemPrompt += `\n\n📌 ВАЖНО: Это медицинский запрос. Вы должны использовать ТОЛЬКО данные из предоставленной базы знаний. Не выдумывайте нормы или интерпретации. Если информации нет в контексте — честно скажите: "В моей базе знаний нет данных по этому вопросу. Я могу найти актуальную информацию в медицинских источниках — хотите?"`;
-    } else {
-      finalSystemPrompt += `\n\n🔍 Это общий вопрос. Если он не относится к медицине — вежливо предложите задать медицинский вопрос. Если вопрос медицинский, но в базе нет данных — используйте актуальные медицинские источники (UpToDate, ВОЗ, NIH, Cochrane, PubMed), но всегда указывайте источник и год публикации.`;
-    }
-
+    finalSystemPrompt += `\n\n═══════════════════════════════════\nПОЛНАЯ БАЗА ДАННЫХ:\n═══════════════════════════════════\n${databaseDump}`;
+    
     if (relevantContext) {
-      finalSystemPrompt += `\n\n═══════════════════════════════════\nКОНТЕКСТ ИЗ БАЗЫ ЗНАНИЙ:\n═══════════════════════════════════\n${relevantContext}`;
+      finalSystemPrompt += `\n\n═══════════════════════════════════\nДОПОЛНИТЕЛЬНЫЙ КОНТЕКСТ:\n═══════════════════════════════════\n${relevantContext}`;
     }
 
     const messages = [
@@ -630,27 +711,35 @@
     return { reply, source };
   }
 
+  // ═══════════════════════════════════════
+  //  ОЧИСТКА ИСТОРИИ
+  // ═══════════════════════════════════════
   async function clearHistory() {
     chatHistory = [];
     localStorage.removeItem(LOCAL_STORAGE_KEY);
-    if (isUserAuthenticated && sb && currentUserId) {
+    const client = getSupabaseClient();
+    if (isUserAuthenticated && client && currentUserId) {
       try {
-        await sb.rpc('clear_chat_history');
+        await client.rpc('clear_chat_history');
       } catch (e) {
         try {
-          await sb.from('chat_messages').delete().eq('user_id', currentUserId);
+          await client.from('chat_messages').delete().eq('user_id', currentUserId);
         } catch (e2) {}
       }
     }
   }
 
+  // ═══════════════════════════════════════
+  //  СЛУШАТЕЛЬ АВТОРИЗАЦИИ
+  // ═══════════════════════════════════════
   function setupAuthListener() {
-    if (!sb || !sb.auth) {
+    const client = getSupabaseClient();
+    if (!client || !client.auth) {
       console.warn('⚠️ Auth listener not available');
       return;
     }
 
-    sb.auth.onAuthStateChange(async (event, session) => {
+    client.auth.onAuthStateChange(async (event, session) => {
       console.log(`🔐 Auth state changed: ${event}`);
 
       if (event === 'SIGNED_IN' && session?.user) {
@@ -675,19 +764,30 @@
     });
   }
 
+  // ═══════════════════════════════════════
+  //  ИНИЦИАЛИЗАЦИЯ
+  // ═══════════════════════════════════════
   async function init() {
     await loadHistory();
     setupAuthListener();
     
-    const kb = getCombinedKnowledgeBase();
-    console.log('🤖 AI Assistant v4.0 initialized (Hybrid: DB + PDF + Internet)');
-    console.log(`📚 Database: ${window.labTests?.length || 0} tests, ${window.diagnosticRules?.length || 0} rules, ${Object.keys(window.supplementMap || {}).length} supplements`);
-    console.log(`📄 Imported PDFs: ${kb.sources.length} docs, ${kb.drugs.length} drugs, ${kb.guidelines.length} guidelines`);
+    const kb = {
+      tests: window.labTests?.length || 0,
+      rules: window.diagnosticRules?.length || 0,
+      supplements: Object.keys(window.supplementMap || {}).length,
+      preventive: window.preventiveRecommendations?.length || 0
+    };
+    
+    console.log('🤖 AI Assistant v5.0 initialized (Full DB + OpenRouter + Supabase)');
+    console.log(`📚 Database: ${kb.tests} tests, ${kb.rules} rules, ${kb.supplements} supplements`);
     console.log(`☁️ Supabase client: ${sb ? '✓ connected' : '✗ disabled'}`);
   }
 
   init();
 
+  // ═══════════════════════════════════════
+  //  ЭКСПОРТ API
+  // ═══════════════════════════════════════
   window.AIAssistant = {
     sendMessage,
     getHistory: () => [...chatHistory],
@@ -695,20 +795,15 @@
     isAuthenticated: () => isUserAuthenticated,
     reloadHistory: loadHistory,
     hasKnowledgeInDatabase,
-    getCombinedKnowledgeBase,
-    getDatabaseStats: () => {
-      const kb = getCombinedKnowledgeBase();
-      return {
-        builtin_tests: window.labTests?.length || 0,
-        builtin_rules: window.diagnosticRules?.length || 0,
-        builtin_supplements: Object.keys(window.supplementMap || {}).length,
-        imported_documents: kb.sources.length,
-        imported_drugs: kb.drugs.length,
-        imported_guidelines: kb.guidelines.length
-      };
-    },
-    isSupabaseConnected: () => !!sb,
-    version: '4.0.0'
+    getFullDatabaseDump: buildFullDatabaseDump,
+    getDatabaseStats: () => ({
+      tests: window.labTests?.length || 0,
+      rules: window.diagnosticRules?.length || 0,
+      supplements: Object.keys(window.supplementMap || {}).length,
+      preventive: window.preventiveRecommendations?.length || 0
+    }),
+    isSupabaseConnected: () => !!getSupabaseClient(),
+    version: '5.0.0'
   };
 
   window.hasKnowledgeInDatabase = hasKnowledgeInDatabase;

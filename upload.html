@@ -65,6 +65,38 @@
       font-weight: 600;
       margin-top: 12px;
     }
+    
+    /* Поля из профиля — только для чтения */
+    .readonly-field {
+      background: var(--surface-2) !important;
+      color: var(--text-2) !important;
+      cursor: not-allowed !important;
+      opacity: 0.85;
+    }
+    
+    .profile-info {
+      background: rgba(61, 139, 78, 0.08);
+      border: 1px solid rgba(61, 139, 78, 0.2);
+      padding: 8px 12px;
+      border-radius: var(--r-sm);
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--green);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .unit-fix-badge {
+      display: inline-block;
+      background: var(--orange);
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      margin-left: 4px;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -89,29 +121,36 @@
     </div>
   </div>
 
-  <!-- Patient Info -->
+  <!-- Patient Info (из профиля) -->
   <div class="doctor-card animate-on-scroll animate-fade-up tilt-card">
     <div class="doc-row">
       <div class="doc-avatar float-slow">👤</div>
       <div style="flex: 1;">
         <div class="doc-name">Данные пациента</div>
-        <div class="doc-spec">• Для точных референсов</div>
+        <div class="doc-spec">• Из вашего профиля</div>
       </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
       <div>
-        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Пол</label>
-        <div class="pc-pills" style="gap: 6px;">
-          <button class="pill pill-outline ripple-element click-scale" id="sexFemale" onclick="selectSex('female')">👩 Жен</button>
-          <button class="pill pill-outline ripple-element click-scale" id="sexMale" onclick="selectSex('male')">👨 Муж</button>
-        </div>
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">
+          Пол <span style="font-size: 10px; color: var(--green);">🔒 из профиля</span>
+        </label>
+        <input type="text" id="sexDisplay" readonly class="readonly-field"
+               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px;">
       </div>
       <div>
-        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">Возраст</label>
-        <input type="number" id="ageInput" value="35" min="0" max="120" 
-               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px; background: var(--surface-2);">
+        <label style="font-size: 12px; color: var(--text-3); display: block; margin-bottom: 6px;">
+          Возраст <span style="font-size: 10px; color: var(--green);">🔒 из профиля</span>
+        </label>
+        <input type="text" id="ageDisplay" readonly class="readonly-field"
+               style="width: 100%; padding: 10px 14px; border: 1.5px solid #C8DCC8; border-radius: var(--r-sm); font-family: inherit; font-size: 15px;">
       </div>
+    </div>
+    
+    <div class="profile-info">
+      <span>ℹ️</span>
+      <span>Данные берутся из вашего профиля на главной странице. Чтобы изменить — зайдите в настройки профиля.</span>
     </div>
   </div>
 
@@ -219,8 +258,11 @@
   }
 
   let selectedFile = null;
-  let selectedSex = 'female';
+  let patientProfile = { sex: 'female', age: 35 };
 
+  // ═══════════════════════════════════════
+  //  TOAST
+  // ═══════════════════════════════════════
   window.showToast = function(text, icon = '✓') {
     const toast = document.getElementById('toast');
     document.getElementById('toastText').textContent = text;
@@ -229,34 +271,42 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   };
 
-  window.selectSex = function(sex) {
-    selectedSex = sex;
-    const fBtn = document.getElementById('sexFemale');
-    const mBtn = document.getElementById('sexMale');
-    fBtn.className = sex === 'female' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
-    mBtn.className = sex === 'male' ? 'pill pill-green ripple-element click-scale' : 'pill pill-outline ripple-element click-scale';
+  // ═══════════════════════════════════════
+  //  ЗАГРУЗКА ПРОФИЛЯ ПАЦИЕНТА
+  // ═══════════════════════════════════════
+  function loadPatientProfile() {
+    try {
+      if (window.PatientProfile && window.PatientProfile.get) {
+        const profile = window.PatientProfile.get();
+        if (profile) {
+          patientProfile.sex = profile.sex || 'female';
+          patientProfile.age = profile.age || 35;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load patient profile:', e);
+    }
     
-    if (window.PatientProfile) {
-      window.PatientProfile.update({ sex });
+    // Отображаем в полях (только для чтения)
+    const sexDisplay = document.getElementById('sexDisplay');
+    const ageDisplay = document.getElementById('ageDisplay');
+    
+    if (sexDisplay) {
+      sexDisplay.value = patientProfile.sex === 'male' ? '👨 Мужской' : '👩 Женский';
     }
-  };
-
-  document.getElementById('ageInput').addEventListener('input', function(e) {
-    const age = parseInt(e.target.value) || 35;
-    if (window.PatientProfile) {
-      window.PatientProfile.update({ age });
+    if (ageDisplay) {
+      ageDisplay.value = `${patientProfile.age} лет`;
     }
-  });
+  }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    if (window.PatientProfile) {
-      const profile = window.PatientProfile.get();
-      selectSex(profile.sex);
-      document.getElementById('ageInput').value = profile.age;
-    }
-  });
+  // Загружаем профиль при старте
+  document.addEventListener('DOMContentLoaded', loadPatientProfile);
+  // И ещё раз через 500мс (если профиль загружается позже)
+  setTimeout(loadPatientProfile, 500);
 
-  // Drag & Drop
+  // ═══════════════════════════════════════
+  //  DRAG & DROP
+  // ═══════════════════════════════════════
   const dropZone = document.getElementById('dropZone');
   const fileInput = document.getElementById('fileInput');
 
@@ -330,7 +380,7 @@
     let fullText = '';
     
     for (let i = 1; i <= pdf.numPages; i++) {
-      updateProgress(10 + (i / pdf.numPages) * 30, `Читаем страницу ${i}/${pdf.numPages}`);
+      updateProgress(10 + (i / pdf.numPages) * 20, `Читаем страницу ${i}/${pdf.numPages}`);
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items.map(item => item.str).join(' ');
@@ -340,6 +390,99 @@
     return fullText;
   }
 
+  // ═══════════════════════════════════════
+  //  ИЗВЛЕЧЕНИЕ РЕАЛЬНЫХ ЕДИНИЦ ИЗ PDF
+  // ═══════════════════════════════════════
+  function extractUnitsFromPDF(pdfText) {
+    const unitsMap = {};
+    
+    // Все возможные единицы измерения
+    const unitPatterns = [
+      'г/л', 'g/L', 'г/дл', 'g/dL',
+      'ммоль/л', 'mg/dL', 'мг/дл',
+      'мкмоль/л', 'µmol/L', 'μmol/L',
+      'Ед/л', 'U/L', 'ед/л',
+      'нг/мл', 'ng/mL', 'пг/мл', 'pg/mL', 'мкг/л', 'µg/L', 'μg/L',
+      'мМЕ/л', 'mIU/L', 'мкМЕ/мл', 'µIU/mL', 'μIU/mL', 'МЕ/л',
+      'пмоль/л', 'pmol/L', 'ng/dL',
+      '×10^9/л', '10^9/L', '×10^12/л', '10^12/L',
+      '%', 'мм/ч', 'mm/h',
+      'мкг/мл', 'µg/mL', 'μg/mL', 'мг/л', 'mg/L',
+      'ммоль/моль', 'мг/сут', 'мкг/г', 'нг/л'
+    ];
+    
+    // Ищем каждый тест в базе и пытаемся найти его единицы в PDF
+    if (!window.labTests || !Array.isArray(window.labTests)) {
+      return unitsMap;
+    }
+    
+    window.labTests.forEach(test => {
+      const testName = (test.canonicalName || '').trim();
+      const shortName = (test.shortName || '').trim();
+      const aliases = test.aliases || [];
+      
+      // Все возможные названия теста
+      const names = [testName, shortName, ...aliases].filter(n => n);
+      
+      for (const name of names) {
+        if (!name) continue;
+        
+        // Ищем тест в тексте (с запасом ±150 символов)
+        const searchPatterns = [
+          new RegExp(`(${escapeRegExp(name)})\\s*[:\\s]\\s*([0-9]+[.,]?[0-9]*)\\s*([а-яА-Яa-zA-Zµμ/\\^×.0-9\\-\\s]{1,20})`, 'i'),
+          new RegExp(`([0-9]+[.,]?[0-9]*)\\s*([а-яА-Яa-zA-Zµμ/\\^×.0-9\\-\\s]{1,20})\\s+(${escapeRegExp(name)})`, 'i'),
+          new RegExp(`(${escapeRegExp(name)})\\s*[—\\-–]\\s*([0-9]+[.,]?[0-9]*)\\s*([а-яА-Яa-zA-Zµμ/\\^×.0-9\\-\\s]{1,20})`, 'i')
+        ];
+        
+        for (const pattern of searchPatterns) {
+          const match = pdfText.match(pattern);
+          if (match) {
+            // Извлекаем единицу из найденного фрагмента
+            const fragment = match[0];
+            const foundUnit = findUnitInText(fragment, unitPatterns);
+            
+            if (foundUnit) {
+              unitsMap[testName] = foundUnit;
+              break;
+            }
+          }
+        }
+        
+        if (unitsMap[testName]) break;
+      }
+    });
+    
+    return unitsMap;
+  }
+
+  // Экранирование специальных символов для regex
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  // Поиск единицы измерения в тексте
+  function findUnitInText(text, unitPatterns) {
+    // Сортируем по длине (сначала длинные, чтобы "×10^9/л" нашёлся раньше чем "л")
+    const sortedUnits = [...unitPatterns].sort((a, b) => b.length - a.length);
+    
+    for (const unit of sortedUnits) {
+      // Точное совпадение с границами слов
+      const regex = new RegExp(`(^|\\s|\\()${escapeRegExp(unit)}($|\\s|\\)|,)`, 'i');
+      if (regex.test(text)) {
+        return unit;
+      }
+      // Простое вхождение
+      if (text.includes(unit)) {
+        return unit;
+      }
+    }
+    
+    return null;
+  }
+
+  // ═══════════════════════════════════════
+  //  АНАЛИЗ PDF
+  // ═══════════════════════════════════════
   window.analyzePDF = async function() {
     if (!selectedFile) return;
     
@@ -349,6 +492,7 @@
     document.getElementById('resultsSection').style.display = 'none';
     
     try {
+      // 1. Извлекаем текст
       updateProgress(5, 'Извлекаем текст из PDF...', '• Обрабатываем страницы');
       const pdfText = await extractTextFromPDF(selectedFile);
       
@@ -359,9 +503,15 @@
         return;
       }
       
-      updateProgress(45, '🤖 AI анализирует показатели...', '• Отправляем в нейросеть');
+      console.log('📄 Extracted text length:', pdfText.length, 'chars');
       
-      const age = parseInt(document.getElementById('ageInput').value) || 35;
+      // 2. Извлекаем РЕАЛЬНЫЕ единицы из PDF
+      updateProgress(25, '🔍 Определяем единицы измерения...', '• Сканируем PDF');
+      const pdfUnitsMap = extractUnitsFromPDF(pdfText);
+      console.log('📏 PDF units map:', pdfUnitsMap);
+      
+      // 3. Отправляем в AI
+      updateProgress(35, '🤖 AI анализирует показатели...', '• Отправляем в нейросеть');
       
       const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-assistant`, {
         method: 'POST',
@@ -372,8 +522,9 @@
         body: JSON.stringify({
           action: 'parse_pdf',
           pdfText: pdfText,
-          patientSex: selectedSex,
-          patientAge: age
+          patientSex: patientProfile.sex,
+          patientAge: patientProfile.age,
+          pdfUnitsMap: pdfUnitsMap  // ← Передаем реальные единицы из PDF
         })
       });
       
@@ -385,7 +536,8 @@
       
       updateProgress(85, '✓ AI извлёк показатели', '• Проверяем с базой данных');
       
-      const parsedResults = validateWithDatabase(result.data, selectedSex, age);
+      // 4. Валидируем с учётом единиц из PDF
+      const parsedResults = validateWithDatabase(result.data, pdfUnitsMap);
       
       updateProgress(100, '✓ Анализ завершён!', '');
       
@@ -402,10 +554,16 @@
     }
   };
 
-  function validateWithDatabase(aiData, sex, age) {
+  // ═══════════════════════════════════════
+  //  ВАЛИДАЦИЯ С УЧЁТОМ ЕДИНИЦ ИЗ PDF
+  // ═══════════════════════════════════════
+  function validateWithDatabase(aiData, pdfUnitsMap) {
     const validated = {
       tests: [],
-      patientInfo: aiData.patientInfo || { sex, age },
+      patientInfo: { 
+        sex: patientProfile.sex, 
+        age: patientProfile.age 
+      },
       labName: aiData.labName,
       analysisDate: aiData.analysisDate,
       confidence: aiData.confidence || 0.9
@@ -416,6 +574,7 @@
     }
     
     aiData.tests.forEach(aiTest => {
+      // Ищем тест в базе по имени
       const dbTest = window.labTests.find(t => {
         const name = (t.canonicalName || '').toLowerCase().trim();
         const short = (t.shortName || '').toLowerCase().trim();
@@ -426,13 +585,55 @@
       });
       
       if (dbTest) {
-        const ref = window.getReference(dbTest, sex, age);
+        const testName = dbTest.canonicalName;
+        const ref = window.getReference(dbTest, patientProfile.sex, patientProfile.age);
         
+        // 🔥 ПРИОРИТЕТ ЕДИНИЦ:
+        // 1. Единица из PDF (если есть)
+        // 2. Единица от AI (если совместима с референсом)
+        // 3. Единица из базы данных
+        let finalUnit = pdfUnitsMap[testName] || aiTest.unit || ref?.unit || dbTest.units[0];
+        
+        // Ищем референс, который совпадает с финальной единицей
+        let matchingRef = null;
+        if (dbTest.references) {
+          // Ищем референс с такой же единицей
+          matchingRef = dbTest.references.find(r => r.unit === finalUnit);
+          
+          // Если не нашли — ищем по полу и возрасту
+          if (!matchingRef) {
+            matchingRef = ref;
+          }
+        }
+        
+        let finalValue = aiTest.value;
+        let finalRefMin = matchingRef?.min;
+        let finalRefMax = matchingRef?.max;
+        let wasUnitFixed = false;
+        
+        // 🔥 Если AI вернул неправильные единицы — ЗАМЕНЯЕМ на PDF
+        if (pdfUnitsMap[testName] && aiTest.unit !== pdfUnitsMap[testName]) {
+          console.log(`🔄 ${testName}: AI unit "${aiTest.unit}" → PDF unit "${pdfUnitsMap[testName]}"`);
+          finalUnit = pdfUnitsMap[testName];
+          wasUnitFixed = true;
+          
+          // Пересчитываем референсы если нужно
+          if (matchingRef && matchingRef.unit !== finalUnit) {
+            const converted = convertRefToUnit(dbTest, matchingRef, finalUnit);
+            if (converted) {
+              finalRefMin = converted.min;
+              finalRefMax = converted.max;
+            }
+          }
+        }
+        
+        // Определяем status
         let status = 'unknown';
-        if (ref && aiTest.value !== null && aiTest.value !== undefined) {
-          if (ref.min !== null && ref.min !== undefined && aiTest.value < ref.min) {
+        if (finalValue !== null && finalValue !== undefined && 
+            finalRefMin !== null && finalRefMax !== null) {
+          if (finalValue < finalRefMin) {
             status = 'low';
-          } else if (ref.max !== null && ref.max !== undefined && aiTest.value > ref.max) {
+          } else if (finalValue > finalRefMax) {
             status = 'high';
           } else {
             status = 'normal';
@@ -440,22 +641,32 @@
         }
         
         validated.tests.push({
-          name: dbTest.canonicalName,
+          name: testName,
           shortName: dbTest.shortName,
-          value: aiTest.value,
-          unit: ref?.unit || aiTest.unit || dbTest.units[0],
-          referenceMin: ref?.min,
-          referenceMax: ref?.max,
+          value: finalValue,
+          unit: finalUnit,
+          aiUnit: aiTest.unit,  // Сохраняем что вернул AI
+          pdfUnit: pdfUnitsMap[testName] || null,  // Сохраняем что было в PDF
+          wasUnitFixed: wasUnitFixed,
+          referenceMin: finalRefMin,
+          referenceMax: finalRefMax,
           status: status,
-          source: 'validated',
+          source: wasUnitFixed ? 'unit_fixed' : 'validated',
           category: dbTest.category
         });
       } else {
+        // Тест не найден в базе
+        const testName = aiTest.name;
+        const unit = pdfUnitsMap[testName] || aiTest.unit || '';
+        
         validated.tests.push({
-          name: aiTest.name,
+          name: testName,
           shortName: aiTest.shortName || '',
           value: aiTest.value,
-          unit: aiTest.unit || '',
+          unit: unit,
+          aiUnit: aiTest.unit,
+          pdfUnit: pdfUnitsMap[testName] || null,
+          wasUnitFixed: pdfUnitsMap[testName] && aiTest.unit !== pdfUnitsMap[testName],
           referenceMin: aiTest.referenceMin,
           referenceMax: aiTest.referenceMax,
           status: aiTest.status || 'unknown',
@@ -468,6 +679,94 @@
     return validated;
   }
 
+  // ═══════════════════════════════════════
+  //  КОНВЕРТАЦИЯ РЕФЕРЕНСОВ
+  // ═══════════════════════════════════════
+  function convertRefToUnit(dbTest, fromRef, toUnit) {
+    const conversions = {
+      'Тестостерон общий': {
+        'нмоль/л': { 'пг/мл': 288.5, 'нг/мл': 0.2885 },
+        'пг/мл': { 'нмоль/л': 0.003467, 'нг/мл': 0.001 },
+        'нг/мл': { 'нмоль/л': 3.467, 'пг/мл': 1000 }
+      },
+      'Эстрадиол': {
+        'пмоль/л': { 'пг/мл': 0.2724 },
+        'пг/мл': { 'пмоль/л': 3.671 }
+      },
+      '25-гидроксивитамин D': {
+        'нг/мл': { 'нмоль/л': 2.496 },
+        'нмоль/л': { 'нг/мл': 0.4006 }
+      },
+      'Кортизол': {
+        'нмоль/л': { 'мкг/дл': 0.03624, 'пг/мл': 362.4 },
+        'мкг/дл': { 'нмоль/л': 27.59, 'пг/мл': 10000 },
+        'пг/мл': { 'нмоль/л': 0.00276, 'мкг/дл': 0.0001 }
+      },
+      'Прогестерон': {
+        'нмоль/л': { 'пг/мл': 0.3145 },
+        'пг/мл': { 'нмоль/л': 3.18 }
+      },
+      'Глюкоза натощак': {
+        'ммоль/л': { 'mg/dL': 18.018 },
+        'mg/dL': { 'ммоль/л': 0.0555 }
+      },
+      'Холестерин общий': {
+        'ммоль/л': { 'mg/dL': 38.67 },
+        'mg/dL': { 'ммоль/л': 0.02586 }
+      },
+      'Холестерин ЛПНП': {
+        'ммоль/л': { 'mg/dL': 38.67 },
+        'mg/dL': { 'ммоль/л': 0.02586 }
+      },
+      'Холестерин ЛПВП': {
+        'ммоль/л': { 'mg/dL': 38.67 },
+        'mg/dL': { 'ммоль/л': 0.02586 }
+      },
+      'Триглицериды': {
+        'ммоль/л': { 'mg/dL': 88.57 },
+        'mg/dL': { 'ммоль/л': 0.01129 }
+      },
+      'Креатинин': {
+        'мкмоль/л': { 'mg/dL': 0.0113 },
+        'mg/dL': { 'мкмоль/л': 88.4 }
+      },
+      'Андростендион': {
+        'нг/мл': { 'пг/мл': 1000, 'нмоль/л': 3.492 },
+        'пг/мл': { 'нг/мл': 0.001 },
+        'нмоль/л': { 'нг/мл': 0.2864 }
+      },
+      'Тироксин свободный': {
+        'пмоль/л': { 'ng/dL': 0.0777 },
+        'ng/dL': { 'пмоль/л': 12.87 }
+      },
+      'Трийодтиронин свободный': {
+        'пмоль/л': { 'pg/mL': 0.649 },
+        'pg/mL': { 'пмоль/л': 1.54 }
+      }
+    };
+    
+    const testConversions = conversions[dbTest.canonicalName];
+    if (!testConversions) return null;
+    
+    const fromUnit = fromRef.unit;
+    const unitConversions = testConversions[fromUnit];
+    if (!unitConversions || !unitConversions[toUnit]) return null;
+    
+    const factor = unitConversions[toUnit];
+    
+    return {
+      min: fromRef.min !== null && fromRef.min !== undefined 
+           ? parseFloat((fromRef.min * factor).toFixed(2)) 
+           : null,
+      max: fromRef.max !== null && fromRef.max !== undefined 
+           ? parseFloat((fromRef.max * factor).toFixed(2)) 
+           : null
+    };
+  }
+
+  // ═══════════════════════════════════════
+  //  РЕНДЕР РЕЗУЛЬТАТОВ
+  // ═══════════════════════════════════════
   function renderResults(data) {
     const container = document.getElementById('resultsSection');
     
@@ -499,6 +798,7 @@
     const normal = data.tests.filter(t => t.status === 'normal').length;
     const high = data.tests.filter(t => t.status === 'high').length;
     const low = data.tests.filter(t => t.status === 'low').length;
+    const fixedUnits = data.tests.filter(t => t.wasUnitFixed).length;
     
     let html = `
       <div class="sec-hd">
@@ -517,6 +817,14 @@
           <div class="v-value">${high + low}</div>
         </div>
       </div>
+      
+      ${fixedUnits > 0 ? `
+        <div class="other-card" style="margin-bottom: 16px; background: rgba(244, 162, 97, 0.08); border: 1px solid rgba(244, 162, 97, 0.3);">
+          <div style="font-size: 13px; color: var(--text-2); line-height: 1.5;">
+            🔄 <strong>Исправлено единиц измерения:</strong> ${fixedUnits} — AI указал неверные единицы, мы заменили их на те, что реально в PDF.
+          </div>
+        </div>
+      ` : ''}
       
       ${data.labName || data.analysisDate ? `
         <div class="other-card" style="margin-bottom: 16px;">
@@ -543,6 +851,21 @@
           ? `${test.referenceMin} - ${test.referenceMax}` 
           : '—';
         
+        // Бейджи источника
+        let sourceBadge = '';
+        if (test.source === 'ai_only') {
+          sourceBadge = '<span style="color: var(--orange); font-size: 10px; margin-left: 4px;">🤖 не в базе</span>';
+        } else if (test.wasUnitFixed) {
+          sourceBadge = `<span class="unit-fix-badge">ед. исправлены</span>`;
+        }
+        
+        // Показываем что было у AI
+        const aiInfo = test.wasUnitFixed && test.aiUnit
+          ? `<div style="font-size: 10px; color: var(--text-3); margin-top: 2px;">
+               ⚠️ AI вернул: ${test.aiUnit} → использовано: ${test.unit} (из PDF)
+             </div>`
+          : '';
+        
         html += `
           <div class="metric-row" style="animation: fadeInUp 0.4s ease ${idx * 0.05}s backwards;">
             <div class="mr-circle ${statusBg}">${statusIcon}</div>
@@ -550,15 +873,16 @@
               <div class="mr-label">
                 ${test.name}
                 ${test.shortName ? `<span style="color: var(--text-3); font-weight: 400;"> (${test.shortName})</span>` : ''}
-                ${test.source === 'ai_only' ? '<span style="color: var(--orange); font-size: 10px; margin-left: 4px;">🤖</span>' : ''}
+                ${sourceBadge}
               </div>
               <div class="mr-value">
                 ${test.value !== null && test.value !== undefined ? test.value : '—'}
                 <span>${test.unit || ''}</span>
               </div>
               <div style="font-size: 11px; color: var(--text-3); margin-top: 2px;">
-                Норма: ${refRange}
+                Норма: ${refRange} ${test.unit || ''}
               </div>
+              ${aiInfo}
             </div>
           </div>
         `;
@@ -587,6 +911,9 @@
     window.currentResults = data;
   }
 
+  // ═══════════════════════════════════════
+  //  СОХРАНЕНИЕ РЕЗУЛЬТАТОВ
+  // ═══════════════════════════════════════
   window.saveResults = function() {
     if (!window.currentResults) return;
     
@@ -624,7 +951,7 @@
       console.error('Save error:', e);
     }
     
-    if (window.SupabaseDB) {
+    if (window.SupabaseDB && window.SupabaseDB.saveAnalysis) {
       window.SupabaseDB.saveAnalysis({
         fileName: data.fileName,
         results: data.results
