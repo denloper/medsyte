@@ -1,7 +1,6 @@
-const CACHE_VERSION = 'sem-dok-v22';
-const APP_VERSION = '5.8.0';
-
-const STATIC_ASSETS = [
+// Service Worker v23 — с защитой от file:// протокола
+const CACHE_NAME = 'vsem-dok-v23';
+const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './about.html',
@@ -11,237 +10,152 @@ const STATIC_ASSETS = [
   './calendar.html',
   './diary.html',
   './family.html',
-  './nutrition.html',              // ← новая страница
+  './nutrition.html',
   './history.html',
   './pharmacy.html',
   './recommendations.html',
-  './styles.css?v=' + APP_VERSION,
-  './animations.css?v=' + APP_VERSION,
-  './database.js?v=' + APP_VERSION,
-  './animations.js?v=' + APP_VERSION,
-  './supabase-client.js?v=' + APP_VERSION,
-  './calendar-engine.js?v=' + APP_VERSION,
-  './diary-engine.js?v=' + APP_VERSION,
+  './chat.html',
+  './styles.css?v=5.8.0',
+  './animations.css?v=5.8.0',
+  './database.js?v=5.8.0',
+  './animations.js?v=5.8.0',
+  './supabase-client.js?v=5.8.0',
+  './ai-assistant.js?v=5.8.0',
+  './calendar-engine.js?v=5.8.0',
+  './diary-engine.js?v=5.8.0',
+  './patient-profile.js?v=5.8.0',
   './clinical-guidelines.json',
-  './manifest.json',
-  './patient-profile.js?v=' + APP_VERSION,
+  './manifest.json'
 ];
 
-const CDN_ASSETS = [
-  // Supabase SDK
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  // PDF парсинг
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-  // OCR
-  'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
-  // Графики
-  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js'
-];
+// ═══════════════════════════════════════════════════════════
+//  ПРОВЕРКА: работаем только с http/https
+// ═══════════════════════════════════════════════════════════
+const isHttpProtocol = self.location.protocol === 'http:' || self.location.protocol === 'https:';
 
-// ═══════════════════════════════════════
-//  INSTALL
-// ═══════════════════════════════════════
+if (!isHttpProtocol) {
+  console.warn('[SW] Пропускаем установку: протокол', self.location.protocol, 'не поддерживается. Используйте http-сервер для разработки.');
+  // Прерываем установку — SW не будет активен
+  // Но не выбрасываем ошибку чтобы не спамить в консоль
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INSTALL — кешируем ресурсы
+// ═══════════════════════════════════════════════════════════
 self.addEventListener('install', (event) => {
-  console.log('[SW v' + CACHE_VERSION + '] Установка');
-  event.waitUntil(
-    caches.open(CACHE_VERSION)
-      .then(cache => {
-        const localPromises = STATIC_ASSETS.map(url =>
-          cache.add(url).catch(err => console.warn('[SW] Не удалось:', url, err.message))
-        );
-        const cdnPromises = CDN_ASSETS.map(url =>
-          fetch(url)
-            .then(r => {
-              if (r.ok) return cache.put(url, r);
-              console.warn('[SW] CDN не OK:', url, r.status);
-            })
-            .catch(err => console.warn('[SW] CDN ошибка:', url, err.message))
-        );
-        return Promise.all([...localPromises, ...cdnPromises]);
-      })
-      .then(() => self.skipWaiting())
-      .catch(err => console.error('[SW] Install failed:', err))
-  );
-});
-
-// ═══════════════════════════════════════
-//  ACTIVATE — удаляем старые кеши + уведомляем клиентов
-// ═══════════════════════════════════════
-self.addEventListener('activate', (event) => {
-  console.log('[SW v' + CACHE_VERSION + '] Активация');
-  event.waitUntil(
-    Promise.all([
-      caches.keys().then(keys =>
-        Promise.all(
-          keys.filter(k => k !== CACHE_VERSION).map(k => {
-            console.log('[SW] Удаление старого кеша:', k);
-            return caches.delete(k);
-          })
-        )
-      ),
-      self.clients.claim()
-    ]).then(() => {
-      return self.clients.matchAll().then(clients => {
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'NEW_VERSION_ACTIVE',
-            version: APP_VERSION,
-            cache: CACHE_VERSION
-          });
-        });
-      });
-    })
-  );
-});
-
-// ═══════════════════════════════════════
-//  FETCH
-// ═══════════════════════════════════════
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  if (!event.request.url.startsWith('http')) return;
-
-  const url = new URL(event.request.url);
-
-  // ═══════ SUPABASE API — НЕ кешируем, пропускаем напрямую ═══════
-  if (url.hostname.endsWith('.supabase.co') || url.hostname.includes('supabase')) {
-    // Пропускаем без вмешательства — пусть идёт напрямую
-    return;
-  }
-
-  // ═══════ CDN — cache-first ═══════
-  if (url.origin !== self.location.origin) {
-    event.respondWith(
-      caches.match(event.request).then(cached =>
-        cached || fetch(event.request).then(r => {
-          if (r.ok) {
-            const clone = r.clone();
-            caches.open(CACHE_VERSION).then(c => c.put(event.request, clone));
-          }
-          return r;
-        }).catch(() => cached)
-      )
-    );
-    return;
-  }
-
-  // ═══════ HTML — network-first с fallback ═══════
-  if (event.request.headers.get('accept')?.includes('text/html')) {
-    event.respondWith(
-      fetch(event.request)
-        .then(r => {
-          if (r.ok) {
-            const clone = r.clone();
-            caches.open(CACHE_VERSION).then(c => c.put(event.request, clone));
-          }
-          return r;
-        })
-        .catch(() => 
-          caches.match(event.request).then(c => c || caches.match('./index.html'))
-        )
-    );
-    return;
-  }
-
-  // ═══════ JSON — stale-while-revalidate ═══════
-  if (event.request.url.endsWith('.json')) {
-    event.respondWith(
-      caches.match(event.request).then(cached => {
-        const responseToSend = cached ? cached.clone() : null;
-        const fetchPromise = fetch(event.request)
-          .then(r => {
-            if (r.ok) {
-              const clone = r.clone();
-              caches.open(CACHE_VERSION).then(c => c.put(event.request, clone));
-            }
-            return r;
-          })
-          .catch(() => cached);
-        return responseToSend || fetchPromise;
-      })
-    );
-    return;
-  }
-
-  // ═══════ CSS/JS/images — cache-first ═══════
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      if (cached) return cached.clone();
-      return fetch(event.request).then(r => {
-        if (r.ok) {
-          const clone = r.clone();
-          caches.open(CACHE_VERSION).then(c => c.put(event.request, clone));
-        }
-        return r;
-      }).catch(() => new Response('Offline', { status: 503 }));
-    })
-  );
-});
-
-// ═══════════════════════════════════════
-//  MESSAGES от клиента
-// ═══════════════════════════════════════
-self.addEventListener('message', (event) => {
-  if (!event.data || !event.data.type) return;
+  if (!isHttpProtocol) return; // пропускаем для file://
   
-  if (event.data.type === 'SKIP_WAITING') {
+  console.log(`[SW ${CACHE_NAME}] Установка`);
+  
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('[SW] Кешируем ресурсы...');
+        
+        // Кешируем по одному — чтобы одна ошибка не валила всё
+        const cachePromises = ASSETS_TO_CACHE.map(async (url) => {
+          try {
+            await cache.add(url);
+            console.log(`[SW] ✓ ${url}`);
+          } catch (err) {
+            console.warn(`[SW] ✗ ${url}:`, err.message);
+          }
+        });
+        
+        return Promise.all(cachePromises);
+      })
+      .then(() => {
+        console.log(`[SW ${CACHE_NAME}] Установка завершена`);
+        return self.skipWaiting();
+      })
+      .catch((err) => {
+        console.error('[SW] Ошибка установки:', err);
+      })
+  );
+});
+
+// ═══════════════════════════════════════════════════════════
+//  ACTIVATE — удаляем старые кеши
+// ═══════════════════════════════════════════════════════════
+self.addEventListener('activate', (event) => {
+  if (!isHttpProtocol) return;
+  
+  console.log(`[SW ${CACHE_NAME}] Активация`);
+  
+  event.waitUntil(
+    caches.keys()
+      .then((cacheNames) => {
+        return Promise.all(
+          cacheNames
+            .filter((name) => name !== CACHE_NAME)
+            .map((name) => {
+              console.log(`[SW] Удаляем старый кеш: ${name}`);
+              return caches.delete(name);
+            })
+        );
+      })
+      .then(() => {
+        console.log(`[SW ${CACHE_NAME}] Активация завершена`);
+        return self.clients.claim();
+      })
+  );
+});
+
+// ═══════════════════════════════════════════════════════════
+//  FETCH — стратегия Network First, fallback на Cache
+// ═══════════════════════════════════════════════════════════
+self.addEventListener('fetch', (event) => {
+  if (!isHttpProtocol) return; // не вмешиваемся в file://
+  
+  // Игнорируем внешние запросы (Supabase, OpenRouter, CDN)
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) {
+    return; // пропускаем — пусть браузер сам обрабатывает
+  }
+  
+  // Игнорируем не-GET запросы
+  if (event.request.method !== 'GET') {
+    return;
+  }
+  
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Кешируем только успешные ответы
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // Если нет сети — берём из кеша
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          // Для навигационных запросов — отдаём index.html (offline fallback)
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
+          return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+        });
+      })
+  );
+});
+
+// ═══════════════════════════════════════════════════════════
+//  MESSAGE — обработка команд от клиента
+// ═══════════════════════════════════════════════════════════
+self.addEventListener('message', (event) => {
+  if (event.data === 'skipWaiting') {
     self.skipWaiting();
   }
-  
-  if (event.data.type === 'GET_VERSION') {
-    event.source.postMessage({
-      type: 'VERSION_INFO',
-      version: APP_VERSION,
-      cache: CACHE_VERSION
+  if (event.data === 'clearCache') {
+    caches.delete(CACHE_NAME).then(() => {
+      console.log(`[SW] Кеш ${CACHE_NAME} очищен`);
     });
   }
-  
-  if (event.data.type === 'FORCE_UPDATE') {
-    caches.keys().then(keys => 
-      Promise.all(keys.map(k => caches.delete(k)))
-    ).then(() => {
-      self.skipWaiting();
-      if (event.source) {
-        event.source.postMessage({ type: 'UPDATE_COMPLETE' });
-      }
-    });
-  }
-});
-
-// ═══════════════════════════════════════
-//  PUSH NOTIFICATIONS
-// ═══════════════════════════════════════
-self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : { 
-    title: 'Семейный доктор', 
-    body: 'Время проверить здоровье!' 
-  };
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: './manifest.json',
-      badge: './manifest.json',
-      data: { url: data.url || './calendar.html' },
-      vibrate: [200, 100, 200]
-    })
-  );
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const url = event.notification.data?.url || './calendar.html';
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(clientList => {
-        for (const client of clientList) {
-          if (client.url.includes(url.replace('./', '')) && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
-      })
-  );
 });

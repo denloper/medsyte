@@ -10,6 +10,156 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="animations.css">
   <title>Персональные рекомендации</title>
+  <style>
+    body { padding-bottom: 90px !important; }
+
+    .hero-card {
+      background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%);
+      color: white;
+      padding: 24px 20px;
+      border-radius: var(--r-xl);
+      margin-bottom: 20px;
+      box-shadow: 0 6px 20px rgba(61,139,78,0.3);
+    }
+    .hero-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .hero-sub { font-size: 13px; opacity: 0.9; line-height: 1.5; }
+
+    .rec-card {
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      padding: 18px;
+      margin-bottom: 12px;
+      box-shadow: var(--sh-sm);
+      animation: fadeInUp 0.4s ease;
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .rec-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .rec-icon {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .rec-icon.high { background: rgba(230,57,70,0.1); }
+    .rec-icon.low { background: rgba(244,162,97,0.15); }
+    .rec-icon.ok { background: rgba(61,139,78,0.1); }
+
+    .rec-title-block { flex: 1; }
+    .rec-title { font-size: 15px; font-weight: 800; color: var(--dark); margin-bottom: 2px; }
+    .rec-subtitle { font-size: 12px; color: var(--text-3); }
+
+    .rec-status {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .rec-status.high { background: rgba(230,57,70,0.1); color: var(--red); }
+    .rec-status.low { background: rgba(244,162,97,0.15); color: var(--orange); }
+
+    .rec-body {
+      padding: 12px;
+      background: var(--surface-2);
+      border-radius: var(--r-md);
+      margin-bottom: 10px;
+    }
+    .rec-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .rec-row:last-child { margin-bottom: 0; }
+    .rec-row-label { font-weight: 700; color: var(--dark); min-width: 80px; flex-shrink: 0; }
+    .rec-row-value { color: var(--text-2); }
+
+    .rec-description {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+      padding: 10px 12px;
+      background: rgba(61,139,78,0.05);
+      border-left: 3px solid var(--green);
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 10px;
+    }
+
+    .rec-danger {
+      padding: 10px 12px;
+      background: rgba(244,162,97,0.08);
+      border-left: 3px solid var(--orange);
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    .rec-doctors {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .rec-doctor-chip {
+      padding: 5px 12px;
+      background: var(--green);
+      color: white;
+      border-radius: var(--r-full);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--surface);
+      border-radius: var(--r-xl);
+      box-shadow: var(--sh-sm);
+    }
+    .empty-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.6; }
+    .empty-title { font-size: 18px; font-weight: 800; color: var(--dark); margin-bottom: 8px; }
+    .empty-sub { font-size: 14px; color: var(--text-3); line-height: 1.5; margin-bottom: 20px; }
+    .empty-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background: var(--green);
+      color: white;
+      border-radius: var(--r-full);
+      text-decoration: none;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(61,139,78,0.3);
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--dark);
+      margin: 24px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preventive-card {
+      background: linear-gradient(135deg, #a7f3d0 0%, #6ee7b7 100%);
+      padding: 16px;
+      border-radius: var(--r-lg);
+      margin-bottom: 10px;
+      color: #065f46;
+    }
+    .preventive-title { font-size: 14px; font-weight: 800; margin-bottom: 4px; }
+    .preventive-sub { font-size: 12px; line-height: 1.5; opacity: 0.9; }
+  </style>
 </head>
 <body>
 
@@ -19,10 +169,10 @@
 </div>
 
 <div class="app">
-  
-  <!-- Header -->
-  <div class="patient-card animate-on-scroll animate-fade-up" style="padding: 16px 20px;">
-    <div class="pc-top" style="margin-bottom: 0;">
+
+  <!-- HEADER -->
+  <div class="patient-card fade-in" style="padding:16px 20px;">
+    <div class="pc-top" style="margin-bottom:0;">
       <div class="pc-identity">
         <a href="index.html" class="circle-btn ripple-element">←</a>
         <div>
@@ -30,269 +180,221 @@
           <div class="pc-id">На основе ваших анализов</div>
         </div>
       </div>
-      <button class="circle-btn dark-btn ripple-element" onclick="refreshRecommendations()">🔄</button>
     </div>
   </div>
 
-  <!-- Пустое состояние -->
-  <div id="emptyState" class="empty-state" style="display: none;">
-    <div class="empty-icon">💡</div>
-    <div class="empty-title">Нет данных для анализа</div>
-    <div class="empty-sub">Загрузите анализы, чтобы получить персональные рекомендации</div>
-    <a href="upload.html" class="empty-btn ripple-element magnetic-btn">📄 Загрузить анализ</a>
-  </div>
+  <div id="content"></div>
 
-  <!-- Контент -->
-  <div id="content" style="display: none;">
-    
-    <!-- Сводка -->
-    <div class="sec-hd animate-on-scroll animate-slide-left">
-      <h2>Общая сводка</h2>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
-      <div class="v-card tilt-card ripple-element">
-        <div class="v-icon green breathe">✓</div>
-        <div class="v-label">В норме</div>
-        <div class="v-value"><span id="statNormal">0</span></div>
-      </div>
-      <div class="v-card tilt-card ripple-element">
-        <div class="v-icon amber breathe">⚠️</div>
-        <div class="v-label">Требуют внимания</div>
-        <div class="v-value"><span id="statWarning">0</span></div>
-      </div>
-      <div class="v-card tilt-card ripple-element">
-        <div class="v-icon red breathe">🚨</div>
-        <div class="v-label">Критично</div>
-        <div class="v-value"><span id="statCritical">0</span></div>
-      </div>
-    </div>
-
-    <!-- Рекомендации -->
-    <div class="sec-hd animate-on-scroll animate-slide-left">
-      <h2>Рекомендации</h2>
-      <span class="see-all" id="recCount">0</span>
-    </div>
-
-    <div id="recommendationsList"></div>
-
-  </div>
-
-  <div style="height: 100px;"></div>
+  <div style="height:100px;"></div>
 </div>
 
 <!-- Bottom Nav -->
 <div class="bottom-nav">
   <div class="bottom-nav-inner">
-    <a href="index.html" class="nav-item">
-      <div class="nav-icon">🏠</div>
-      <span class="nav-label">Главная</span>
-    </a>
-    <a href="upload.html" class="nav-item">
-      <div class="nav-icon">📄</div>
-      <span class="nav-label">Анализы</span>
-    </a>
-    <a href="index.html" class="nav-fab" aria-label="Чат">💬</a>
-    <a href="calendar.html" class="nav-item">
-      <div class="nav-icon">📅</div>
-      <span class="nav-label">Календарь</span>
-    </a>
-    <a href="nutrition.html" class="nav-item">
-      <div class="nav-icon">🥗</div>
-      <span class="nav-label">Питание</span>
-    </a>
+    <a href="index.html" class="nav-item"><div class="nav-icon">🏠</div><span class="nav-label">Главная</span></a>
+    <a href="upload.html" class="nav-item"><div class="nav-icon">📄</div><span class="nav-label">Анализы</span></a>
+    <a href="chat.html" class="nav-item"><div class="nav-icon">💬</div><span class="nav-label">ИИ-чат</span></a>
+    <a href="calendar.html" class="nav-item"><div class="nav-icon">📅</div><span class="nav-label">Календарь</span></a>
+    <a href="nutrition.html" class="nav-item"><div class="nav-icon">🥗</div><span class="nav-label">Питание</span></a>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-client.js"></script>
 <script src="database.js"></script>
-<script src="animations.js"></script>
+<script src="patient-profile.js"></script>
 <script>
 (function(){
   'use strict';
 
-  let latestAnalysis = null;
-
-  window.showToast = function(text, icon = '✓') {
-    const toast = document.getElementById('toast');
-    document.getElementById('toastText').textContent = text;
-    toast.querySelector('.toast-icon').textContent = icon;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2500);
+  window.showToast = function(t, i='✓') {
+    const el = document.getElementById('toast');
+    document.getElementById('toastText').textContent = t;
+    el.querySelector('.toast-icon').textContent = i;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
   };
 
-  // Загрузка последнего анализа
-  async function loadLatestAnalysis() {
-    try {
-      let analyses = [];
-      
-      // Пробуем Supabase
-      if (window.SupabaseDB) {
-        const user = await window.SupabaseDB.getCurrentUser();
-        if (user) {
-          analyses = await window.SupabaseDB.getAnalyses();
-        }
-      }
-      
-      // Fallback на localStorage
-      if (analyses.length === 0) {
-        analyses = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
-      }
-      
-      if (analyses.length === 0) {
-        document.getElementById('emptyState').style.display = 'flex';
-        document.getElementById('content').style.display = 'none';
-        return;
-      }
-      
-      // Сортируем по дате и берём последний
-      analyses.sort((a, b) => b.date - a.date);
-      latestAnalysis = analyses[0];
-      
-      document.getElementById('emptyState').style.display = 'none';
-      document.getElementById('content').style.display = 'block';
-      
-      generateRecommendations();
-    } catch (e) {
-      console.error('Ошибка загрузки:', e);
-      showToast('Ошибка загрузки данных', '❌');
-    }
-  }
+  function render() {
+    const content = document.getElementById('content');
 
-  // Генерация рекомендаций
-  function generateRecommendations() {
-    if (!latestAnalysis || !latestAnalysis.results) {
-      document.getElementById('emptyState').style.display = 'flex';
-      document.getElementById('content').style.display = 'none';
-      return;
-    }
-    
-    const results = latestAnalysis.results;
-    const recommendations = [];
-    
-    let normalCount = 0;
-    let warningCount = 0;
-    let criticalCount = 0;
-    
-    // Анализируем каждый показатель
-    Object.entries(results).forEach(([testName, result]) => {
-      if (result.status === 'normal') {
-        normalCount++;
-        return;
+    // 1. Получаем последние анализы
+    let lastAnalysis = null;
+    try {
+      const history = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
+      if (history.length > 0) {
+        const last = history[history.length - 1];
+        lastAnalysis = {
+          fileName: last.fileName || 'Анализ',
+          date: last.date,
+          results: last.results || (last.value && last.value.results) || {}
+        };
       }
-      
-      // Ищем рекомендации в supplementMap
-      const supplement = window.supplementMap[testName];
-      if (supplement && supplement[result.status]) {
-        const rec = supplement[result.status];
-        recommendations.push({
-          testName,
-          value: result.value,
-          unit: result.unit,
-          status: result.status,
-          ...rec
-        });
-        
-        if (rec.danger === 'high') criticalCount++;
-        else warningCount++;
-      } else {
-        // Общая рекомендация если нет в карте
-        recommendations.push({
-          testName,
-          value: result.value,
-          unit: result.unit,
-          status: result.status,
-          supplement: 'Консультация врача',
-          doctors: ['Терапевт'],
-          duration: 'до выяснения причины',
-          danger: result.status === 'high' || result.status === 'low' ? 'medium' : 'low',
-          description: `Показатель ${result.status === 'high' ? 'повышен' : 'понижен'}`,
-          dangerDesc: 'Требуется дополнительная диагностика'
-        });
-        
-        warningCount++;
-      }
-    });
-    
-    // Обновляем статистику
-    document.getElementById('statNormal').textContent = normalCount;
-    document.getElementById('statWarning').textContent = warningCount;
-    document.getElementById('statCritical').textContent = criticalCount;
-    document.getElementById('recCount').textContent = recommendations.length;
-    
-    // Сортируем по опасности
-    recommendations.sort((a, b) => {
-      const dangerOrder = { high: 3, medium: 2, low: 1 };
-      return (dangerOrder[b.danger] || 0) - (dangerOrder[a.danger] || 0);
-    });
-    
-    // Рендерим рекомендации
-    const list = document.getElementById('recommendationsList');
-    list.innerHTML = recommendations.map((rec, idx) => {
-      const dangerColors = {
-        high: 'var(--red)',
-        medium: 'var(--orange)',
-        low: 'var(--green)'
-      };
-      const dangerLabels = {
-        high: 'Критично',
-        medium: 'Требует внимания',
-        low: 'Профилактика'
-      };
-      
-      return `
-        <div class="other-card animate-on-scroll animate-fade-up" style="margin-bottom: 12px; border-left: 4px solid ${dangerColors[rec.danger]}; animation-delay: ${idx * 0.05}s;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-            <div style="flex: 1;">
-              <div style="font-size: 16px; font-weight: 700; color: var(--dark); margin-bottom: 4px;">
-                ${rec.testName}
-              </div>
-              <div style="font-size: 14px; color: var(--text-2);">
-                ${rec.value} ${rec.unit} (${rec.status === 'high' ? '↑ повышен' : '↓ понижен'})
-              </div>
-            </div>
-            <div style="padding: 4px 12px; background: ${dangerColors[rec.danger]}20; color: ${dangerColors[rec.danger]}; border-radius: var(--r-full); font-size: 12px; font-weight: 600;">
-              ${dangerLabels[rec.danger]}
-            </div>
-          </div>
-          
-          ${rec.description ? `<div style="font-size: 14px; color: var(--text-2); margin-bottom: 8px; line-height: 1.5;">${rec.description}</div>` : ''}
-          ${rec.dangerDesc ? `<div style="font-size: 13px; color: var(--text-3); margin-bottom: 12px; font-style: italic; line-height: 1.5;">${rec.dangerDesc}</div>` : ''}
-          
-          <div style="padding: 12px; background: var(--surface-2); border-radius: var(--r-sm); margin-bottom: 8px;">
-            <div style="font-size: 12px; color: var(--text-3); margin-bottom: 4px;">Что делать:</div>
-            <div style="font-size: 14px; color: var(--text-1); font-weight: 600; margin-bottom: 6px;">${rec.supplement}</div>
-            <div style="font-size: 12px; color: var(--text-3);">Срок: ${rec.duration}</div>
-          </div>
-          
-          ${rec.doctors && rec.doctors.length > 0 ? `
-            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-              ${rec.doctors.map(doc => `<span style="padding: 4px 12px; background: var(--primary-light, #dbeafe); color: var(--primary, #1e5fb8); border-radius: var(--r-full); font-size: 12px; font-weight: 600;">👨‍⚕️ ${doc}</span>`).join('')}
-            </div>
-          ` : ''}
+    } catch(e) {}
+
+    // 2. Нет анализов — пустое состояние
+    if (!lastAnalysis || Object.keys(lastAnalysis.results).length === 0) {
+      content.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div class="empty-title">Нет данных анализов</div>
+          <div class="empty-sub">Загрузите PDF с результатами анализов, чтобы получить персональные рекомендации</div>
+          <a href="upload.html" class="empty-btn">📄 Загрузить анализы</a>
         </div>
       `;
-    }).join('');
+      return;
+    }
+
+    // 3. Собираем отклонения
+    const abnormal = [];
+    const normal = [];
+    Object.entries(lastAnalysis.results).forEach(([name, r]) => {
+      if (!r) return;
+      if (r.status === 'high' || r.status === 'low') {
+        abnormal.push({ name, ...r });
+      } else if (r.status === 'normal') {
+        normal.push({ name, ...r });
+      }
+    });
+
+    let html = `
+      <div class="hero-card">
+        <div class="hero-title">📊 Анализ от ${new Date(lastAnalysis.date).toLocaleDateString('ru-RU')}</div>
+        <div class="hero-sub">Файл: ${lastAnalysis.fileName}<br>
+        Найдено показателей: ${Object.keys(lastAnalysis.results).length} • Отклонений: ${abnormal.length}</div>
+      </div>
+    `;
+
+    // 4. Если нет отклонений
+    if (abnormal.length === 0) {
+      html += `
+        <div class="hero-card" style="background:linear-gradient(135deg, #10b981 0%, #059669 100%);">
+          <div class="hero-title">🎉 Отличные показатели!</div>
+          <div class="hero-sub">Все ваши ${normal.length} показателей в норме. Продолжайте следить за здоровьем!</div>
+        </div>
+      `;
+    } else {
+      // 5. Рекомендации по отклонениям
+      html += `<div class="section-title">⚠️ Требуют внимания (${abnormal.length})</div>`;
+
+      abnormal.forEach((item, idx) => {
+        const mapEntry = window.supplementMap?.[item.name];
+        const advice = mapEntry?.[item.status];
+        const statusLabel = item.status === 'high' ? '↑ Выше нормы' : '↓ Ниже нормы';
+        const statusClass = item.status === 'high' ? 'high' : 'low';
+        const icon = item.status === 'high' ? '↑' : '↓';
+
+        html += `
+          <div class="rec-card" style="animation-delay:${idx * 0.05}s">
+            <div class="rec-header">
+              <div class="rec-icon ${statusClass}">${icon}</div>
+              <div class="rec-title-block">
+                <div class="rec-title">${item.name}</div>
+                <div class="rec-subtitle">${item.value} ${item.unit || ''} (норма: ${item.referenceMin ?? '—'} – ${item.referenceMax ?? '—'})</div>
+              </div>
+              <div class="rec-status ${statusClass}">${statusLabel}</div>
+            </div>
+        `;
+
+        if (advice) {
+          if (advice.description) {
+            html += `<div class="rec-description">📖 ${advice.description}</div>`;
+          }
+          if (advice.dangerDesc) {
+            html += `<div class="rec-danger">⚠️ ${advice.dangerDesc}</div>`;
+          }
+          html += `<div class="rec-body">`;
+          if (advice.supplement) {
+            html += `<div class="rec-row"><div class="rec-row-label">💊 Что делать:</div><div class="rec-row-value">${advice.supplement}</div></div>`;
+          }
+          if (advice.duration) {
+            html += `<div class="rec-row"><div class="rec-row-label">⏱ Длительность:</div><div class="rec-row-value">${advice.duration}</div></div>`;
+          }
+          if (advice.note) {
+            html += `<div class="rec-row"><div class="rec-row-label">📝 Примечание:</div><div class="rec-row-value">${advice.note}</div></div>`;
+          }
+          html += `</div>`;
+          if (advice.doctors && advice.doctors.length > 0) {
+            html += `<div class="rec-doctors">`;
+            advice.doctors.forEach(d => {
+              html += `<div class="rec-doctor-chip">👨‍⚕️ ${d}</div>`;
+            });
+            html += `</div>`;
+          }
+        } else {
+          html += `
+            <div class="rec-description">
+              💬 Для детальной интерпретации обратитесь к ИИ-ассистенту или врачу
+            </div>
+            <div class="rec-doctors">
+              <a href="chat.html" class="rec-doctor-chip" style="text-decoration:none;">🤖 Спросить ИИ</a>
+              <div class="rec-doctor-chip" style="background:var(--surface-2);color:var(--text-2);">👨‍⚕️ Терапевт</div>
+            </div>
+          `;
+        }
+
+        html += `</div>`;
+      });
+    }
+
+    // 6. Диагностические правила (выявленные паттерны)
+    if (window.detectPatterns && Object.keys(lastAnalysis.results).length > 0) {
+      const patterns = window.detectPatterns(lastAnalysis.results);
+      if (patterns && patterns.length > 0) {
+        html += `<div class="section-title">🔍 Выявленные состояния</div>`;
+        patterns.forEach(p => {
+          const dangerColor = p.danger === 'high' ? 'var(--red)' : p.danger === 'medium' ? 'var(--orange)' : 'var(--green)';
+          const dangerLabel = p.danger === 'high' ? 'Высокая опасность' : p.danger === 'medium' ? 'Средняя опасность' : 'Низкая опасность';
+          html += `
+            <div class="rec-card">
+              <div class="rec-header">
+                <div class="rec-icon" style="background:${dangerColor}20;">🩺</div>
+                <div class="rec-title-block">
+                  <div class="rec-title">${p.name}</div>
+                  <div class="rec-subtitle" style="color:${dangerColor};font-weight:700;">${dangerLabel}</div>
+                </div>
+              </div>
+              <div class="rec-description">
+                Совпадение с диагностическим правилом. Требуется консультация специалиста.
+              </div>
+              <div class="rec-doctors">
+                ${p.doctors.map(d => `<div class="rec-doctor-chip">👨‍⚕️ ${d}</div>`).join('')}
+              </div>
+            </div>
+          `;
+        });
+      }
+    }
+
+    // 7. Профилактические рекомендации
+    if (window.preventiveRecommendations && window.preventiveRecommendations.length > 0) {
+      html += `<div class="section-title">🛡 Профилактика</div>`;
+      window.preventiveRecommendations.forEach(r => {
+        html += `
+          <div class="preventive-card">
+            <div class="preventive-title">💊 ${r.supplement}</div>
+            <div class="preventive-sub">
+              ⏱ ${r.duration} • ${r.note}
+              ${r.doctors ? '<br>👨‍⚕️ ' + r.doctors.join(', ') : ''}
+            </div>
+          </div>
+        `;
+      });
+    }
+
+    // 8. Кнопки действий
+    html += `
+      <div class="nav-row" style="display:flex;gap:10px;margin-top:24px;">
+        <a href="upload.html" class="nav-btn secondary" style="flex:1;text-decoration:none;text-align:center;padding:14px;background:var(--surface-2);border-radius:999px;font-weight:700;color:var(--text-2);">📄 Загрузить новые</a>
+        <a href="chat.html" class="nav-btn primary" style="flex:1;text-decoration:none;text-align:center;padding:14px;background:var(--green);border-radius:999px;font-weight:700;color:white;box-shadow:0 4px 12px rgba(61,139,78,0.3);">🤖 Обсудить с ИИ</a>
+      </div>
+    `;
+
+    content.innerHTML = html;
   }
 
-  // Обновление рекомендаций
-  window.refreshRecommendations = function() {
-    showToast('Обновляю рекомендации...', '🔄');
-    setTimeout(() => {
-      loadLatestAnalysis();
-      showToast('Рекомендации обновлены', '✅');
-    }, 500);
-  };
-
-  // Инициализация
-  loadLatestAnalysis();
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(err => console.error('SW:', err));
-  }
+  render();
 })();
 </script>
-
 </body>
 </html>

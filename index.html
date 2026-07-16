@@ -8,203 +8,114 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233D8B4E'/><text x='50' y='65' font-size='60' text-anchor='middle'>🩺</text></svg>">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="animations.css">
+  <link rel="stylesheet" href="styles.css?v=5.8.0">
+  <link rel="stylesheet" href="animations.css?v=5.8.0">
   <title>Семейный доктор ИИ</title>
   <style>
-    @keyframes typingBounce {
-      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-      30% { transform: translateY(-8px); opacity: 1; }
-    }
-    @keyframes messageSlideIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    /* ═══════ СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ (справа) ═══════ */
-    .chat-user-msg {
-      background: var(--green);
-      color: white;
-      padding: 14px 18px;
-      border-radius: 18px 18px 4px 18px;
-      margin-bottom: 14px;
-      margin-left: 60px;
-      margin-right: 8px;
-      font-size: 15px;
-      line-height: 1.55;
-      word-wrap: break-word;
-      box-shadow: 0 2px 8px rgba(61, 139, 78, 0.15);
-      max-width: calc(100% - 68px);
-      animation: messageSlideIn 0.3s ease;
-    }
-    .chat-user-msg .time { 
-      font-size: 11px; 
-      opacity: 0.85; 
-      margin-top: 6px; 
-      text-align: right; 
-    }
-    
-    /* ═══════ СООБЩЕНИЯ AI (слева) ═══════ */
-    .chat-ai-msg {
-      background: var(--surface-2);
-      padding: 16px 18px;
-      border-radius: 18px 18px 18px 4px;
-      margin-bottom: 14px;
-      margin-right: 60px;
-      margin-left: 8px;
-      font-size: 15px;
-      line-height: 1.6;
-      color: var(--text-1);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      max-width: calc(100% - 68px);
-      animation: messageSlideIn 0.3s ease;
-    }
-    .chat-ai-msg .time { 
-      font-size: 11px; 
-      color: var(--text-3); 
-      margin-top: 10px; 
-    }
-    .chat-ai-msg strong { color: var(--dark); font-weight: 700; }
-    .chat-ai-msg em { font-style: italic; }
-    .chat-ai-msg code {
-      background: var(--surface);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 0.9em;
-    }
-    
-    .chat-source-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 10px;
-      margin-bottom: 8px;
-    }
-    .chat-source-badge.gemini { background: rgba(61, 139, 78, 0.15); color: var(--green); }
-    .chat-source-badge.local { background: var(--surface); color: var(--text-3); }
-    
-    .chat-error-msg {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 12px 16px;
-      border-radius: 16px;
-      margin-bottom: 14px;
-      margin-right: 60px;
-      margin-left: 8px;
-      font-size: 13px;
-      max-width: calc(100% - 68px);
-      animation: messageSlideIn 0.3s ease;
-    }
-    .chat-error-msg a {
-      color: #991b1b;
-      text-decoration: underline;
-      font-weight: 600;
-    }
-    
-    .chat-disclaimer {
-      margin-top: 10px;
-      padding: 10px 12px;
-      background: rgba(244, 162, 97, 0.12);
-      border-radius: 10px;
-      font-size: 12px;
-      color: #92400E;
-      line-height: 1.45;
-    }
-    
-    /* ═══════ TYPING INDICATOR ═══════ */
-    .typing-indicator {
-      background: var(--surface-2);
-      padding: 14px 18px;
-      border-radius: 18px 18px 18px 4px;
-      margin-bottom: 14px;
-      margin-right: 60px;
-      margin-left: 8px;
+    /* ═══ CHAT INPUT BAR (inline, index-specific) ═══ */
+    .chat-input-bar {
+      background: white;
+      border-radius: 28px;
+      padding: 10px 14px 6px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
       display: flex;
-      gap: 6px;
-      align-items: center;
-      width: fit-content;
-      max-width: calc(100% - 68px);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-      animation: messageSlideIn 0.3s ease;
+      flex-direction: column;
+      gap: 0;
     }
-    .typing-indicator .dot {
-      width: 8px;
-      height: 8px;
-      background: var(--text-3);
-      border-radius: 50%;
-      animation: typingBounce 1.4s infinite ease-in-out;
-    }
-    .typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
-    .typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
-    
-    /* ═══════ ПРИВЕТСТВЕННОЕ СООБЩЕНИЕ ═══════ */
-    .chat-welcome {
-      background: var(--surface-2);
-      padding: 16px 18px;
-      border-radius: 18px;
-      margin-bottom: 16px;
-      animation: messageSlideIn 0.4s ease;
-    }
-    .chat-welcome-title {
-      font-weight: 700;
-      font-size: 15px;
-      color: var(--dark);
-      margin-bottom: 8px;
+
+    .chat-input-bar-top {
       display: flex;
       align-items: center;
       gap: 8px;
+      width: 100%;
     }
-    .chat-welcome-text {
-      font-size: 14px;
+
+    .chat-input-bar-top .chat-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 15px;
+      font-family: inherit;
+      background: transparent;
+      padding: 8px 4px;
       color: var(--text-1);
-      line-height: 1.55;
+      min-width: 0;
     }
-    
-    /* ═══════ ПОД ПОЛЕМ ВВОДА ═══════ */
+
+    .chat-input-bar-top .chat-input::placeholder {
+      color: var(--text-3);
+    }
+
+    .chat-input-bar-top .voice-btn,
+    .chat-input-bar-top .chat-send {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+
+    .chat-input-bar-top .voice-btn {
+      background: var(--surface-2);
+      color: var(--text-2);
+    }
+
+    .chat-input-bar-top .voice-btn:hover {
+      background: var(--green);
+      color: white;
+    }
+
+    .chat-input-bar-top .chat-send {
+      background: var(--green);
+      color: white;
+    }
+
+    .chat-input-bar-top .chat-send:hover {
+      background: var(--green-light);
+    }
+
+    /* ═══ KNOWLEDGE NOTE (под полем ввода) ═══ */
     .chat-knowledge-note {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 2px;
       font-size: 12px;
-      color: var(--text-3);
-      margin-top: 8px;
-      margin-bottom: 20px;
-      padding: 10px 14px;
-      background: linear-gradient(135deg, rgba(61, 139, 78, 0.06) 0%, rgba(91, 173, 111, 0.04) 100%);
-      border-radius: 12px;
-      border: 1px solid rgba(61, 139, 78, 0.1);
-    }
-    .chat-knowledge-note-icon {
-      font-size: 16px;
-    }
-    .chat-knowledge-note-text {
+      color: white;
+      margin-top: -24px;
+      margin-bottom: 16px;
+      padding: 6px 0;
       font-style: italic;
       font-weight: 500;
+      line-height: 1.3;
+      background: none;
+      border: none;
+      box-shadow: none;
+      border-radius: 0;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.25);
     }
-    
-    .quick-question-btn {
-      padding: 8px 14px;
-      background: var(--surface);
-      border: 1px solid var(--surface-2);
-      border-radius: 20px;
-      font-size: 13px;
-      cursor: pointer;
-      color: var(--text-1);
-      transition: all 0.2s;
+
+    .chat-knowledge-note-icon { font-size: 13px; }
+    .chat-knowledge-note-text { line-height: 1.3; }
+
+    /* ═══ TYPING ANIMATION ═══ */
+    @keyframes typingBounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-8px); opacity: 1; }
     }
-    .quick-question-btn:hover { 
-      background: var(--surface-2); 
-      border-color: var(--green); 
-      transform: translateY(-1px);
-    }
-    
+
+    /* ═══ VOICE RECORDING ═══ */
     .voice-btn.recording {
       background: var(--red) !important;
       animation: pulse-red 1.5s ease-in-out infinite;
@@ -213,7 +124,8 @@
       0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
       50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
     }
-    
+
+    /* ═══ ALL ACTIONS / FUNCTIONS MODAL ═══ */
     .all-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -230,10 +142,15 @@
       align-items: center;
       text-align: center;
       gap: 8px;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
     }
-    .all-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    
+    .all-item:hover {
+      border-color: var(--green);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(61, 139, 78, 0.15);
+    }
+
     .all-list { display: flex; flex-direction: column; gap: 10px; }
     .all-list-item {
       background: var(--surface);
@@ -244,30 +161,40 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      transition: all 0.2s;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
     }
-    .all-list-item:hover { transform: translateX(4px); }
-    
-    /* ═══════ АДАПТИВНОСТЬ ═══════ */
-    @media (max-width: 420px) {
-      .chat-user-msg,
-      .chat-ai-msg,
-      .chat-error-msg,
-      .typing-indicator {
-        margin-left: 30px;
-        margin-right: 30px;
-        max-width: calc(100% - 38px);
-      }
-      .chat-ai-msg,
-      .chat-error-msg,
-      .typing-indicator {
-        margin-left: 8px;
-        margin-right: 30px;
-      }
-      .chat-user-msg {
-        margin-left: 30px;
-        margin-right: 8px;
-      }
+    .all-list-item:hover {
+      border-color: var(--green);
+      transform: translateX(4px);
+    }
+
+    /* ═══ CLEAR CACHE BUTTON ═══ */
+    .clear-cache-btn {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 9999;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      background: rgba(185, 28, 28, 0.85);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      transition: all 0.2s ease;
+      opacity: 0.6;
+    }
+    .clear-cache-btn:hover {
+      opacity: 1;
+      transform: scale(1.1);
     }
   </style>
 </head>
@@ -279,12 +206,10 @@
 </div>
 
 <!-- Кнопка очистки кеша (dev tool) -->
-<button id="clearCacheBtn" onclick="clearAppCache()" title="Очистить кеш и профиль" class="clear-cache-btn">
-  🧹
-</button>
+<button id="clearCacheBtn" onclick="clearAppCache()" title="Очистить кеш и профиль" class="clear-cache-btn">🧹</button>
 
 <div class="app">
-  
+
   <!-- ═══════ PATIENT HEADER CARD ═══════ -->
   <div class="patient-card fade-in">
     <div class="pc-top">
@@ -295,8 +220,7 @@
           <div class="pc-id" id="activeMemberInfo">Войдите для полного доступа</div>
         </div>
       </div>
-      <!-- Кнопка диагностики (удалить после решения проблем) -->
-      <button onclick="diagnoseAuth()" style="padding: 6px 10px; background: var(--surface-2); border: none; border-radius: 8px; font-size: 11px; cursor: pointer; color: var(--text-2); margin-left: 8px;">
+      <button onclick="diagnoseAuth()" style="padding: 6px 10px; background: var(--surface-2); border: none; border-radius: 8px; font-size: 11px; cursor: pointer; color: var(--text-2); margin-left: 8px;" title="Диагностика авторизации">
         🔍
       </button>
     </div>
@@ -311,7 +235,7 @@
         След. приём
       </div>
       <div class="pc-meta-item">
-        <strong id="remindersCount" data-counter="3">0</strong>
+        <strong id="remindersCount" data-counter="0">0</strong>
         Напоминания
       </div>
     </div>
@@ -319,22 +243,22 @@
     <!-- Круглые кнопки семьи -->
     <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-2); display: flex; align-items: center; gap: 12px; position: relative;">
       <button onclick="toggleFamilyMenu()" id="familyMenuBtn"
-              style="width: 56px; height: 56px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--green) 0%, var(--green-light, #5BAD6F) 100%); color: white; font-size: 24px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(61, 139, 78, 0.35); transition: transform 0.2s; flex-shrink: 0;">
+              style="width: 56px; height: 56px; border-radius: 50%; border: none; background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%); color: white; font-size: 24px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(61, 139, 78, 0.35); transition: transform 0.2s; flex-shrink: 0;">
         <span id="familyInitial">Д</span>
       </button>
-      
+
       <button onclick="openModal('addFamilyMemberModal')"
               style="width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--surface-2); background: var(--surface); color: var(--text-2); font-size: 28px; font-weight: 300; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0;">
         +
       </button>
-      
+
       <div style="flex: 1; min-width: 0;">
         <div style="font-size: 15px; font-weight: 700; color: var(--dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="familyBtnLabel">Моя семья</div>
         <div style="font-size: 12px; color: var(--text-3); margin-top: 2px;">Нажмите для переключения</div>
       </div>
-      
+
       <span style="font-size: 20px; color: var(--text-3);">›</span>
-      
+
       <!-- Выпадающее меню семьи -->
       <div id="familyMenu" style="display: none; position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: var(--surface); border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.18); min-width: 280px; z-index: 1000; overflow: hidden; border: 1px solid var(--surface-2);">
         <div style="padding: 14px 16px; border-bottom: 1px solid var(--surface-2); font-weight: 700; color: var(--dark); font-size: 14px; display: flex; align-items: center; gap: 8px;">
@@ -350,20 +274,15 @@
   <div class="sec-hd">
     <h2>Медицинский агент ИИ</h2>
   </div>
-  
-  <!-- Поле ввода с подписью внутри -->
-  <div class="chat-input-bar" style="margin-bottom: 20px;">
+
+  <!-- Поле ввода -->
+  <div class="chat-input-bar" style="margin-bottom: 8px;">
     <div class="chat-input-bar-top">
       <button class="chat-attach ripple-element voice-btn" onclick="startVoiceInput()" aria-label="Голосовой ввод">🎤</button>
-      <input type="text" class="chat-input" id="chatInputField" 
+      <input type="text" class="chat-input" id="chatInputField"
              placeholder="Опишите симптомы ..."
              onkeydown="if(event.key==='Enter') sendChatMessage()">
-    <button class="chat-send ripple-element" onclick="sendChatMessage()" aria-label="Отправить">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
+      <button class="chat-send ripple-element" onclick="sendChatMessage()" aria-label="Отправить">➤</button>
     </div>
   </div>
 
@@ -416,7 +335,7 @@
       </div>
     </a>
 
-    <a href="compare.html" style="background: var(--surface); border-radius: 16px; padding: 20px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 8px rgba(28,43,28,0.06);">
+    <a href="upload.html?tab=compare" style="background: var(--surface); border-radius: 16px; padding: 20px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 2px 8px rgba(28,43,28,0.06);">
       <div style="display: flex; justify-content: space-between; align-items: flex-start;">
         <div style="width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); display: flex; align-items: center; justify-content: center; font-size: 20px;">📈</div>
         <span style="font-size: 18px; color: var(--text-3);">→</span>
@@ -461,7 +380,7 @@
   </div>
 
   <!-- Персональные рекомендации -->
-  <a href="recommendations.html" style="background: linear-gradient(135deg, var(--green) 0%, var(--green-light, #5BAD6F) 100%); border-radius: 16px; padding: 24px; text-decoration: none; color: white; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(61, 139, 78, 0.3); margin-bottom: 20px;">
+  <a href="recommendations.html" style="background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%); border-radius: 16px; padding: 24px; text-decoration: none; color: white; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(61, 139, 78, 0.3); margin-bottom: 20px;">
     <div style="width: 48px; height: 48px; border-radius: 14px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 24px;">💡</div>
     <div style="flex: 1;">
       <div style="font-size: 16px; font-weight: 700; margin-bottom: 4px;">Персональные рекомендации</div>
@@ -473,7 +392,7 @@
   <!-- ═══════ RED FLAGS ALERT ═══════ -->
   <div class="notif-card fade-in hover-lift" style="border-left: 4px solid var(--red);">
     <div class="notif-item unread ripple-element" onclick="openModal('emergencyModal')">
-      <div class="notif-icon-wrap red-bg pulse-dot">🚨</div>
+      <div class="notif-icon-wrap red-bg pulse">🚨</div>
       <div class="notif-body">
         <div class="notif-title">Экстренные симптомы</div>
         <div class="notif-desc">Боль в груди, одышка, потеря сознания — звоните 112</div>
@@ -611,7 +530,7 @@
       </div>
       <button class="next-btn magnetic-btn ripple-element" onclick="doLogin()">Войти</button>
       <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--text-3)">
-        Нет аккаунта? 
+        Нет аккаунта?
         <a href="#" onclick="openModal('registerModal'); closeModal('loginModal'); return false;" style="color:var(--green);font-weight:600">Регистрация</a>
       </div>
     </div>
@@ -675,7 +594,7 @@
       </div>
       <button class="next-btn magnetic-btn ripple-element" onclick="doRegister()">Создать аккаунт</button>
       <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--text-3)">
-        Уже есть аккаунт? 
+        Уже есть аккаунт?
         <a href="#" onclick="openModal('loginModal'); closeModal('registerModal'); return false;" style="color:var(--green);font-weight:600">Войти</a>
       </div>
     </div>
@@ -738,11 +657,11 @@
 
 <!-- ═══════ SCRIPTS ═══════ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase-client.js"></script>
-<script src="database.js"></script>
-<script src="patient-profile.js"></script>
-<script src="ai-assistant.js"></script>
-<script src="animations.js"></script>
+<script src="supabase-client.js?v=5.8.0"></script>
+<script src="database.js?v=5.8.0"></script>
+<script src="patient-profile.js?v=5.8.0"></script>
+<script src="ai-assistant.js?v=5.8.0"></script>
+<script src="animations.js?v=5.8.0"></script>
 <script>
 (function(){
   'use strict';
@@ -750,20 +669,14 @@
   // ═══════ ВРЕМЯ И ДАТА ═══════
   function updateTime() {
     const now = new Date();
-    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 
+    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
                     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-    const daysOfWeek = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 
+    const daysOfWeek = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда',
                         'Четверг', 'Пятница', 'Суббота'];
-    
-    // Верхняя строка (strong): только дата — "14 июля"
     const currentDate = `${now.getDate()} ${months[now.getMonth()]}`;
-    
-    // Нижняя строка (span): день недели — "Понедельник"
     const currentDay = daysOfWeek[now.getDay()];
-    
     const dateEl = document.getElementById('currentDate');
     const dayEl = document.getElementById('currentDay');
-    
     if (dateEl) dateEl.textContent = currentDate;
     if (dayEl) dayEl.textContent = currentDay;
   }
@@ -911,7 +824,7 @@
             <a href="calendar.html" class="all-item"><div style="font-size:32px">📅</div><div style="font-weight:600;font-size:14px">Календарь здоровья</div></a>
             <a href="#" onclick="closeModal('allQuickActionsModal'); openModal('emergencyModal'); return false;" class="all-item"><div style="font-size:32px">🚨</div><div style="font-weight:600;font-size:14px">Быстрая помощь</div></a>
             <a href="history.html" class="all-item"><div style="font-size:32px">📊</div><div style="font-weight:600;font-size:14px">История анализов</div></a>
-            <a href="compare.html" class="all-item"><div style="font-size:32px">📈</div><div style="font-weight:600;font-size:14px">Динамика</div></a>
+            <a href="upload.html?tab=compare" class="all-item"><div style="font-size:32px">📈</div><div style="font-weight:600;font-size:14px">Динамика</div></a>
             <a href="pharmacy.html" class="all-item"><div style="font-size:32px">💊</div><div style="font-weight:600;font-size:14px">Аптечка</div></a>
             <a href="import.html" class="all-item"><div style="font-size:32px">📚</div><div style="font-weight:600;font-size:14px">База знаний</div></a>
           </div>
@@ -947,7 +860,7 @@
               <div style="flex:1"><div style="font-weight:700;font-size:15px">История анализов</div><div style="font-size:12px;color:var(--text-3);margin-top:2px">Все загруженные анализы</div></div>
               <span style="color:var(--text-3)">→</span>
             </a>
-            <a href="compare.html" class="all-list-item">
+            <a href="upload.html?tab=compare" class="all-list-item">
               <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#dbeafe 0%,#bfdbfe 100%);display:flex;align-items:center;justify-content:center;font-size:22px">📈</div>
               <div style="flex:1"><div style="font-weight:700;font-size:15px">Динамика</div><div style="font-size:12px;color:var(--text-3);margin-top:2px">Сравнение анализов</div></div>
               <span style="color:var(--text-3)">→</span>
@@ -1126,8 +1039,8 @@
     btn.disabled = true;
     btn.textContent = 'Создаём...';
     try {
-      await window.SupabaseDB.register({ 
-        email, password, firstName, lastName, patronymic, 
+      await window.SupabaseDB.register({
+        email, password, firstName, lastName, patronymic,
         sex, age, birthDate, avatarFile: regAvatarFile
       });
       showToast('Аккаунт создан!', '🎉');
@@ -1231,7 +1144,7 @@
         <div style="padding:14px;background:var(--surface-2);border-radius:var(--r-md);margin-bottom:14px">
           <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:6px">ФИО ${fioLocked ? '🔒' : ''}</label>
           <div style="font-size:16px;font-weight:700;color:var(--dark);margin-bottom:8px">${p.full_name || p.name || '—'}</div>
-          ${fioLocked 
+          ${fioLocked
             ? `<button class="pill pill-outline ripple-element click-scale" onclick="closeModal('editProfileModal'); openModal('fioChangeModal');" style="font-size:12px">📞 Запросить изменение через поддержку</button>`
             : `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
                 <input type="text" id="editLastName" value="${p.last_name || ''}" placeholder="Фамилия" style="padding:8px;border:1.5px solid #C8DCC8;border-radius:var(--r-sm);font-family:inherit;font-size:14px;background:white">
@@ -1395,7 +1308,7 @@
     const user = window.SupabaseDB ? await window.SupabaseDB.getCurrentUser() : null;
     const body = document.getElementById('accountModalBody');
     const title = document.getElementById('accountModalTitle');
-    
+
     if (user && user.profile) {
       title.textContent = '👤 Мой аккаунт';
       const p = user.profile;
@@ -1471,8 +1384,13 @@
     }
   });
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').then(reg => console.log('SW:', reg.scope)).catch(err => console.error('SW error:', err));
+  // Регистрация Service Worker только через http/https
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('SW:', reg.scope))
+        .catch(err => console.error('SW error:', err));
+    });
   }
 })();
 </script>
