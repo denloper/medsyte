@@ -737,6 +737,57 @@
     return out;
   }
 
+  // ═══ ДЕДУПЛИКАЦИЯ: убираем дубли по canonicalName ═══
+  function deduplicateTests(data) {
+    if (!data.tests || !Array.isArray(data.tests)) return data;
+
+    const seen = new Map(); // canonicalName → best test
+    const deduped = [];
+
+    data.tests.forEach(t => {
+      const key = t.name.trim();
+
+      if (!seen.has(key)) {
+        seen.set(key, t);
+        deduped.push(t);
+      } else {
+        // Дубль! Выбираем лучшее значение по совпадению с референсом
+        const existing = seen.get(key);
+
+        // Если у обоих есть референсы — оставляем тот, что в пределах нормы
+        if (existing.referenceMin != null && existing.referenceMax != null) {
+          const existingInRange = existing.value >= existing.referenceMin && existing.value <= existing.referenceMax;
+          const newInRange = t.value >= existing.referenceMin && t.value <= existing.referenceMax;
+
+          // Если существующее в норме, а новое нет — оставляем существующее
+          if (existingInRange && !newInRange) return;
+          // Если новое в норме, а существующее нет — заменяем
+          if (!existingInRange && newInRange) {
+            const idx = deduped.indexOf(existing);
+            deduped[idx] = t;
+            seen.set(key, t);
+            return;
+          }
+        }
+
+        // Если оба вне нормы или оба в норме — оставляем с большим соответствием единицам
+        const expectedUnits = (window.labTests?.find(lt => lt.canonicalName === key)?.units || [])
+          .map(u => u.toLowerCase().trim());
+        const existingUnitMatch = expectedUnits.includes((existing.unit || '').toLowerCase().trim());
+        const newUnitMatch = expectedUnits.includes((t.unit || '').toLowerCase().trim());
+
+        if (newUnitMatch && !existingUnitMatch) {
+          const idx = deduped.indexOf(existing);
+          deduped[idx] = t;
+          seen.set(key, t);
+        }
+        // Иначе оставляем существующее (первое)
+      }
+    });
+
+    return { ...data, tests: deduped };
+  }
+
   // ═══ FALLBACK ═══
   function fallbackParse(text) {
     console.warn('⚠️ Используем локальный парсер как fallback');
@@ -940,6 +991,29 @@
     window._compareData = { oldD, newD, rows };
   }
 
+  // ═══ ПРОВЕРКА: значение соответствует референсу по порядку величины ═══
+  function validateValueMagnitude(data) {
+    if (!data.tests) return data;
+
+    data.tests = data.tests.map(t => {
+      if (t.value == null || t.referenceMin == null || t.referenceMax == null) return t;
+
+      const valueOrder = Math.floor(Math.log10(Math.abs(t.value) || 1));
+      const refMinOrder = Math.floor(Math.log10(Math.abs(t.referenceMin) || 1));
+      const refMaxOrder = Math.floor(Math.log10(Math.abs(t.referenceMax) || 1));
+
+      // Если значение отличается от референсов на 2+ порядка — помечаем как подозрительное
+      if (Math.abs(valueOrder - refMaxOrder) >= 2) {
+        console.warn(`⚠️ Подозрительное значение: ${t.name} = ${t.value} ${t.unit} (референс ${t.referenceMin}-${t.referenceMax})`);
+        return { ...t, suspicious: true, status: 'unknown' };
+      }
+
+      return t;
+    });
+
+    return data;
+  }
+
   // ═══ SINGLE ANALYSIS ═══
   window.runSingleAnalysis = async function() {
     if (!fileSingle) return;
@@ -965,7 +1039,8 @@
       }
 
       prog('single', 85, '✓ Сверяем с медицинской базой...', '• Нормализуем названия и единицы');
-      const data = aiData.tests ? normalizeWithDB(aiData) : aiData;
+      let data = aiData.tests ? normalizeWithDB(aiData) : aiData;
+      if (data.tests) data = deduplicateTests(data);
 
       prog('single', 100, '✓ Готово!');
       setTimeout(() => {
@@ -1011,8 +1086,10 @@
       }
 
       prog('compare', 85, '✓ Сверяем с базой...');
-      const dOld = aiOld.tests ? normalizeWithDB(aiOld) : aiOld;
-      const dNew = aiNew.tests ? normalizeWithDB(aiNew) : aiNew;
+      let dOld = aiOld.tests ? normalizeWithDB(aiOld) : aiOld;
+      let dNew = aiNew.tests ? normalizeWithDB(aiNew) : aiNew;
+      if (dOld.tests) dOld = deduplicateTests(dOld);
+      if (dNew.tests) dNew = deduplicateTests(dNew);
 
       prog('compare', 95, '📊 Сравниваем показатели...');
       setTimeout(() => {

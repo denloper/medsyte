@@ -387,7 +387,7 @@
         { sex: 'female', ageMin: 18, ageMax: 120, min: 9.0, max: 30.4, unit: 'мкмоль/л' }
       ] },
     { id: 'iron_tibc', canonicalName: 'ОЖСС', shortName: 'TIBC', category: 'Обмен железа', units: ['мкмоль/л'],
-      aliases: ['ожсс', 'общая железосвязывающая способность', 'tibc', 'трансферрин'],
+      aliases: ['ожсс', 'общая железосвязывающая способность', 'tibc', 'о ж с с'],
       references: [{ sex: 'any', ageMin: 18, ageMax: 120, min: 45, max: 76, unit: 'мкмоль/л' }] },
     { id: 'iron_transferrin', canonicalName: 'Трансферрин', shortName: 'TRF', category: 'Обмен железа', units: ['г/л'],
       aliases: ['трансферрин', 'transferrin', 'trf'],
