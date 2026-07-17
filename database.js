@@ -1266,6 +1266,69 @@
   }
 
   // ═══════════════════════════════════════════════════════════
+  //  ФОРМАТИРОВАНИЕ ЕДИНИЦ ИЗМЕРЕНИЯ
+  //  Превращает "×10^9/л" в "×10⁹/л" и другие улучшения
+  // ═══════════════════════════════════════════════════════════
+  function formatUnit(unit) {
+    if (!unit || typeof unit !== 'string') return unit || '';
+    
+    let result = unit.trim();
+    
+    // Карта надстрочных цифр
+    const superscriptMap = {
+      '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+      '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+      '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾'
+    };
+    
+    // Карта подстрочных цифр (для химических формул если нужно)
+    const subscriptMap = {
+      '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+      '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉'
+    };
+    
+    // 1. Заменяем ^N на надстрочные цифры (например ^9 → ⁹, ^12 → ¹²)
+    result = result.replace(/\^(\d+)/g, (match, digits) => {
+      return digits.split('').map(d => superscriptMap[d] || d).join('');
+    });
+    
+    // 2. Заменяем _N на подстрочные цифры (если встретится)
+    result = result.replace(/_(\d+)/g, (match, digits) => {
+      return digits.split('').map(d => subscriptMap[d] || d).join('');
+    });
+    
+    // 3. Заменяем "x10" на "×10" (латинская x на знак умножения)
+    result = result.replace(/\bx(\d)/gi, '×$1');
+    result = result.replace(/\s[xх]\s*(\d)/gi, ' ×$1'); // русская "х" тоже
+    
+    // 4. Убираем лишние пробелы вокруг знака умножения
+    result = result.replace(/\s*×\s*/g, '×');
+    
+    // 5. Заменяем "10⁹/L" на более красивое если нужно (опционально)
+    // Оставляем как есть, потому что 10⁹/L читается нормально
+    
+    // 6. Нормализация слешей: оставляем как есть (/ это стандарт)
+    
+    return result;
+  }
+
+  // Вспомогательная функция для форматирования референсного диапазона
+  function formatReferenceRange(min, max, unit) {
+    const fmtUnit = formatUnit(unit);
+    if (min === null && max === null) return '—';
+    if (min === null) return `до ${max} ${fmtUnit}`;
+    if (max === null) return `от ${min} ${fmtUnit}`;
+    return `${min} – ${max} ${fmtUnit}`;
+  }
+
+  // Форматирование значения с единицей
+  function formatValueWithUnit(value, unit) {
+    if (value === null || value === undefined) return '—';
+    return `${value} ${formatUnit(unit)}`;
+  }
+
+
+  // ═══════════════════════════════════════════════════════════
   //  ЭКСПОРТ
   // ═══════════════════════════════════════════════════════════
   window.labTests = labTests;
@@ -1281,6 +1344,8 @@
   window.getRecommendations = getRecommendations;
   window.levenshteinDistance = levenshteinDistance;
   window.normalizeString = normalizeString;
-  
+  window.formatUnit = formatUnit;
+  window.formatReferenceRange = formatReferenceRange;
+  window.formatValueWithUnit = formatValueWithUnit;
   console.log(`📚 Database v5.0 loaded: ${labTests.length} tests, ${diagnosticRules.length} rules, ${Object.keys(supplementMap).length} supplements`);
 })();

@@ -390,6 +390,19 @@
   function formatAI(text) {
     if (!text) return '';
     let s = escapeHtml(text);
+    
+    // Красивое форматирование единиц в тексте AI
+    if (window.formatUnit) {
+      // Заменяем ^N на надстрочные в тексте ответа
+      s = s.replace(/\^(\d+)/g, (match, digits) => {
+        const superscriptMap = {
+          '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+          '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+        };
+        return digits.split('').map(d => superscriptMap[d] || d).join('');
+      });
+    }
+    
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/(^|[\s(])\*([^*\n]+)\*([\s).,!?]|$)/g, '$1<em>$2</em>$3');
     s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
@@ -397,7 +410,6 @@
       return pre + '<li>' + content + '</li>';
     });
     s = s.replace(/(<li>[^]*?<\/li>)+/g, match => '<ul>' + match + '</ul>');
-    s = s.replace(/(^|\n)(\d+)\.\s+([^\n]+)/g, '$1<li>$3</li>');
     s = s.replace(/\n/g, '<br>');
     s = s.replace(/<br>\s*(<\/?ul>|<\/?li>)/g, '$1');
     s = s.replace(/(<\/?ul>|<\/?li>)\s*<br>/g, '$1');

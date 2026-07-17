@@ -120,6 +120,7 @@
       align-items: center;
       gap: 8px;
       margin-top: 6px;
+      flex-wrap: wrap;
     }
     .cmp-old {
       font-size: 14px;
@@ -162,6 +163,29 @@
     .tab-btn:hover:not(.active) { color: var(--text-2); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
+
+    /* ═══ AI INFO BOX ═══ */
+    .ai-info-box {
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08));
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: var(--r-md);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-2);
+    }
+    .ai-info-box strong { color: var(--dark); }
+
+    /* ═══ COMPARE ACTIONS ═══ */
+    .compare-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .compare-actions .next-btn {
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -180,7 +204,7 @@
         <a href="index.html" class="circle-btn ripple-element">←</a>
         <div>
           <div class="pc-name">Анализы и Динамика</div>
-          <div class="pc-id">AI-парсинг PDF</div>
+          <div class="pc-id">AI-анализ медицинских документов</div>
         </div>
       </div>
     </div>
@@ -237,7 +261,7 @@
     </div>
 
     <div style="text-align:center;margin-top:12px;">
-      <span class="ai-pill"><span>🤖</span><span>AI автоматически проанализирует</span></span>
+      <span class="ai-pill"><span>🤖</span><span>Нейросеть прочитает и проанализирует</span></span>
     </div>
 
     <button class="next-btn magnetic-btn ripple-element" id="analyzeBtn" onclick="runSingleAnalysis()" disabled style="opacity:0.5;margin-top:16px;">
@@ -250,7 +274,7 @@
           <div class="doc-avatar"><span class="spin" style="display:inline-block;">⏳</span></div>
           <div style="flex:1;">
             <div class="doc-name" id="singleProgressText">AI анализирует...</div>
-            <div class="doc-spec" id="singleProgressSub">• Извлекаем показатели</div>
+            <div class="doc-spec" id="singleProgressSub">• Это может занять 10-30 секунд</div>
           </div>
         </div>
         <div class="progress-track"><div class="progress-fill" id="singleProgressBar" style="width:0%;"></div></div>
@@ -285,7 +309,7 @@
     </div>
 
     <div style="text-align:center;margin-top:12px;">
-      <span class="ai-pill"><span>🤖</span><span>AI извлечёт и сравнит</span></span>
+      <span class="ai-pill"><span>🤖</span><span>AI прочитает оба и сравнит</span></span>
     </div>
 
     <button class="next-btn magnetic-btn ripple-element" id="compareBtn" onclick="runCompare()" disabled style="opacity:0.5;margin-top:16px;">
@@ -297,8 +321,8 @@
         <div class="doc-row">
           <div class="doc-avatar"><span class="spin" style="display:inline-block;">⏳</span></div>
           <div style="flex:1;">
-            <div class="doc-name" id="compareProgressText">Сравниваем...</div>
-            <div class="doc-spec" id="compareProgressSub"></div>
+            <div class="doc-name" id="compareProgressText">AI сравнивает...</div>
+            <div class="doc-spec" id="compareProgressSub">• Это может занять 20-60 секунд</div>
           </div>
         </div>
         <div class="progress-track"><div class="progress-fill" id="compareProgressBar" style="width:0%;"></div></div>
@@ -309,8 +333,9 @@
   </div>
 
   <!-- Footer -->
-  <div style="padding:16px;background:var(--surface-2);border-radius:var(--r-md);margin-top:24px;font-size:13px;color:var(--text-2);line-height:1.5;" class="animate-on-scroll animate-fade-up">
-    ⚕️ <strong>AI-анализ:</strong> нейросеть извлекает показатели из PDF и сверяет с медицинской базой данных. При неточностях сверяйтесь с оригиналом.
+  <div class="ai-info-box animate-on-scroll animate-fade-up">
+    <strong>🤖 Как работает AI-анализ:</strong><br>
+    Нейросеть <strong>читает</strong> ваш PDF как человек, понимает таблицу, находит все показатели с их значениями и единицами измерения, затем сверяет с медицинской базой данных. При неточностях сверяйтесь с оригиналом.
   </div>
 
   <div style="height:100px;"></div>
@@ -345,6 +370,15 @@
   let patientProfile = { sex: 'female', age: 35 };
   let fileSingle = null, fileOld = null, fileNew = null;
 
+  // ═══ БЕЗОПАСНОЕ ФОРМАТИРОВАНИЕ ЕДИНИЦ ═══
+  function safeFormatUnit(unit) {
+    if (!unit) return '';
+    if (typeof window.formatUnit === 'function') {
+      try { return window.formatUnit(unit); } catch (e) { return unit; }
+    }
+    return unit;
+  }
+
   // ═══ TOAST ═══
   window.showToast = function(t, i='✓') {
     const el = document.getElementById('toast');
@@ -376,6 +410,11 @@
     document.getElementById('tab-single').classList.toggle('active', tab==='single');
     document.getElementById('tab-compare').classList.toggle('active', tab==='compare');
   };
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('tab') === 'compare') {
+    setTimeout(() => switchTab('compare'), 100);
+  }
 
   // ═══ DROP ZONES ═══
   function initDrop(zoneId, inputId, nameId, onFile) {
@@ -410,7 +449,7 @@
     cb.disabled = !(fileOld && fileNew); cb.style.opacity = (fileOld && fileNew) ? '1' : '0.5';
   }
 
-  // ═══ PDF PARSING ═══
+  // ═══ PDF TEXT EXTRACTION ═══
   async function extractPDFText(file, onProgress) {
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
@@ -419,94 +458,196 @@
       if (onProgress) onProgress(i, pdf.numPages);
       const page = await pdf.getPage(i);
       const tc = await page.getTextContent();
-      text += tc.items.map(it => it.str).join(' ') + '\n';
+      const lines = new Map();
+      tc.items.forEach(item => {
+        const y = Math.round(item.transform[5]);
+        if (!lines.has(y)) lines.set(y, []);
+        lines.get(y).push({ text: item.str, x: item.transform[4] });
+      });
+      const sortedY = Array.from(lines.keys()).sort((a, b) => b - a);
+      sortedY.forEach(y => {
+        const lineItems = lines.get(y).sort((a, b) => a.x - b.x);
+        text += lineItems.map(it => it.text).join(' ') + '\n';
+      });
+      text += '\n---PAGE_BREAK---\n';
     }
     return text;
   }
 
-  function extractUnitsFromPDF(pdfText) {
-    const map = {};
-    const units = ['г/л','g/L','ммоль/л','mg/dL','мкмоль/л','µmol/L','Ед/л','U/L','нг/мл','ng/mL','пг/мл','pg/mL','мМЕ/л','mIU/L','пмоль/л','pmol/L','×10^9/л','10^9/L','×10^12/л','%','мм/ч','мг/л','mg/L','мкг/л','µg/L'];
-    if (!window.labTests) return map;
-    window.labTests.forEach(test => {
-      const name = (test.canonicalName||'').trim();
-      const names = [name, test.shortName, ...(test.aliases||[])].filter(Boolean);
-      for (const n of names) {
-        if (!n) continue;
-        const esc = n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-        const re = new RegExp(`(${esc})\\s*[:\\s]\\s*([0-9]+[.,]?[0-9]*)\\s*([а-яА-Яa-zA-Zµμ/\\^×.0-9\\-\\s]{1,20})`,'i');
-        const m = pdfText.match(re);
-        if (m) {
-          const frag = m[0];
-          for (const u of [...units].sort((a,b)=>b.length-a.length)) {
-            if (frag.includes(u)) { map[name] = u; break; }
-          }
-          if (map[name]) break;
-        }
-      }
-    });
-    return map;
-  }
-
   // ═══ AI PARSING ═══
-  async function analyzeWithAI(pdfText, pdfUnitsMap) {
+  async function analyzeWithAI(pdfText, label = 'анализ') {
+    console.log(`🤖 AI анализирует ${label}: ${pdfText.length} символов`);
+
+    let truncated = pdfText;
+    if (truncated.length > 60000) {
+      console.warn(`⚠️ Текст слишком большой, обрезаем до 60000 символов`);
+      truncated = truncated.substring(0, 60000);
+    }
+
     const resp = await fetch(SUPABASE_URL + '/functions/v1/ai-assistant', {
       method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+SUPABASE_ANON_KEY },
-      body: JSON.stringify({ action:'parse_pdf', pdfText, patientSex: patientProfile.sex, patientAge: patientProfile.age, pdfUnitsMap })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        action: 'parse_pdf',
+        pdfText: truncated,
+        patientSex: patientProfile.sex,
+        patientAge: patientProfile.age
+      })
     });
-    const result = await resp.json();
-    if (!result.success) {
-      if (result.data?.tests?.length > 0) return result.data;
-      return null;
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`Ошибка сервера: ${resp.status} — ${errText}`);
     }
+
+    const result = await resp.json();
+
+    if (!result.success) {
+      console.error('❌ AI parse failed:', result.error);
+      if (result.data?.tests?.length > 0) {
+        console.warn('⚠️ Используем частичные данные:', result.data.tests.length, 'тестов');
+        return result.data;
+      }
+      throw new Error(result.error || 'AI не смог проанализировать PDF');
+    }
+
+    console.log(`✅ AI извлёк ${result.data.tests?.length || 0} показателей`);
     return result.data;
   }
 
-  // ═══ VALIDATE ═══
-  function validateWithDB(aiData, pdfUnitsMap) {
-    const out = { tests:[], patientInfo:{sex:patientProfile.sex, age:patientProfile.age}, labName:aiData.labName, analysisDate:aiData.analysisDate };
-    if (!aiData.tests) return out;
+  // ═══ VALIDATE WITH DATABASE ═══
+  function normalizeWithDB(aiData) {
+    const out = {
+      tests: [],
+      patientInfo: { sex: patientProfile.sex, age: patientProfile.age },
+      labName: aiData.labName || null,
+      analysisDate: aiData.analysisDate || null,
+      confidence: aiData.confidence || 0.9
+    };
+
+    if (!aiData.tests || !Array.isArray(aiData.tests)) return out;
+
     aiData.tests.forEach(at => {
-      const db = window.labTests?.find(t => {
-        const n = (t.canonicalName||'').toLowerCase().trim();
-        const s = (t.shortName||'').toLowerCase().trim();
-        const a = (at.name||'').toLowerCase().trim();
-        return n===a || s===a || (t.aliases||[]).some(al => al.toLowerCase().trim()===a);
+      const aiName = (at.name || '').trim();
+
+      const dbTest = window.labTests?.find(t => {
+        const canon = (t.canonicalName || '').toLowerCase().trim();
+        const short = (t.shortName || '').toLowerCase().trim();
+        const aiLow = aiName.toLowerCase();
+        if (canon === aiLow || short === aiLow) return true;
+        return (t.aliases || []).some(al => al.toLowerCase().trim() === aiLow);
       });
-      if (db) {
-        const ref = window.getReference(db, patientProfile.sex, patientProfile.age);
-        let unit = pdfUnitsMap[db.canonicalName] || at.unit || ref?.unit || db.units[0];
-        let mr = db.references?.find(r=>r.unit===unit) || ref;
-        let val = at.value, rMin = mr?.min, rMax = mr?.max, fixed = false;
-        if (pdfUnitsMap[db.canonicalName] && at.unit !== pdfUnitsMap[db.canonicalName]) { unit = pdfUnitsMap[db.canonicalName]; fixed = true; }
-        let status = 'unknown';
-        if (val!=null && rMin!=null && rMax!=null) { status = val<rMin?'low':val>rMax?'high':'normal'; }
-        out.tests.push({ name:db.canonicalName, shortName:db.shortName, value:val, unit, wasUnitFixed:fixed, referenceMin:rMin, referenceMax:rMax, status, category:db.category, source: fixed?'fixed':'ok' });
+
+      if (dbTest) {
+        const ref = window.getReference(dbTest, patientProfile.sex, patientProfile.age);
+        let unit = at.unit || ref?.unit || dbTest.units[0];
+        let rMin = at.referenceMin, rMax = at.referenceMax;
+        let wasUnitFixed = false;
+
+        const expectedUnits = (dbTest.units || []).map(u => u.toLowerCase().trim());
+        const actualUnit = (unit || '').toLowerCase().trim();
+
+        if (actualUnit && !expectedUnits.includes(actualUnit)) {
+          const refWithUnit = dbTest.references?.find(r =>
+            expectedUnits.includes((r.unit || '').toLowerCase().trim())
+          );
+          if (refWithUnit) {
+            unit = refWithUnit.unit;
+            rMin = refWithUnit.min;
+            rMax = refWithUnit.max;
+            wasUnitFixed = true;
+          }
+        } else {
+          if (rMin == null || rMax == null) {
+            rMin = ref?.min;
+            rMax = ref?.max;
+          }
+        }
+
+        let status = at.status || 'unknown';
+        const value = at.value;
+        if (value != null && rMin != null && rMax != null) {
+          status = value < rMin ? 'low' : value > rMax ? 'high' : 'normal';
+        }
+
+        out.tests.push({
+          name: dbTest.canonicalName,
+          shortName: dbTest.shortName,
+          value: value,
+          unit: unit,
+          wasUnitFixed: wasUnitFixed,
+          referenceMin: rMin,
+          referenceMax: rMax,
+          status: status,
+          category: dbTest.category,
+          source: wasUnitFixed ? 'fixed' : 'ok'
+        });
       } else {
-        out.tests.push({ name:at.name, shortName:at.shortName||'', value:at.value, unit:at.unit||'', referenceMin:at.referenceMin, referenceMax:at.referenceMax, status:at.status||'unknown', category:'Другое', source:'ai' });
+        out.tests.push({
+          name: aiName,
+          shortName: at.shortName || '',
+          value: at.value,
+          unit: at.unit || '',
+          wasUnitFixed: false,
+          referenceMin: at.referenceMin,
+          referenceMax: at.referenceMax,
+          status: at.status || 'unknown',
+          category: 'Другое',
+          source: 'ai'
+        });
       }
     });
+
     return out;
   }
 
+  // ═══ FALLBACK ═══
+  function fallbackParse(text) {
+    console.warn('⚠️ Используем локальный парсер как fallback');
+    if (!window.parseAnalysisText) {
+      return { tests: [], patientInfo: { sex: patientProfile.sex, age: patientProfile.age } };
+    }
+    const r = window.parseAnalysisText(text, patientProfile.sex, patientProfile.age);
+    return {
+      tests: Object.entries(r).map(([n, d]) => ({
+        name: n, value: d.value, unit: d.unit, status: d.status,
+        referenceMin: d.refMin, referenceMax: d.refMax,
+        category: 'Без категории', source: 'local'
+      })),
+      patientInfo: { sex: patientProfile.sex, age: patientProfile.age }
+    };
+  }
+
   // ═══ PROGRESS HELPER ═══
-  function prog(prefix, pct, text, sub='') {
-    document.getElementById(prefix+'ProgressBar').style.width = pct+'%';
-    document.getElementById(prefix+'ProgressText').textContent = text;
-    if (sub) document.getElementById(prefix+'ProgressSub').textContent = sub;
+  function prog(prefix, pct, text, sub = '') {
+    const bar = document.getElementById(prefix + 'ProgressBar');
+    const txt = document.getElementById(prefix + 'ProgressText');
+    const subEl = document.getElementById(prefix + 'ProgressSub');
+    if (bar) bar.style.width = pct + '%';
+    if (txt) txt.textContent = text;
+    if (subEl) subEl.textContent = sub;
   }
 
   // ═══ RENDER SINGLE RESULTS ═══
   function renderSingle(data) {
     const el = document.getElementById('singleResults');
-    if (!data.tests?.length) { el.innerHTML = '<div class="other-card" style="text-align:center;padding:40px 20px;"><div style="font-size:48px;margin-bottom:12px;">😕</div><div style="font-size:16px;font-weight:700;color:var(--dark);">Показатели не найдены</div></div>'; el.style.display='block'; return; }
+    if (!data.tests?.length) {
+      el.innerHTML = '<div class="other-card" style="text-align:center;padding:40px 20px;"><div style="font-size:48px;margin-bottom:12px;">😕</div><div style="font-size:16px;font-weight:700;color:var(--dark);">Показатели не найдены</div><div style="font-size:13px;color:var(--text-3);margin-top:8px;">Попробуйте другой PDF или сверьтесь с оригиналом</div></div>';
+      el.style.display = 'block';
+      return;
+    }
 
-    const norm = data.tests.filter(t=>t.status==='normal').length;
-    const bad = data.tests.filter(t=>t.status==='high'||t.status==='low').length;
-    const fixed = data.tests.filter(t=>t.wasUnitFixed).length;
+    const norm = data.tests.filter(t => t.status === 'normal').length;
+    const bad = data.tests.filter(t => t.status === 'high' || t.status === 'low').length;
+    const fixed = data.tests.filter(t => t.wasUnitFixed).length;
     const byCategory = {};
-    data.tests.forEach(t => { const c=t.category||'Другое'; (byCategory[c]=byCategory[c]||[]).push(t); });
+    data.tests.forEach(t => {
+      const c = t.category || 'Другое';
+      (byCategory[c] = byCategory[c] || []).push(t);
+    });
 
     let h = `<div class="sec-hd"><h2>📊 Результаты</h2></div>
       <div class="vitals-grid stagger" style="margin-bottom:16px;">
@@ -514,27 +655,38 @@
         <div class="v-card"><div class="v-icon amber">⚠</div><div class="v-label">Отклонения</div><div class="v-value">${bad}</div></div>
       </div>`;
 
-    if (fixed) h += `<div class="other-card" style="margin-bottom:16px;background:rgba(244,162,97,0.08);border:1px solid rgba(244,162,97,0.3);"><div style="font-size:13px;color:var(--text-2);">🔄 <strong>Исправлено единиц:</strong> ${fixed}</div></div>`;
-    if (data.labName) h += `<div class="other-card" style="margin-bottom:16px;"><div style="font-size:13px;color:var(--text-3);">🏥 ${data.labName}${data.analysisDate?' • 📅 '+data.analysisDate:''}</div></div>`;
+    if (fixed) h += `<div class="other-card" style="margin-bottom:16px;background:rgba(244,162,97,0.08);border:1px solid rgba(244,162,97,0.3);"><div style="font-size:13px;color:var(--text-2);">🔄 <strong>AI скорректировал единицы измерения:</strong> ${fixed} тестов</div></div>`;
+    if (data.labName || data.analysisDate) {
+      h += `<div class="other-card" style="margin-bottom:16px;">`;
+      if (data.labName) h += `<div style="font-size:13px;color:var(--text-3);">🏥 ${data.labName}</div>`;
+      if (data.analysisDate) h += `<div style="font-size:13px;color:var(--text-3);">📅 ${data.analysisDate}</div>`;
+      h += `</div>`;
+    }
 
     Object.entries(byCategory).forEach(([cat, tests]) => {
       h += `<div class="other-card" style="margin-bottom:16px;"><div class="other-card-head" style="margin-bottom:12px;">${cat}<span class="see-all">${tests.length}</span></div>`;
-      tests.forEach((t,i) => {
-        const icon = t.status==='normal'?'✓':t.status==='high'?'↑':t.status==='low'?'↓':'?';
-        const bg = t.status==='normal'?'green-bg':t.status==='high'||t.status==='low'?'red-bg':'amber-bg';
-        const stCls = t.status==='normal'?'st-ok':t.status==='high'?'st-hi':t.status==='low'?'st-lo':'st-un';
-        const stLbl = t.status==='normal'?'✓ норма':t.status==='high'?'↑ выше':t.status==='low'?'↓ ниже':'?';
-        const ref = (t.referenceMin!=null&&t.referenceMax!=null)?`${t.referenceMin} – ${t.referenceMax}`:'—';
-        const badge = t.source==='ai'?'<span style="color:var(--orange);font-size:10px;margin-left:4px;">🤖</span>':t.wasUnitFixed?'<span class="unit-fix">ед. исправлены</span>':'';
-        h += `<div class="metric-row" style="animation:fadeInUp 0.4s ease ${i*0.04}s backwards;">
+      tests.forEach((t, i) => {
+        const icon = t.status === 'normal' ? '✓' : t.status === 'high' ? '↑' : t.status === 'low' ? '↓' : '?';
+        const bg = t.status === 'normal' ? 'green-bg' : t.status === 'high' || t.status === 'low' ? 'red-bg' : 'amber-bg';
+        const stCls = t.status === 'normal' ? 'st-ok' : t.status === 'high' ? 'st-hi' : t.status === 'low' ? 'st-lo' : 'st-un';
+        const stLbl = t.status === 'normal' ? '✓ норма' : t.status === 'high' ? '↑ выше' : t.status === 'low' ? '↓ ниже' : '?';
+
+        const fmtUnit = safeFormatUnit(t.unit);
+        const fmtRefMin = t.referenceMin != null ? t.referenceMin : null;
+        const fmtRefMax = t.referenceMax != null ? t.referenceMax : null;
+        const ref = (fmtRefMin != null && fmtRefMax != null) ? `${fmtRefMin} – ${fmtRefMax}` : '—';
+
+        const badge = t.source === 'ai' ? '<span style="color:var(--orange);font-size:10px;margin-left:4px;">🤖</span>' : t.wasUnitFixed ? '<span class="unit-fix">ед. исправлены</span>' : '';
+
+        h += `<div class="metric-row" style="animation:fadeInUp 0.4s ease ${i * 0.04}s backwards;">
           <div class="mr-circle ${bg}">${icon}</div>
           <div class="mr-info">
-            <div class="mr-label">${t.name}${t.shortName?` <span style="color:var(--text-3);font-weight:400;">(${t.shortName})</span>`:''}${badge}</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-              <span style="font-size:18px;font-weight:700;color:var(--dark);">${t.value??'—'} ${t.unit||''}</span>
+            <div class="mr-label">${t.name}${t.shortName ? ` <span style="color:var(--text-3);font-weight:400;">(${t.shortName})</span>` : ''}${badge}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
+              <span style="font-size:18px;font-weight:700;color:var(--dark);">${t.value ?? '—'} <span style="font-size:14px;font-weight:600;color:var(--text-2);">${fmtUnit}</span></span>
               <span class="st ${stCls}">${stLbl}</span>
             </div>
-            <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Норма: ${ref} ${t.unit||''}</div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px;">Норма: ${ref} <span style="color:var(--text-2);">${fmtUnit}</span></div>
           </div>
         </div>`;
       });
@@ -548,42 +700,52 @@
 
     el.innerHTML = h;
     el.style.display = 'block';
-    el.scrollIntoView({behavior:'smooth'});
-    showToast('Извлечено '+data.tests.length+' показателей','✓');
+    el.scrollIntoView({ behavior: 'smooth' });
+    showToast('Извлечено ' + data.tests.length + ' показателей', '✓');
     window.currentResults = data;
   }
 
-  // ═══ RENDER COMPARE RESULTS ═══
+  // ═══ RENDER COMPARE RESULTS (ИСПРАВЛЕНО!) ═══
   function renderCompare(oldD, newD) {
     const el = document.getElementById('compareResults');
-    const oldMap={}, newMap={};
-    oldD.tests.forEach(t=>oldMap[t.name]=t);
-    newD.tests.forEach(t=>newMap[t.name]=t);
-    const allKeys = [...new Set([...Object.keys(oldMap),...Object.keys(newMap)])];
+    const oldMap = {}, newMap = {};
+    oldD.tests.forEach(t => oldMap[t.name] = t);
+    newD.tests.forEach(t => newMap[t.name] = t);
+    const allKeys = [...new Set([...Object.keys(oldMap), ...Object.keys(newMap)])];
 
-    let better=0, worse=0, stable=0;
+    let better = 0, worse = 0, stable = 0;
     const rows = [];
     allKeys.forEach(name => {
       const o = oldMap[name], n = newMap[name];
       if (!o || !n) return;
-      let change=null, pct=null, dir='same';
-      if (o.value!=null && n.value!=null && o.value!==0) { change=n.value-o.value; pct=((change/Math.abs(o.value))*100).toFixed(1); dir=change>0?'up':change<0?'down':'same'; }
-      const ob=o.status!=='normal'&&o.status!=='unknown', nb=n.status!=='normal'&&n.status!=='unknown';
+      let change = null, pct = null, dir = 'same';
+      if (o.value != null && n.value != null && o.value !== 0) {
+        change = n.value - o.value;
+        pct = ((change / Math.abs(o.value)) * 100).toFixed(1);
+        dir = change > 0 ? 'up' : change < 0 ? 'down' : 'same';
+      }
+      const ob = o.status !== 'normal' && o.status !== 'unknown';
+      const nb = n.status !== 'normal' && n.status !== 'unknown';
       let trend, arrow, cls;
-      if (ob&&!nb){better++;trend='улучшилось';arrow='↗';cls='ok';}
-      else if(!ob&&nb){worse++;trend='ухудшилось';arrow='↘';cls='danger';}
-      else if(ob&&nb){
-        if(dir==='down'&&o.status==='high'){better++;trend='улучшение';arrow='↗';cls='ok';}
-        else if(dir==='up'&&o.status==='low'){better++;trend='улучшение';arrow='↗';cls='ok';}
-        else if(dir==='up'&&o.status==='high'){worse++;trend='ухудшение';arrow='↘';cls='danger';}
-        else if(dir==='down'&&o.status==='low'){worse++;trend='ухудшение';arrow='↘';cls='danger';}
-        else{stable++;trend='вне нормы';arrow='→';cls='warn';}
-      } else {stable++;trend='стабильно';arrow='→';cls='ok';}
-      rows.push({name, shortName:n.shortName||o.shortName||'', unit:n.unit||o.unit||'', oVal:o.value, nVal:n.value, change, pct, trend, arrow, cls, nStatus:n.status, refMin:n.referenceMin, refMax:n.referenceMax, category:n.category||o.category||'Другое'});
+      if (ob && !nb) { better++; trend = 'улучшилось'; arrow = '↗'; cls = 'ok'; }
+      else if (!ob && nb) { worse++; trend = 'ухудшилось'; arrow = '↘'; cls = 'danger'; }
+      else if (ob && nb) {
+        if (dir === 'down' && o.status === 'high') { better++; trend = 'улучшение'; arrow = '↗'; cls = 'ok'; }
+        else if (dir === 'up' && o.status === 'low') { better++; trend = 'улучшение'; arrow = '↗'; cls = 'ok'; }
+        else if (dir === 'up' && o.status === 'high') { worse++; trend = 'ухудшение'; arrow = '↘'; cls = 'danger'; }
+        else if (dir === 'down' && o.status === 'low') { worse++; trend = 'ухудшение'; arrow = '↘'; cls = 'danger'; }
+        else { stable++; trend = 'вне нормы'; arrow = '→'; cls = 'warn'; }
+      } else { stable++; trend = 'стабильно'; arrow = '→'; cls = 'ok'; }
+      rows.push({
+        name, shortName: n.shortName || o.shortName || '', unit: n.unit || o.unit || '',
+        oVal: o.value, nVal: n.value, change, pct, trend, arrow, cls,
+        nStatus: n.status, refMin: n.referenceMin, refMax: n.referenceMax,
+        category: n.category || o.category || 'Другое'
+      });
     });
 
     const byCategory = {};
-    rows.forEach(r => (byCategory[r.category]=byCategory[r.category]||[]).push(r));
+    rows.forEach(r => (byCategory[r.category] = byCategory[r.category] || []).push(r));
 
     let h = `<div class="sec-hd"><h2>📊 Сравнение</h2></div>
       <div class="vitals-grid stagger" style="margin-bottom:16px;">
@@ -592,41 +754,50 @@
         <div class="v-card" style="grid-column:span 2;"><div class="v-icon blue">→</div><div class="v-label">Стабильно</div><div class="v-value">${stable}</div></div>
       </div>`;
 
+    // ✅ ИСПРАВЛЕНО: корректно закрываем forEach и other-card
     Object.entries(byCategory).forEach(([cat, items]) => {
       h += `<div class="other-card" style="margin-bottom:16px;"><div class="other-card-head" style="margin-bottom:12px;">${cat}<span class="see-all">${items.length}</span></div>`;
-      items.forEach((r,i) => {
-        const bg = r.cls==='ok'?'green-bg':r.cls==='warn'?'amber-bg':'red-bg';
-        const tColor = r.cls==='ok'?'green':r.cls==='warn'?'orange':'red';
-        const stCls = r.nStatus==='normal'?'st-ok':r.nStatus==='high'?'st-hi':r.nStatus==='low'?'st-lo':'st-un';
-        const stLbl = r.nStatus==='normal'?'✓':r.nStatus==='high'?'↑':r.nStatus==='low'?'↓':'?';
-        const changeStr = r.change!=null?`${r.change>0?'+':''}${r.change.toFixed(2)} (${r.pct>0?'+':''}${r.pct}%)`:'';
-        const ref = (r.refMin!=null&&r.refMax!=null)?`${r.refMin} – ${r.refMax} ${r.unit}`:'';
-        h += `<div class="metric-row" style="animation:fadeInUp 0.4s ease ${i*0.04}s backwards;">
+      items.forEach((r, i) => {
+        const bg = r.cls === 'ok' ? 'green-bg' : r.cls === 'warn' ? 'amber-bg' : 'red-bg';
+        const tColor = r.cls === 'ok' ? 'green' : r.cls === 'warn' ? 'orange' : 'red';
+        const stCls = r.nStatus === 'normal' ? 'st-ok' : r.nStatus === 'high' ? 'st-hi' : r.nStatus === 'low' ? 'st-lo' : 'st-un';
+        const stLbl = r.nStatus === 'normal' ? '✓' : r.nStatus === 'high' ? '↑' : r.nStatus === 'low' ? '↓' : '?';
+        const changeStr = r.change != null ? `${r.change > 0 ? '+' : ''}${r.change.toFixed(2)} (${r.pct > 0 ? '+' : ''}${r.pct}%)` : '';
+
+        const fmtUnit = safeFormatUnit(r.unit);
+        const ref = (r.refMin != null && r.refMax != null) ? `${r.refMin} – ${r.refMax}` : '';
+
+        h += `<div class="metric-row" style="animation:fadeInUp 0.4s ease ${i * 0.04}s backwards;">
           <div class="mr-circle ${bg}">${r.arrow}</div>
           <div class="mr-info">
-            <div class="mr-label">${r.name}${r.shortName?` <span style="color:var(--text-3);font-weight:400;">(${r.shortName})</span>`:''}</div>
+            <div class="mr-label">${r.name}${r.shortName ? ` <span style="color:var(--text-3);font-weight:400;">(${r.shortName})</span>` : ''}</div>
             <div class="cmp-row">
-              <span class="cmp-old">${r.oVal??'—'} ${r.unit}</span>
+              <span class="cmp-old">${r.oVal ?? '—'} <span style="font-size:12px;">${fmtUnit}</span></span>
               <span class="cmp-arrow">→</span>
-              <span class="cmp-new">${r.nVal??'—'} ${r.unit}</span>
+              <span class="cmp-new">${r.nVal ?? '—'} <span style="font-size:14px;font-weight:600;color:var(--text-2);">${fmtUnit}</span></span>
               <span class="st ${stCls}">${stLbl}</span>
             </div>
-            ${changeStr?`<div style="font-size:11px;color:var(--text-3);margin-top:3px;">📊 ${changeStr}</div>`:''}
-            ${ref?`<div style="font-size:11px;color:var(--text-3);margin-top:2px;">📏 ${ref}</div>`:''}
+            ${changeStr ? `<div style="font-size:11px;color:var(--text-3);margin-top:3px;">📊 ${changeStr}</div>` : ''}
+            ${ref ? `<div style="font-size:11px;color:var(--text-3);margin-top:2px;">📏 ${ref} <span style="color:var(--text-2);">${fmtUnit}</span></div>` : ''}
           </div>
           <div style="font-size:11px;font-weight:700;color:var(--${tColor});white-space:nowrap;">${r.trend}</div>
         </div>`;
       });
+      // ✅ ЗАКРЫВАЕМ other-card
       h += '</div>';
-    });
+    }); // ✅ ЗАКРЫВАЕМ forEach
 
-    h += `<button class="next-btn ripple-element" onclick="askAICompare()" style="margin-top:16px;background:var(--dark);">🤖 Спросить AI про динамику</button>`;
+    // ✅ КНОПКИ ДЕЙСТВИЙ (теперь снаружи всех карточек)
+    h += `<div class="compare-actions">
+      <button class="next-btn ripple-element" onclick="rerunCompare()" style="background:var(--surface-2);color:var(--text-1);">🔄 Повторить</button>
+      <button class="next-btn ripple-element" onclick="askAICompare()" style="background:var(--dark);">🤖 Спросить AI про динамику</button>
+    </div>`;
 
     el.innerHTML = h;
     el.style.display = 'block';
-    el.scrollIntoView({behavior:'smooth'});
-    showToast('Сравнение завершено','✓');
-    window._compareData = {oldD, newD, rows};
+    el.scrollIntoView({ behavior: 'smooth' });
+    showToast('Сравнение завершено', '✓');
+    window._compareData = { oldD, newD, rows };
   }
 
   // ═══ SINGLE ANALYSIS ═══
@@ -636,85 +807,223 @@
     btn.disabled = true;
     document.getElementById('singleProgress').style.display = 'block';
     try {
-      prog('single',10,'Извлекаем текст...');
-      const text = await extractPDFText(fileSingle, (i,t)=>prog('single',10+(i/t)*20,'Страница '+i+'/'+t));
-      if (!text||text.trim().length<50) throw new Error('Не удалось извлечь текст');
-      prog('single',30,'🔍 Определяем единицы...');
-      const units = extractUnitsFromPDF(text);
-      prog('single',40,'🤖 AI анализирует...');
-      const ai = await analyzeWithAI(text, units);
-      prog('single',85,'✓ Проверяем с базой...');
-      const data = ai ? validateWithDB(ai, units) : fallbackParse(text);
-      prog('single',100,'✓ Готово!');
-      setTimeout(()=>{document.getElementById('singleProgress').style.display='none'; renderSingle(data);},400);
-    } catch(e) {
-      console.error(e); showToast('Ошибка: '+e.message,'❌');
-      btn.disabled = false; document.getElementById('singleProgress').style.display='none';
+      prog('single', 5, '📖 Читаем PDF...', '• Извлекаем текст из документа');
+      const text = await extractPDFText(fileSingle, (i, t) =>
+        prog('single', 5 + (i / t) * 20, '📖 Читаем PDF...', `• Страница ${i} из ${t}`)
+      );
+      if (!text || text.trim().length < 50) throw new Error('Не удалось извлечь текст из PDF');
+
+      prog('single', 30, '🤖 Отправляем в нейросеть...', '• AI читает документ как человек');
+      let aiData;
+      try {
+        aiData = await analyzeWithAI(text, 'одиночный анализ');
+      } catch (aiErr) {
+        console.warn('⚠️ AI недоступен, используем fallback:', aiErr.message);
+        showToast('AI недоступен, используем локальный парсер', '⚠️');
+        prog('single', 60, '🔄 Локальный парсер...', '• Обрабатываем без нейросети');
+        aiData = fallbackParse(text);
+      }
+
+      prog('single', 85, '✓ Сверяем с медицинской базой...', '• Нормализуем названия и единицы');
+      const data = aiData.tests ? normalizeWithDB(aiData) : aiData;
+
+      prog('single', 100, '✓ Готово!');
+      setTimeout(() => {
+        document.getElementById('singleProgress').style.display = 'none';
+        renderSingle(data);
+      }, 400);
+    } catch (e) {
+      console.error(e);
+      showToast('Ошибка: ' + e.message, '❌');
+      btn.disabled = false;
+      document.getElementById('singleProgress').style.display = 'none';
     }
   };
 
   // ═══ COMPARE ═══
   window.runCompare = async function() {
-    if (!fileOld||!fileNew) return;
+    if (!fileOld || !fileNew) return;
     document.getElementById('compareBtn').disabled = true;
     document.getElementById('compareProgress').style.display = 'block';
     try {
-      prog('compare',5,'Читаем старый...');
+      prog('compare', 5, '📖 Читаем старый PDF...');
       const tOld = await extractPDFText(fileOld);
-      prog('compare',20,'Читаем новый...');
+
+      prog('compare', 15, '📖 Читаем новый PDF...');
       const tNew = await extractPDFText(fileNew);
-      prog('compare',30,'🤖 AI: старый...');
-      const uOld = extractUnitsFromPDF(tOld);
-      const aiOld = await analyzeWithAI(tOld, uOld);
-      const dOld = aiOld ? validateWithDB(aiOld, uOld) : fallbackParse(tOld);
-      prog('compare',60,'🤖 AI: новый...');
-      const uNew = extractUnitsFromPDF(tNew);
-      const aiNew = await analyzeWithAI(tNew, uNew);
-      const dNew = aiNew ? validateWithDB(aiNew, uNew) : fallbackParse(tNew);
-      prog('compare',95,'📊 Сравниваем...');
-      setTimeout(()=>{document.getElementById('compareProgress').style.display='none'; renderCompare(dOld, dNew);},400);
-    } catch(e) {
-      console.error(e); showToast('Ошибка: '+e.message,'❌');
-      document.getElementById('compareBtn').disabled = false; document.getElementById('compareProgress').style.display='none';
+
+      prog('compare', 25, '🤖 AI анализирует старый...', '• Это может занять 10-30 секунд');
+      let aiOld;
+      try {
+        aiOld = await analyzeWithAI(tOld, 'старый анализ');
+      } catch (e) {
+        console.warn('⚠️ AI недоступен для старого:', e.message);
+        aiOld = fallbackParse(tOld);
+      }
+
+      prog('compare', 55, '🤖 AI анализирует новый...');
+      let aiNew;
+      try {
+        aiNew = await analyzeWithAI(tNew, 'новый анализ');
+      } catch (e) {
+        console.warn('⚠️ AI недоступен для нового:', e.message);
+        aiNew = fallbackParse(tNew);
+      }
+
+      prog('compare', 85, '✓ Сверяем с базой...');
+      const dOld = aiOld.tests ? normalizeWithDB(aiOld) : aiOld;
+      const dNew = aiNew.tests ? normalizeWithDB(aiNew) : aiNew;
+
+      prog('compare', 95, '📊 Сравниваем показатели...');
+      setTimeout(() => {
+        document.getElementById('compareProgress').style.display = 'none';
+        renderCompare(dOld, dNew);
+      }, 400);
+    } catch (e) {
+      console.error(e);
+      showToast('Ошибка: ' + e.message, '❌');
+      document.getElementById('compareBtn').disabled = false;
+      document.getElementById('compareProgress').style.display = 'none';
     }
   };
 
-  function fallbackParse(text) {
-    const r = window.parseAnalysisText(text, patientProfile.sex, patientProfile.age);
-    return { tests: Object.entries(r).map(([n,d])=>({name:n,value:d.value,unit:d.unit,status:d.status,referenceMin:d.refMin,referenceMax:d.refMax,category:'Без категории',source:'local'})), patientInfo:{sex:patientProfile.sex,age:patientProfile.age} };
-  }
+  // ═══ RERUN COMPARE ═══
+  window.rerunCompare = function() {
+    document.getElementById('compareResults').style.display = 'none';
+    document.getElementById('compareResults').innerHTML = '';
+    document.getElementById('compareBtn').disabled = false;
+    document.getElementById('compareBtn').style.opacity = '1';
+    showToast('Можно запустить сравнение заново', '🔄');
+  };
 
   // ═══ SAVE ═══
   window.saveResults = function() {
     if (!window.currentResults) return;
-    const data = { results:{}, patient:window.currentResults.patientInfo, date:new Date().toISOString(), fileName:fileSingle?.name||'Анализ' };
-    window.currentResults.tests.forEach(t => data.results[t.name]={value:t.value,unit:t.unit,status:t.status});
-    try { const h=JSON.parse(localStorage.getItem('analysis_history_v1')||'[]'); h.push({id:'a_'+Date.now(),fileName:data.fileName,date:Date.now(),results:data.results,count:Object.keys(data.results).length}); localStorage.setItem('analysis_history_v1',JSON.stringify(h)); } catch(e){}
-    showToast('Сохранено!','✅');
-    setTimeout(()=>{ sessionStorage.setItem('analysisResults',JSON.stringify(data)); window.location.href='results.html'; },800);
+    const data = {
+      results: {},
+      patient: window.currentResults.patientInfo,
+      date: new Date().toISOString(),
+      fileName: fileSingle?.name || 'Анализ',
+      labName: window.currentResults.labName,
+      analysisDate: window.currentResults.analysisDate
+    };
+    window.currentResults.tests.forEach(t =>
+      data.results[t.name] = {
+        value: t.value, unit: t.unit, status: t.status,
+        referenceMin: t.referenceMin, referenceMax: t.referenceMax
+      }
+    );
+    try {
+      const h = JSON.parse(localStorage.getItem('analysis_history_v1') || '[]');
+      h.push({
+        id: 'a_' + Date.now(),
+        fileName: data.fileName,
+        date: Date.now(),
+        results: data.results,
+        count: Object.keys(data.results).length,
+        labName: data.labName,
+        analysisDate: data.analysisDate
+      });
+      localStorage.setItem('analysis_history_v1', JSON.stringify(h));
+    } catch (e) {}
+    showToast('Сохранено!', '✅');
+    setTimeout(() => {
+      sessionStorage.setItem('analysisResults', JSON.stringify(data));
+      window.location.href = 'results.html';
+    }, 800);
   };
 
   // ═══ ASK AI ═══
   window.askAI = function() {
-    if (!window.currentResults?.tests?.length) return;
-    const ab = window.currentResults.tests.filter(t=>t.status!=='normal'&&t.status!=='unknown');
-    let q = 'Проанализируй мои анализы:\n\nПациент: '+(patientProfile.sex==='male'?'мужчина':'женщина')+', '+patientProfile.age+' лет\n\n';
-    if (ab.length) { q+='**Отклонения:**\n'; ab.forEach(t=>q+=`• ${t.name}: ${t.value} ${t.unit} (${t.status==='high'?'↑':'↓'}, норма ${t.referenceMin}-${t.referenceMax})\n`); }
-    q += '\nДай интерпретацию и рекомендации.';
-    sessionStorage.setItem('pending_chat_message',q);
-    window.location.href='chat.html';
+    if (!window.currentResults?.tests?.length) {
+      showToast('Нет данных для анализа', '⚠️');
+      return;
+    }
+
+    const validTests = [];
+    const suspicious = [];
+
+    window.currentResults.tests.forEach(t => {
+      const dbTest = window.labTests?.find(test =>
+        test.canonicalName === t.name ||
+        (test.aliases || []).some(a => a.toLowerCase() === (t.name || '').toLowerCase())
+      );
+      if (!dbTest) {
+        validTests.push(t);
+        return;
+      }
+      const expectedUnits = (dbTest.units || []).map(u => u.trim().toLowerCase());
+      const actualUnit = (t.unit || '').trim().toLowerCase();
+      if (!actualUnit || expectedUnits.some(u => u === actualUnit || u.includes(actualUnit) || actualUnit.includes(u))) {
+        validTests.push(t);
+      } else {
+        suspicious.push(t);
+      }
+    });
+
+    const profile = window.currentResults.patientInfo || patientProfile;
+    const sexRu = profile.sex === 'male' ? 'мужчина' : profile.sex === 'female' ? 'женщина' : 'не указан';
+
+    let q = `Проанализируй мои результаты анализов:\n\n**Пациент:** ${sexRu}, ${profile.age} лет\n\n`;
+
+    const abnormal = validTests.filter(t => t.status === 'high' || t.status === 'low');
+    const normal = validTests.filter(t => t.status === 'normal');
+
+    if (abnormal.length > 0) {
+      q += `**⚠️ Отклонения от нормы (${abnormal.length}):**\n`;
+      abnormal.forEach(t => {
+        const arrow = t.status === 'high' ? '↑' : '↓';
+        const fmtUnit = safeFormatUnit(t.unit);
+        const refStr = (t.referenceMin != null && t.referenceMax != null) ? `норма ${t.referenceMin}–${t.referenceMax} ${fmtUnit}` : '';
+        q += `• **${t.name}**: ${t.value} ${fmtUnit} (${arrow} ${refStr})\n`;
+      });
+      q += '\n';
+    }
+
+    if (normal.length > 0) {
+      q += `**✓ В норме (${normal.length}):**\n`;
+      normal.slice(0, 10).forEach(t => {
+        const fmtUnit = safeFormatUnit(t.unit);
+        q += `• ${t.name}: ${t.value} ${fmtUnit}\n`;
+      });
+      if (normal.length > 10) q += `• _и ещё ${normal.length - 10} показателей в норме_\n`;
+      q += '\n';
+    }
+
+    if (suspicious.length > 0) {
+      q += `**⚠️ Примечание:** ${suspicious.length} тестов пропущено из-за несоответствия единиц измерения (возможная ошибка парсинга).\n\n`;
+    }
+
+    q += `**Задача:** Дай развёрнутую интерпретацию отклонений, возможные причины, рекомендуемые дополнительные обследования и к каким специалистам обратиться. Учитывай возраст и пол пациента.`;
+
+    sessionStorage.setItem('pending_chat_message', q);
+    window.location.href = 'chat.html';
   };
 
   window.askAICompare = function() {
     if (!window._compareData) return;
-    const {rows} = window._compareData;
-    let q = 'Проанализируй динамику моих анализов:\n\n';
-    const imp=rows.filter(r=>r.cls==='ok'&&r.arrow==='↗'), wor=rows.filter(r=>r.cls==='danger');
-    if(imp.length) q+='**📈 Улучшения:**\n'+imp.map(r=>`• ${r.name}: ${r.oVal} → ${r.nVal} ${r.unit}`).join('\n')+'\n\n';
-    if(wor.length) q+='**📉 Ухудшения:**\n'+wor.map(r=>`• ${r.name}: ${r.oVal} → ${r.nVal} ${r.unit}`).join('\n')+'\n\n';
-    q+='Дай интерпретацию динамики и рекомендации.';
-    sessionStorage.setItem('pending_chat_message',q);
-    window.location.href='chat.html';
+    const { rows } = window._compareData;
+    let q = 'Проанализируй динамику моих анализов (старый → новый):\n\n';
+    q += `**Пациент:** ${patientProfile.sex === 'male' ? 'мужчина' : 'женщина'}, ${patientProfile.age} лет\n\n`;
+
+    const imp = rows.filter(r => r.cls === 'ok' && r.arrow === '↗');
+    const wor = rows.filter(r => r.cls === 'danger');
+    const stab = rows.filter(r => r.cls === 'ok' && r.arrow === '→');
+
+    if (imp.length) {
+      q += '**📈 Улучшения:**\n' + imp.map(r => `• ${r.name}: ${r.oVal} → ${r.nVal} ${safeFormatUnit(r.unit)}`).join('\n') + '\n\n';
+    }
+    if (wor.length) {
+      q += '**📉 Ухудшения:**\n' + wor.map(r => `• ${r.name}: ${r.oVal} → ${r.nVal} ${safeFormatUnit(r.unit)}`).join('\n') + '\n\n';
+    }
+    if (stab.length) {
+      q += `**➡️ Стабильно (${stab.length} показателей):** без изменений\n\n`;
+    }
+
+    q += 'Дай развёрнутую интерпретацию динамики: что означает улучшение/ухудшение, какие факторы могли повлиять, и рекомендации по дальнейшему наблюдению.';
+
+    sessionStorage.setItem('pending_chat_message', q);
+    window.location.href = 'chat.html';
   };
 
 })();
