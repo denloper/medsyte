@@ -186,6 +186,19 @@
     .compare-actions .next-btn {
       flex: 1;
     }
+
+    /* ═══ TRUNCATED WARNING ═══ */
+    .truncated-warning {
+      background: rgba(244,162,97,0.1);
+      border: 1px solid rgba(244,162,97,0.3);
+      border-radius: var(--r-md);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .truncated-warning strong { color: var(--orange); }
   </style>
 </head>
 <body>
@@ -379,6 +392,52 @@
     return unit;
   }
 
+  // ═══ КЛИЕНТСКАЯ ПОЧИНКА ОБРЕЗАННОГО JSON ═══
+  function repairTruncatedJSON(str) {
+    if (!str) return null;
+    let s = str.trim();
+
+    // Убираем markdown
+    if (s.startsWith('```json')) s = s.replace(/^```json\s*/, '');
+    else if (s.startsWith('```')) s = s.replace(/^```\s*/, '');
+    if (s.endsWith('```')) s = s.replace(/\s*```$/, '');
+    s = s.trim();
+
+    try { return JSON.parse(s); } catch (e) {}
+
+    // Если начинается с { — ищем последний завершённый тест
+    if (s.startsWith('{')) {
+      // Ищем все завершённые объекты тестов
+      const lastTestMatch = s.match(/,\s*\{\s*"name"[^{}]*\}\s*(?=,|\s*\]|\s*\})/g);
+      if (lastTestMatch && lastTestMatch.length > 0) {
+        const lastTest = lastTestMatch[lastTestMatch.length - 1];
+        const lastTestEnd = s.lastIndexOf(lastTest) + lastTest.length;
+        const truncated = s.substring(0, lastTestEnd) + '], "patientInfo": {}, "labName": null, "analysisDate": null, "_truncated": true}';
+        try {
+          const parsed = JSON.parse(truncated);
+          if (parsed.tests && Array.isArray(parsed.tests) && parsed.tests.length > 0) {
+            parsed._truncated = true;
+            return parsed;
+          }
+        } catch (e) {}
+      }
+
+      const lastBraceIdx = s.lastIndexOf('}');
+      if (lastBraceIdx > 0) {
+        const truncated = s.substring(0, lastBraceIdx + 1) + '], "_truncated": true}';
+        try {
+          const parsed = JSON.parse(truncated);
+          if (parsed.tests && Array.isArray(parsed.tests)) {
+            parsed._truncated = true;
+            return parsed;
+          }
+        } catch (e) {}
+      }
+    }
+
+    return null;
+  }
+
   // ═══ TOAST ═══
   window.showToast = function(t, i='✓') {
     const el = document.getElementById('toast');
@@ -449,32 +508,81 @@
     cb.disabled = !(fileOld && fileNew); cb.style.opacity = (fileOld && fileNew) ? '1' : '0.5';
   }
 
-  // ═══ PDF TEXT EXTRACTION ═══
+  // ═══ PDF TEXT EXTRACTION (сохранение структуры таблицы) ═══
   async function extractPDFText(file, onProgress) {
     const buf = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    let text = '';
+    let fullText = '';
+
     for (let i = 1; i <= pdf.numPages; i++) {
       if (onProgress) onProgress(i, pdf.numPages);
       const page = await pdf.getPage(i);
       const tc = await page.getTextContent();
+
+      // Группируем по Y-координатам с допуском (строки таблицы)
       const lines = new Map();
+      const Y_TOLERANCE = 3;
+
       tc.items.forEach(item => {
-        const y = Math.round(item.transform[5]);
+        const y = Math.round(item.transform[5] / Y_TOLERANCE) * Y_TOLERANCE;
         if (!lines.has(y)) lines.set(y, []);
-        lines.get(y).push({ text: item.str, x: item.transform[4] });
+        lines.get(y).push({
+          text: item.str,
+          x: item.transform[4],
+          width: item.width || 0
+        });
       });
+
+      // Сортируем строки сверху вниз
       const sortedY = Array.from(lines.keys()).sort((a, b) => b - a);
+
+      let prevY = null;
       sortedY.forEach(y => {
         const lineItems = lines.get(y).sort((a, b) => a.x - b.x);
-        text += lineItems.map(it => it.text).join(' ') + '\n';
+
+        // Определяем большой ли разрыв между строками (новая секция)
+        if (prevY !== null && Math.abs(y - prevY) > 20) {
+          fullText += '\n';
+        }
+
+        // Склеиваем элементы строки с умными разделителями
+        let lineText = '';
+        let prevX = null;
+
+        lineItems.forEach((item) => {
+          const text = item.text.trim();
+          if (!text) return;
+
+          if (prevX !== null) {
+            const gap = item.x - prevX;
+            // Если большой промежуток — это разные колонки таблицы
+            if (gap > 50) {
+              lineText += ' | ';
+            } else if (gap > 10) {
+              lineText += '  ';
+            } else {
+              lineText += ' ';
+            }
+          }
+
+          lineText += text;
+          prevX = item.x + item.width;
+        });
+
+        if (lineText.trim()) {
+          fullText += lineText + '\n';
+        }
+
+        prevY = y;
       });
-      text += '\n---PAGE_BREAK---\n';
+
+      fullText += '\n---PAGE_BREAK---\n';
     }
-    return text;
+
+    return fullText;
   }
 
-  // ═══ AI PARSING ═══
+  // ═══ AI PARSING (с клиентской починкой JSON) ═══
   async function analyzeWithAI(pdfText, label = 'анализ') {
     console.log(`🤖 AI анализирует ${label}: ${pdfText.length} символов`);
 
@@ -498,17 +606,41 @@
       })
     });
 
+    const responseText = await resp.text();
+
     if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error(`Ошибка сервера: ${resp.status} — ${errText}`);
+      // Пытаемся извлечь JSON из тела ошибки
+      try {
+        const errJson = JSON.parse(responseText);
+        if (errJson.rawResponse) {
+          console.warn('⚠️ Сервер вернул ошибку, но есть rawResponse — пытаемся починить');
+          const repaired = repairTruncatedJSON(errJson.rawResponse);
+          if (repaired && repaired.tests && repaired.tests.length > 0) {
+            console.log(`✅ Починили обрезанный JSON: ${repaired.tests.length} тестов`);
+            showToast(`AI вернул не все данные (обрыв), извлечено ${repaired.tests.length} тестов`, '⚠️');
+            return repaired;
+          }
+        }
+        throw new Error(errJson.error || `HTTP ${resp.status}`);
+      } catch (e) {
+        throw new Error(`Ошибка сервера: ${resp.status}`);
+      }
     }
 
-    const result = await resp.json();
+    const result = JSON.parse(responseText);
 
     if (!result.success) {
-      console.error('❌ AI parse failed:', result.error);
+      // Если есть rawResponse — пробуем починить
+      if (result.rawResponse) {
+        const repaired = repairTruncatedJSON(result.rawResponse);
+        if (repaired && repaired.tests && repaired.tests.length > 0) {
+          console.warn(`⚠️ JSON был обрезан, восстановлено ${repaired.tests.length} тестов`);
+          showToast(`Извлечено ${repaired.tests.length} тестов (данные могут быть неполными)`, '⚠️');
+          return repaired;
+        }
+      }
+
       if (result.data?.tests?.length > 0) {
-        console.warn('⚠️ Используем частичные данные:', result.data.tests.length, 'тестов');
         return result.data;
       }
       throw new Error(result.error || 'AI не смог проанализировать PDF');
@@ -525,7 +657,8 @@
       patientInfo: { sex: patientProfile.sex, age: patientProfile.age },
       labName: aiData.labName || null,
       analysisDate: aiData.analysisDate || null,
-      confidence: aiData.confidence || 0.9
+      confidence: aiData.confidence || 0.9,
+      truncated: aiData._truncated || false
     };
 
     if (!aiData.tests || !Array.isArray(aiData.tests)) return out;
@@ -655,6 +788,11 @@
         <div class="v-card"><div class="v-icon amber">⚠</div><div class="v-label">Отклонения</div><div class="v-value">${bad}</div></div>
       </div>`;
 
+    // Предупреждение о неполных данных
+    if (data.truncated) {
+      h += `<div class="truncated-warning"><strong>⚠️ Внимание:</strong> Данные могут быть неполными из-за обрыва ответа AI. Сверьтесь с оригиналом PDF.</div>`;
+    }
+
     if (fixed) h += `<div class="other-card" style="margin-bottom:16px;background:rgba(244,162,97,0.08);border:1px solid rgba(244,162,97,0.3);"><div style="font-size:13px;color:var(--text-2);">🔄 <strong>AI скорректировал единицы измерения:</strong> ${fixed} тестов</div></div>`;
     if (data.labName || data.analysisDate) {
       h += `<div class="other-card" style="margin-bottom:16px;">`;
@@ -705,7 +843,7 @@
     window.currentResults = data;
   }
 
-  // ═══ RENDER COMPARE RESULTS (ИСПРАВЛЕНО!) ═══
+  // ═══ RENDER COMPARE RESULTS ═══
   function renderCompare(oldD, newD) {
     const el = document.getElementById('compareResults');
     const oldMap = {}, newMap = {};
@@ -754,7 +892,11 @@
         <div class="v-card" style="grid-column:span 2;"><div class="v-icon blue">→</div><div class="v-label">Стабильно</div><div class="v-value">${stable}</div></div>
       </div>`;
 
-    // ✅ ИСПРАВЛЕНО: корректно закрываем forEach и other-card
+    // Предупреждение о неполных данных
+    if (oldD.truncated || newD.truncated) {
+      h += `<div class="truncated-warning"><strong>⚠️ Внимание:</strong> Данные могут быть неполными из-за обрыва ответа AI. Сверьтесь с оригиналами PDF.</div>`;
+    }
+
     Object.entries(byCategory).forEach(([cat, items]) => {
       h += `<div class="other-card" style="margin-bottom:16px;"><div class="other-card-head" style="margin-bottom:12px;">${cat}<span class="see-all">${items.length}</span></div>`;
       items.forEach((r, i) => {
@@ -783,11 +925,9 @@
           <div style="font-size:11px;font-weight:700;color:var(--${tColor});white-space:nowrap;">${r.trend}</div>
         </div>`;
       });
-      // ✅ ЗАКРЫВАЕМ other-card
       h += '</div>';
-    }); // ✅ ЗАКРЫВАЕМ forEach
+    });
 
-    // ✅ КНОПКИ ДЕЙСТВИЙ (теперь снаружи всех карточек)
     h += `<div class="compare-actions">
       <button class="next-btn ripple-element" onclick="rerunCompare()" style="background:var(--surface-2);color:var(--text-1);">🔄 Повторить</button>
       <button class="next-btn ripple-element" onclick="askAICompare()" style="background:var(--dark);">🤖 Спросить AI про динамику</button>
